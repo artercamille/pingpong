@@ -1,13 +1,13 @@
 // Manette (API Gamepad) + clavier de secours.
 // Mapping manette standard : A/Croix = Lift, B/Rond = Frappe, X/Carré = Coupé, Y/Triangle = Lob,
-// LB/L1 et RB/R1 = effet latéral, Start = pause/menu.
-// Clavier (touches physiques) : ZQSD ou flèches, J = Lift, K = Frappe, U = Coupé, I = Lob, A/E = latéral.
+// LB/L1 et RB/R1 = effet latéral, RT/R2 = super coup, Start = pause/menu.
+// Clavier (touches physiques) : ZQSD ou flèches, J = Lift, K = Frappe, U = Coupé, I = Lob, A/E = latéral, L = super coup.
 
 export const SHOTS = ['top', 'plat', 'coupe', 'lob'];
-const PAD_BTN = { top: 0, plat: 1, coupe: 2, lob: 3, sideL: 4, sideR: 5, start: 9 };
+const PAD_BTN = { top: 0, plat: 1, coupe: 2, lob: 3, sideL: 4, sideR: 5, super: 7, start: 9 };
 const KEYS = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
-  top: ['KeyJ', 'Space'], plat: ['KeyK'], coupe: ['KeyU'], lob: ['KeyI'], sideL: ['KeyQ'], sideR: ['KeyE'],
+  top: ['KeyJ', 'Space'], plat: ['KeyK'], coupe: ['KeyU'], lob: ['KeyI'], sideL: ['KeyQ'], sideR: ['KeyE'], super: ['KeyL'],
   start: ['Escape'],
 };
 

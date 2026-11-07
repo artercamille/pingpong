@@ -7,6 +7,17 @@ Ping-pong 3D dans le navigateur, vue raquette, dans une arène de championnats d
 - **Contre l'IA** : trois niveaux, matchs en 1, 3 ou 5 sets.
 - **En ligne** : un joueur crée la partie et envoie le code de 5 lettres, l'autre le saisit. La connexion se fait directement entre les deux PC (WebRTC via PeerJS), sans serveur à héberger.
 
+## Progression
+
+- **Classé en ligne** : rangs Fer → Bronze → Argent → Or → Platine → Émeraude → Diamant (divisions IV à I), puis Maître, Grand Maître et Challenger. Chaque match en ligne fait gagner ou perdre des LP selon le niveau de l'adversaire.
+- **Face-à-face** : bilan et série en cours contre chaque adversaire.
+- **Niveaux et XP** : chaque match rapporte de l'XP, les niveaux débloquent raquettes, traînées et salles (Vestiaire).
+- **Succès** : 17 défis (ace, smash gagnant, échange de 20 coups, set parfait, remontada, balle de match sauvée…).
+- **Super coup** : la jauge SUPER se remplit avec les bons coups ; pleine, RT (ou L) arme un coup surpuissant.
+- **Ralentis** sur les gros points, statistiques de fin de match et vidéo du meilleur point à télécharger.
+
+Le profil est sauvegardé dans le navigateur.
+
 ## Commandes
 
 | Action | Manette | Clavier |
@@ -17,6 +28,7 @@ Ping-pong 3D dans le navigateur, vue raquette, dans une arène de championnats d
 | Coupé | X / Carré | U |
 | Lob | Y / Triangle | I |
 | Effet latéral | LB / RB | A / E |
+| Super coup (jauge pleine) | RT | L |
 | Pause (contre l'IA) | Start | Échap |
 
 Maintiens le bouton pour charger, puis relâche juste avant l'arrivée de la balle. Le timing et le placement décident de la qualité du coup.

@@ -44,10 +44,12 @@ function logo(g, x, y, size, rot = 0, alpha = 1) {
 // ------------------------------------------------------------------ raquette
 function buildPaddle(rubber) {
   const g = new THREE.Group();
+  g.userData = {};
   const shape = new THREE.Shape();
   shape.absellipse(0, 0, 0.076, 0.082, 0, Math.PI * 2, false, 0);
   const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.0025, bevelEnabled: true, bevelThickness: 0.0008, bevelSize: 0.0012, bevelSegments: 2, curveSegments: 48 });
-  const front = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: rubber, roughness: 0.6, sheen: 0.5, sheenColor: 0xffffff }));
+  const front = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: rubber, roughness: 0.6, sheen: 0.5, sheenColor: 0xffffff, emissive: 0x000000 }));
+  g.userData.front = front.material;
   front.position.set(0, 0.115, 0.0008);
   const back = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0x0b0b0b, roughness: 0.65, sheen: 0.4 }));
   back.position.set(0, 0.115, -0.0043);
@@ -57,6 +59,7 @@ function buildPaddle(rubber) {
   const handle = new THREE.Mesh(new THREE.CapsuleGeometry(0.0125, 0.075, 4, 12), hm);
   handle.scale.set(1.05, 1, 0.85);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.017, 0.012, 16), new THREE.MeshStandardMaterial({ color: NEON, emissive: NEON, emissiveIntensity: 0.6 }));
+  g.userData.cap = cap.material;
   cap.position.y = -0.048;
   const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.012), hm); shoulder.position.y = 0.04;
   for (const o of [front, back, wood, handle, cap, shoulder]) { o.castShadow = true; g.add(o); }
@@ -74,7 +77,16 @@ class PaddleRig {
   // repère local joueur (x = sa droite, z = vers le filet) -> monde
   toWorld(pl, v) { return V(pl.x + pl.side * v.x, v.y, pl.z - pl.side * v.z); }
 
+  setColor(hex, metal) {
+    const m = this.obj.userData.front;
+    m.color.setHex(hex); m.metalness = metal ? 0.85 : 0; m.roughness = metal ? 0.25 : 0.6;
+  }
+
   update(dt, pl, game, i) {
+    // super coup prêt : la raquette s'illumine
+    const m = this.obj.userData.front;
+    const glow = pl.superArmed ? 0.5 + 0.5 * Math.sin(performance.now() / 70) : 0;
+    m.emissive.setHex(0xff7a1a); m.emissiveIntensity = glow * 1.4;
     const t = this.target(pl, game, i);
     const k = Math.min(1, dt * (pl.swingT >= 0 ? 55 : 14));
     this.hand.lerp(t.hand, k);
@@ -156,6 +168,12 @@ export class Renderer {
     this.marks = [];
     this.lastScoreKey = '';
 
+    this.mats = {
+      neon: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: NEON, emissiveIntensity: 3 }),
+      purple: new THREE.MeshPhysicalMaterial({ color: PURPLE, roughness: 0.28, metalness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.15, envMapIntensity: 1.2 }),
+    };
+    this.ambLights = [];
+    this.themeHex = '#d23cff';
     this.buildLights();
     this.buildArena();
     this.buildTable();
@@ -206,6 +224,7 @@ export class Renderer {
     // ambiance violette dans les tribunes
     for (const [x, z] of [[-11, 0], [11, 0], [0, -15], [0, 15]]) {
       const p = new THREE.PointLight(0x8a3cff, 22, 26, 1.6);
+      this.ambLights.push(p);
       p.position.set(x, 6, z); s.add(p);
     }
   }
@@ -248,7 +267,7 @@ export class Renderer {
     });
     this.boardTex.wrapS = THREE.RepeatWrapping;
     const frame = new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.45, metalness: 0.3 });
-    const neon = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: NEON, emissiveIntensity: 3 });
+    const neon = this.mats.neon;
     const add = (w, x, z, ry) => {
       const g = new THREE.Group();
       const back = new THREE.Mesh(new THREE.BoxGeometry(w, 0.74, 0.06), frame); back.position.y = 0.37; back.receiveShadow = true; g.add(back);
@@ -312,7 +331,7 @@ export class Renderer {
       c.globalAlpha = 0.5; logo(c, w * 0.58, h * 0.92, 18, 0, 0.6); logo(c, w * 0.42, h * 0.08, 18, Math.PI, 0.6);
     });
     const topMat = new THREE.MeshPhysicalMaterial({ map: topTex, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.3, envMapIntensity: 0.6 });
-    const purple = new THREE.MeshPhysicalMaterial({ color: PURPLE, roughness: 0.28, metalness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.15, envMapIntensity: 1.2 });
+    const purple = this.mats.purple;
     const top = new THREE.Mesh(new THREE.BoxGeometry(T.W, 0.025, T.L), [purple, purple, topMat, purple, purple, purple]);
     top.position.y = T.H - 0.0125; top.castShadow = true; top.receiveShadow = true; g.add(top);
     const apron = new THREE.Mesh(new THREE.BoxGeometry(T.W - 0.02, 0.05, T.L - 0.02), purple);
@@ -447,7 +466,7 @@ export class Renderer {
     const g = this.screenCanvas.getContext('2d'), w = 1024, h = 512;
     const grd = g.createLinearGradient(0, 0, w, h); grd.addColorStop(0, '#1a0b2e'); grd.addColorStop(1, '#07060d');
     g.fillStyle = grd; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#d23cff'; g.fillRect(0, h - 10, w, 10);
+    g.fillStyle = this.themeHex; g.fillRect(0, h - 10, w, 10);
     logo(g, w / 2 + 40, 80, 50, 0, 1);
     g.fillStyle = '#b9a8e6'; g.font = '700 26px Arial'; g.textAlign = 'center'; g.fillText('WORLD CHAMPIONSHIPS', w / 2, 140);
     if (game) {
@@ -495,11 +514,17 @@ export class Renderer {
     const idx = [];
     for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
     geo.setIndex(idx);
+    this.trailU = { uColor: { value: new THREE.Vector3(0.85, 0.7, 1.0) }, uRainbow: { value: 0 }, uTime: { value: 0 }, uBoost: { value: 0.7 } };
     this.trail = new THREE.Mesh(geo, new THREE.ShaderMaterial({
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: this.trailU,
       vertexShader: 'attribute float alpha; varying float va; void main(){ va = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: 'varying float va; void main(){ gl_FragColor = vec4(vec3(0.85,0.7,1.0) * va * 0.7, 1.0); }',
+      fragmentShader: `uniform vec3 uColor; uniform float uRainbow, uTime, uBoost; varying float va;
+        void main(){ vec3 c = uColor;
+          if (uRainbow > 0.5) c = 0.55 + 0.45 * cos(6.2831 * (va * 1.5 + uTime * 0.8 + vec3(0.0, 0.33, 0.67)));
+          gl_FragColor = vec4(c * va * uBoost, 1.0); }`,
     }));
+    this.trailColors = [[0.85, 0.7, 1.0], [0.85, 0.7, 1.0]];
+    this.trailWidth = 1;
     this.trail.frustumCulled = false;
     this.scene.add(this.trail);
   }
@@ -511,6 +536,13 @@ export class Renderer {
     this.ballMesh.position.set(b.x, b.y, b.z);
     this.glow.position.copy(this.ballMesh.position);
     this.ballMesh.visible = this.glow.visible = game.state !== 'between';
+    const lh = game.lastHit ? game.lastHit.p : 0;
+    const tc = game.superBall ? [1.0, 0.42, 0.08] : this.trailColors[lh];
+    if (tc === 'rainbow') this.trailU.uRainbow.value = 1;
+    else { this.trailU.uRainbow.value = 0; this.trailU.uColor.value.set(tc[0], tc[1], tc[2]); }
+    this.trailU.uTime.value = this.time;
+    this.trailU.uBoost.value = game.superBall ? 1.6 : 0.75;
+    this.trailWidth = game.superBall ? 2.4 : 1;
     this.updateTrail(game);
 
     if (game.fx.length > 8) game.fx.splice(0, game.fx.length - 8);
@@ -555,7 +587,7 @@ export class Renderer {
       const dx = P[j2] - px, dy = P[j2 + 1] - py, dz = P[j2 + 2] - pz;
       const vx = cam.x - px, vy = cam.y - py, vz = cam.z - pz;
       let wx = dy * vz - dz * vy, wy = dz * vx - dx * vz, wz = dx * vy - dy * vx;
-      const l = Math.hypot(wx, wy, wz) || 1, width = BALL_R * 0.9 * (i / this.trailN);
+      const l = Math.hypot(wx, wy, wz) || 1, width = BALL_R * 0.9 * this.trailWidth * (i / this.trailN);
       wx = wx / l * width; wy = wy / l * width; wz = wz / l * width;
       pos[i * 6] = px + wx; pos[i * 6 + 1] = py + wy; pos[i * 6 + 2] = pz + wz;
       pos[i * 6 + 3] = px - wx; pos[i * 6 + 4] = py - wy; pos[i * 6 + 5] = pz - wz;
@@ -583,7 +615,31 @@ export class Renderer {
     this.aimRing.scale.setScalar(1 + Math.sin(this.time * 10) * 0.08);
   }
 
+  setTheme(t) {
+    this.mats.neon.emissive.setHex(t.neon);
+    this.mats.purple.color.setHex(t.legs);
+    for (const l of this.ambLights) l.color.setHex(t.light);
+    for (const p of this.paddles) p.obj.userData.cap.color.setHex(t.neon), p.obj.userData.cap.emissive.setHex(t.neon);
+    this.themeHex = '#' + t.neon.toString(16).padStart(6, '0');
+    this.lastScoreKey = '';
+  }
+
   updateCamera(game, dt) {
+    // caméra plus serrée sur les balles de set / de match
+    const baseFov = innerWidth / innerHeight < 1.3 ? 64 : 50;
+    const wantFov = this.replayCam ? 38 : (this.pressure ? baseFov - 8 : baseFov);
+    if (Math.abs(this.camera.fov - wantFov) > 0.05) { this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); }
+    if (this.replayCam) {
+      // caméra télé latérale qui suit la balle
+      const b = game.ball.p;
+      const tgt = V(3.6, 1.75, b.z * 0.55);
+      const rdt = dt / (this.replaySpeed || 1);
+      this.camPos.lerp(tgt, Math.min(1, rdt * 3));
+      this.camLook.lerp(V(b.x * 0.5, 0.9, b.z * 0.85), Math.min(1, rdt * 5));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(this.camLook);
+      return;
+    }
     if (this.orbit) {
       const a = this.time * 0.06;
       this.camera.position.set(Math.sin(a) * 7, 3 + Math.sin(this.time * 0.2) * 0.5, Math.cos(a) * 7);
@@ -593,7 +649,7 @@ export class Renderer {
     // vue à la première personne, juste derrière la raquette
     const me = game.players[game.me];
     const s = me.side;
-    const target = V(me.x * 0.6, 1.95, s * (Math.abs(me.z) + 1.7));
+    const target = V(me.x * 0.6, this.pressure ? 1.8 : 1.95, s * (Math.abs(me.z) + (this.pressure ? 1.25 : 1.7)));
     const look = V(me.x * 0.25 + game.ball.p.x * 0.08, 0.68, -s * 0.9);
     const k = Math.min(1, dt * 6);
     this.camPos.lerp(target, k);

@@ -53,6 +53,13 @@ export class Game {
     this.rallyCount = 0;
     this.paused = false;
     this.pred = [null, null];   // prévision du point de contact (pour la jauge et l'aide au placement)
+    this.stats = [0, 1].map(() => ({ points: 0, winners: 0, errors: 0, aces: 0, smashes: 0, supers: 0, hits: 0, maxSpeed: 0 }));
+    this.longest = 0;
+    this.momentum = [0, 0];
+    this.pressure = null;        // { type: 'set' | 'match', p } : balle de set / de match
+    this.deficit = [0, 0];       // plus gros retard dans le set en cours
+    this.ach = [];               // succès débloqués pendant le match (joueur local)
+    this.lastShot = [{}, {}];
     this.predT = 0;
   }
 
@@ -144,7 +151,7 @@ export class Game {
     this.simTime += DT;
     for (const e of ev) {
       if (e.type === 'table') { sfx.table(e.speed); this.fx.push({ type: 'bounce', x: e.x, z: e.z }); }
-      else if (e.type === 'net') sfx.net();
+      else if (e.type === 'net') { sfx.net(); if (e.cord) sfx.ooh && sfx.ooh(); }
       else if (e.type === 'floor' && e.speed > 0.8) sfx.floor();
       if (this.state === 'rally' && this.rally && this.local(1 - this.rally.hitter)) this.rallyEvent(e);
     }
@@ -253,6 +260,7 @@ export class Game {
 
   handleButtons(i, dt) {
     const pl = this.players[i], inp = this.inputs[i];
+    if (inp.pressed.super && this.momentum[i] >= 1 && !pl.superArmed) this.armSuper(i);
     if (this.state === 'serve' && this.server() === i) {
       for (const t of SHOTS) if (inp.pressed[t]) { this.toss(i, t); return; }
       return;
@@ -267,6 +275,28 @@ export class Game {
       if (!inp.btn[pl.chargeType]) this.release(i);
     }
   }
+
+  armSuper(i) {
+    const pl = this.players[i];
+    pl.superArmed = true; this.momentum[i] = 0;
+    sfx.superArm && sfx.superArm();
+    this.hooks.superArmed && this.hooks.superArmed(i);
+    this.net && this.net.send({ t: 'super', i });
+  }
+
+  // statistiques après chaque frappe
+  onHitStats(p, type, smash, sup, v) {
+    const st = this.stats[p];
+    st.hits++;
+    const kmh = Math.hypot(v.x, v.y, v.z) * 3.6;
+    st.maxSpeed = Math.max(st.maxSpeed, kmh);
+    if (sup) st.supers++;
+    this.lastShot[p] = { type, smash, sup };
+    if (!sup) this.momentum[p] = Math.min(1, this.momentum[p] + (smash ? 0.12 : 0.07));
+    if (p === this.me && kmh > 70) this.addAch('speed70');
+  }
+
+  addAch(id) { if (!this.ach.includes(id)) { this.ach.push(id); this.hooks.ach && this.hooks.ach(id); } }
 
   release(i) {
     const pl = this.players[i];
@@ -328,6 +358,8 @@ export class Game {
     const shot = this.buildShot(i, type, power, q, true);
     this.ball.v = shot.v; this.ball.w = shot.w;
     this.beginRally(i, true);
+    this.superBall = false;
+    this.lastShot[i] = { type, serve: true };
     this.startSwing(i, true, type);
     sfx.paddle(power * 0.6);
     this.hooks.feedback && this.hooks.feedback(i, label, q, SERVE_LABEL[type]);
@@ -342,10 +374,10 @@ export class Game {
     this.pred = [null, null]; this.predT = 0;
   }
 
-  sendHit(i, type, serve, label, q) {
+  sendHit(i, type, serve, label, q, sup = false) {
     if (!this.net) return;
     const pl = this.players[i];
-    this.net.send({ t: 'hit', i, b: copyBall(this.ball), type, serve, label, q, fore: pl.swingFore, id: this.hitId });
+    this.net.send({ t: 'hit', i, b: copyBall(this.ball), type, serve, label, q, fore: pl.swingFore, id: this.hitId, sup, smash: label === 'SMASH !' });
   }
 
   // ------------------------------------------------------------------ frappe
@@ -419,15 +451,19 @@ export class Game {
     pl.swingFore = dx >= 0;
     pl.contact = { x: b.x, y: b.y, z: b.z, t: this.simTime };
     pl.lastGrade = label;
-    const shot = this.buildShot(p, type, power, q, false);
+    const sup = !!pl.superArmed; pl.superArmed = false;
+    const shot = this.buildShot(p, type, power, sup ? 1 : q, false, sup);
     this.ball.v = shot.v; this.ball.w = shot.w;
     this.beginRally(p, false);
     this.rallyCount++;
-    sfx.paddle(power);
-    this.fx.push({ type: 'hit', x: b.x, y: b.y, z: b.z, power, smash: shot.smash });
+    this.onHitStats(p, type, shot.smash, sup, shot.v);
+    sfx.paddle(sup ? 1 : power);
+    if (sup) sfx.superHit && sfx.superHit();
+    this.fx.push({ type: 'hit', x: b.x, y: b.y, z: b.z, power, smash: shot.smash || sup, sup, p });
+    this.superBall = sup;
     this.hooks.feedback && this.hooks.feedback(p, shot.smash ? 'SMASH !' : label, q, SHOT_LABEL[type]);
     this.hooks.hit && this.hooks.hit(p, { type, power, aimX: pl.aimX, aimY: pl.aimY, serve: false });
-    this.sendHit(p, type, false, shot.smash ? 'SMASH !' : label, q);
+    this.sendHit(p, type, false, shot.smash ? 'SMASH !' : label, q, sup);
   }
 
   checkPending(p) {
@@ -461,7 +497,7 @@ export class Game {
     this.rally.pending = 0;
   }
 
-  buildShot(p, type, power, q, serve) {
+  buildShot(p, type, power, q, serve, sup = false) {
     const pl = this.players[p], s = pl.side, b = this.ball;
     const ax = clamp(pl.aimX, -1, 1), ay = clamp(pl.aimY, -1, 1);
     let tx = ax * 0.6 * s;
@@ -469,7 +505,7 @@ export class Game {
     if (serve) depth = 0.8 + ay * 0.33;
     else if (type === 'lob') depth = 1.05 + ay * 0.15;
     else depth = 0.92 + ay * 0.3 - (type === 'coupe' ? 0.08 : 0);
-    const e = (1 - q) * 1.0 + power * power * (serve ? 0.12 : 0.45) + (serve ? 0 : 0.03);
+    const e = sup ? 0 : (1 - q) * 1.0 + power * power * (serve ? 0.12 : 0.45) + (serve ? 0 : 0.03);
     tx += gauss() * e * 0.45;
     depth += gauss() * e * 0.4 + e * 0.15 * power;
     const tz = -s * depth;
@@ -486,6 +522,7 @@ export class Game {
       else if (type === 'coupe') { speed = 4 + 2.4 * power; top = -(60 + 110 * power); }
       else { speed = 3.6 + 1.6 * power; top = 45 + 45 * power; }
     }
+    if (sup) { speed += 6; top = Math.abs(top) + 120; }
     if (pl.sideSpin && !(serve && type === 'lob')) side += pl.sideSpin * (70 + 60 * power);
     side *= s;
 
@@ -533,6 +570,8 @@ export class Game {
   applyPoint(winner, reason, snapshot) {
     const m = this.match;
     let setWon = false;
+    const before = [...m.score];
+    const prevPressure = this.pressure;
     if (snapshot) {
       setWon = snapshot.setIdx !== m.setIdx;
       this.match = snapshot;
@@ -544,6 +583,7 @@ export class Game {
         if (m.sets[winner] > Math.floor(this.bestOf / 2)) { m.over = true; m.winner = winner; }
       }
     }
+    this.pointStats(winner, reason, before, setWon, prevPressure);
     this.state = 'pointEnd';
     this.stateT = this.match.over ? 2.6 : setWon ? 3 : 1.9;
     for (const pl of this.players) { pl.charging = false; pl.releaseType = null; }
@@ -551,6 +591,52 @@ export class Game {
     sfx.applause(big ? 1.4 : 0.8);
     this.fx.push({ type: 'cheer', big });
     this.hooks.point && this.hooks.point(winner, reason, setWon, this.rallyCount);
+  }
+
+  pointStats(w, reason, before, setWon, prevPressure) {
+    const l = 1 - w, me = this.me;
+    const st = this.stats;
+    st[w].points++;
+    const winnerShot = reason === 'Point gagnant' || reason === 'Ace !' || reason === 'Double rebond';
+    if (winnerShot) {
+      st[w].winners++;
+      const ls = this.lastShot[w] || {};
+      if (reason === 'Ace !') st[w].aces++;
+      if (ls.smash) st[w].smashes++;
+      if (w === me) {
+        if (reason === 'Ace !') this.addAch('ace');
+        if (ls.smash) this.addAch('smash');
+        if (ls.type === 'lob' && !ls.serve) this.addAch('lob');
+        if (ls.sup) this.addAch('super');
+      }
+    } else if (reason !== 'Temps') st[l].errors++;
+    this.longest = Math.max(this.longest, this.rallyCount + 1);
+    if (this.rallyCount + 1 >= 20) this.addAch('rally20');
+    this.momentum[w] = Math.min(1, this.momentum[w] + 0.12);
+    // balle de match sauvée
+    if (prevPressure && prevPressure.type === 'match' && prevPressure.p !== w && w === me) this.addAch('save_mp');
+    // retard max dans le set
+    const sc = before.slice(); sc[w]++;
+    for (const p of [0, 1]) this.deficit[p] = Math.max(this.deficit[p], sc[1 - p] - sc[p]);
+    if (setWon) {
+      if (w === me && sc[l] === 0) this.addAch('perfect_set');
+      if (w === me && this.deficit[me] >= 5) this.addAch('comeback');
+      this.deficit = [0, 0];
+    }
+    // balle de set / de match ?
+    this.pressure = null;
+    const m = this.match;
+    if (!m.over) {
+      const need = Math.floor(this.bestOf / 2) + 1;
+      for (const p of [0, 1]) {
+        const a = m.score[p], b = m.score[1 - p];
+        if (a >= 10 && a > b) this.pressure = { type: m.sets[p] === need - 1 ? 'match' : 'set', p };
+      }
+    }
+  }
+
+  summary() {
+    return { stats: this.stats, longest: this.longest, ach: this.ach };
   }
 
   doLet() {
@@ -570,6 +656,9 @@ export class Game {
         if (msg.c && !pl.charging) pl.chargeT = 0;
         pl.charging = msg.c; pl.chargeType = msg.ct;
         break;
+      case 'super':
+        this.players[msg.i].superArmed = true; this.momentum[msg.i] = 0;
+        break;
       case 'swing':
         this.startSwing(msg.i, msg.fore, msg.type);
         break;
@@ -586,6 +675,13 @@ export class Game {
         this.beginRally(msg.i, msg.serve);
         if (!msg.serve) this.rallyCount++;
         pl.charging = false;
+        this.superBall = !!msg.sup;
+        if (msg.serve) this.lastShot[msg.i] = { type: msg.type, serve: true };
+        else {
+          this.onHitStats(msg.i, msg.type, !!msg.smash, !!msg.sup, msg.b.v);
+          if (msg.sup) this.momentum[msg.i] = 0;
+          this.fx.push({ type: 'hit', x: msg.b.p.x, y: msg.b.p.y, z: msg.b.p.z, power: 0.6, smash: msg.smash || msg.sup, sup: msg.sup, p: msg.i });
+        }
         this.startSwing(msg.i, msg.fore, msg.type);
         sfx.paddle(0.6);
         this.hooks.feedback && this.hooks.feedback(msg.i, msg.label, msg.q, (msg.serve ? SERVE_LABEL : SHOT_LABEL)[msg.type]);

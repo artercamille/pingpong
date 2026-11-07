@@ -1,6 +1,27 @@
 // Sons synthétisés (aucun fichier audio nécessaire)
-let ctx = null, master = null, noiseBuf = null, muted = false;
-export function setMuted(v) { muted = v; }
+let ctx = null, master = null, noiseBuf = null, muted = false, muffle = null, crowd = null, crowdGain = null;
+export function setMuted(v) {
+  muted = v;
+  if (crowdGain && ctx) crowdGain.gain.setTargetAtTime(v ? 0 : crowdLevel, ctx.currentTime, 0.2);
+}
+let crowdLevel = 0.035;
+// ambiance continue du public (le volume monte pendant les longs échanges)
+export function setCrowd(level) {
+  if (!ctx) return;
+  crowdLevel = level;
+  if (!crowd) {
+    crowd = ctx.createBufferSource(); crowd.buffer = noiseBuf; crowd.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = 0.5;
+    crowdGain = ctx.createGain(); crowdGain.gain.value = 0;
+    crowd.connect(f); f.connect(crowdGain); crowdGain.connect(master); crowd.start();
+  }
+  crowdGain.gain.setTargetAtTime(muted ? 0 : level, ctx.currentTime, 0.4);
+}
+// son étouffé pendant les moments de pression
+export function setMuffle(on) {
+  if (!muffle) return;
+  muffle.frequency.setTargetAtTime(on ? 1100 : 20000, ctx.currentTime, 0.25);
+}
 
 export function initAudio() {
   if (ctx) { ctx.resume(); return; }
@@ -8,7 +29,9 @@ export function initAudio() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain();
     master.gain.value = 0.7;
-    master.connect(ctx.destination);
+    muffle = ctx.createBiquadFilter();
+    muffle.type = 'lowpass'; muffle.frequency.value = 20000;
+    master.connect(muffle); muffle.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -58,4 +81,8 @@ export const sfx = {
     noise(1.6 * intensity, 0.06, 900, 0.4, 0.15);
   },
   ui() { tone(660, 0.07, 0.15, 'sine', 1.2); },
+  superArm() { tone(300, 0.5, 0.25, 'sawtooth', 3); noise(0.4, 0.12, 2500, 0.7, 0.05); },
+  superHit() { tone(140, 0.35, 0.5, 'sine', 0.4); noise(0.3, 0.4, 900, 0.6); },
+  ooh() { if (!ctx || muted) return; noise(1.0, 0.09, 450, 1.5, 0.15); tone(220, 0.9, 0.05, 'sine', 0.85); },
+  unlock() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.18, 0.18, 'triangle', 1), i * 90)); },
 };

@@ -25,6 +25,8 @@
   <div id="banner"></div>
   <div id="hint"></div>
   <div id="charge"><div class="lbl"></div><div class="bar"><div class="fill"></div></div></div>
+  <div id="mom"><div class="mlabel">SUPER</div><div class="mbar"><div></div></div><div class="mkey"></div></div>
+  <div id="replay" class="hidden"><div class="lb top"></div><div class="lb bot"></div><div class="tag"><i></i>REPLAY</div></div>
   <div id="tuto" class="hidden">
     <div class="tstep"></div>
     <div class="ttitle"></div>
@@ -33,6 +35,8 @@
     <div class="tskip"><span class="kb" data-k="start"></span> Passer le tutoriel</div>
   </div>
 </div>
+
+<div id="toasts"></div>
 
 <!-- MENU PRINCIPAL -->
 <div id="menu" class="menu">
@@ -45,6 +49,7 @@
       </div>
     </div>
 
+    <div id="pcard"></div>
     <section class="screen" id="scr-main">
       <button class="mbtn big" data-go="scr-ai">
         <i><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="6.5"/><path d="M13.5 13.5l6 6"/><circle cx="19" cy="5" r="2"/></svg></i>
@@ -57,6 +62,10 @@
       <button class="mbtn" id="btn-tuto">
         <i><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg></i>
         <span><b>Tutoriel</b><small>Apprends les bases en 2 minutes</small></span>
+      </button>
+      <button class="mbtn" data-go="scr-locker">
+        <i><svg viewBox="0 0 24 24"><path d="M7 3h10l1 4H6z"/><path d="M5 7h14v14H5z"/><path d="M12 11v6"/></svg></i>
+        <span><b>Vestiaire</b><small>Raquettes, traînées et salles</small></span>
       </button>
       <button class="mbtn" data-go="scr-ctrl">
         <i><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 014 4v1a4 4 0 01-7 2.6L14 15h-4l-1 .6A4 4 0 012 13v-1a4 4 0 014-4z"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r=".6"/><circle cx="18" cy="13.5" r=".6"/></svg></i>
@@ -110,10 +119,22 @@
       <button class="mbtn ghost" data-go="scr-online" id="join-back"><span><b>Retour</b></span></button>
     </section>
 
-    <section class="screen hidden" id="scr-profile">
+    <section class="screen hidden wide" id="scr-profile">
       <h2>Profil</h2>
       <label class="field">Ton pseudo<input id="name" maxlength="14" placeholder="Camille" data-nav></label>
-      <button class="mbtn accent" data-go="scr-main"><span><b>Valider</b></span></button>
+      <div id="pstats"></div>
+      <h2>Succès</h2>
+      <div id="achgrid"></div>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden" id="scr-locker">
+      <h2>Vestiaire</h2>
+      <div class="opt cos" id="cos-paddle" data-kind="paddle"><span class="ol">Raquette</span><span class="ov"></span></div>
+      <div class="opt cos" id="cos-trail" data-kind="trail"><span class="ol">Traînée</span><span class="ov"></span></div>
+      <div class="opt cos" id="cos-arena" data-kind="arena"><span class="ol">Salle</span><span class="ov"></span></div>
+      <p class="status" id="locker-info">Monte de niveau pour débloquer de nouveaux objets.</p>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
 
     <section class="screen hidden wide" id="scr-ctrl">
@@ -125,6 +146,7 @@
         <div class="cg"><span class="kb pad y">Y</span><span><b>Lob</b><small>Balle haute pour te défendre</small></span><span class="kb key">I</span></div>
         <div class="cg"><span class="kb pad">L</span><span><b>Viser</b><small>Stick gauche pendant que tu maintiens un coup</small></span><span class="kb key">ZQSD</span></div>
         <div class="cg"><span class="kb pad">LB RB</span><span><b>Effet latéral</b><small>La balle tourne à gauche ou à droite</small></span><span class="kb key">A E</span></div>
+        <div class="cg"><span class="kb pad">RT</span><span><b>Super coup</b><small>Quand la jauge SUPER est pleine : ton prochain coup part comme une fusée</small></span><span class="kb key">L</span></div>
       </div>
       <p class="status">Maintiens le bouton plus longtemps pour frapper plus fort. Plus c'est fort, plus c'est risqué.</p>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
@@ -145,11 +167,22 @@
 </div>
 
 <div id="end" class="overlay hidden">
-  <div class="mpanel">
-    <h2 id="end-title">Victoire !</h2>
-    <div id="end-sets"></div>
-    <button class="mbtn accent" id="again"><span><b>Rejouer</b></span></button>
-    <button class="mbtn ghost" id="tomenu"><span><b>Menu</b></span></button>
+  <div class="mpanel endp">
+    <div class="endhead"><h2 id="end-title">Victoire !</h2><div id="end-sets"></div></div>
+    <div class="endgrid">
+      <div class="endcol">
+        <div id="end-rank"></div>
+        <div id="end-h2h"></div>
+        <div id="end-xp"></div>
+        <div id="end-ach"></div>
+      </div>
+      <div class="endcol"><div id="end-stats"></div></div>
+    </div>
+    <div class="endbtns">
+      <button class="mbtn accent" id="again"><span><b>Revanche</b><small>On remet ça tout de suite</small></span></button>
+      <button class="mbtn" id="bestpt"><span><b>Revoir le meilleur point</b><small>Et l'enregistrer en vidéo</small></span></button>
+      <button class="mbtn ghost" id="tomenu"><span><b>Menu</b></span></button>
+    </div>
     <p class="status" id="end-status"></p>
   </div>
 </div>

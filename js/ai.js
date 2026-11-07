@@ -53,6 +53,7 @@ export class AI {
         if (p) {
           if (g.simTime >= p.startT) { tx = p.px; tz = p.pz; } else { tx = pl.x; tz = pl.z; }
           inp.aimX = p.aimX; inp.aimY = p.aimY;
+          if (g.momentum[this.i] >= 1 && !pl.superArmed && this.L.name !== 'Coach' && Math.random() < 0.03) inp.pressed.super = true;
           if (!this.hold && !p.done && g.simTime >= p.tPress) this.press(p.type);
           if (this.hold && g.simTime >= p.tRelease) { this.releaseAll(); p.done = true; }
         }

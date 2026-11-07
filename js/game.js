@@ -160,7 +160,15 @@ export class Game {
     }
     if (this.state === 'toss') {
       const s = this.server();
-      if (this.local(s) && this.ball.v.y < 0 && this.ball.p.y < 0.88) {
+      const sp = this.players[s];
+      if (this.ctrl[s] === 'human' && this.ball.v.y < 0 && this.ball.p.y <= SERVE_Y) {
+        // joueur humain : service toujours parfait, frappé automatiquement au bon moment
+        const q0 = sp.serveQueued;
+        const type = sp.charging ? sp.chargeType : (q0 ? q0.type : 'top');
+        const pw = Math.max(0.5, sp.charging ? this.power(sp) : (q0 ? q0.power : 0.6));
+        sp.charging = false; sp.serveQueued = null;
+        this.serveHit(s, type, pw, 1, 'SERVICE PARFAIT');
+      } else if (this.local(s) && this.ball.v.y < 0 && this.ball.p.y < 0.88) {
         const pl = this.players[s];
         const type = pl.charging ? pl.chargeType : 'top';
         const pw = pl.charging ? this.power(pl) : 0.35;
@@ -263,7 +271,10 @@ export class Game {
     const pl = this.players[i];
     const power = this.power(pl);
     pl.charging = false;
-    if (this.state === 'toss' && this.server() === i) { this.serveRelease(i, pl.chargeType, power); return; }
+    if (this.state === 'toss' && this.server() === i) {
+      if (this.ctrl[i] === 'human') { pl.serveQueued = { type: pl.chargeType, power }; return; }
+      this.serveRelease(i, pl.chargeType, power); return;
+    }
     pl.releaseType = pl.chargeType; pl.releasePower = power; pl.releaseT = this.simTime;
     // le timing est jugé par rapport à la jauge affichée au moment du relâchement
     const pr = this.pred[i];
@@ -355,13 +366,26 @@ export class Game {
     }
 
     let q, type, power, label;
-    if (pl.charging && !r.pending) {
+    if (this.ctrl[p] === 'human') {
+      // pas de timing : appuyer suffit, le coup est toujours parfait
+      let t = null, pw = 0.6;
+      const since0 = this.simTime - pl.releaseT;
+      if (pl.charging) { t = pl.chargeType; pw = Math.max(0.55, this.power(pl)); pl.charging = false; this.startSwing(p, dx >= 0, t); }
+      else if (pl.releaseType && since0 <= 1.5) { t = pl.releaseType; pw = Math.max(0.55, pl.releasePower); pl.releaseType = null; }
+      if (!t) {
+        if (!r.pending) { r.pending = this.simTime; r.contactTried = false; return; } // petite marge pour appuyer
+        this.hooks.feedback && this.hooks.feedback(p, 'RATÉ', 0);
+        return;
+      }
+      r.pending = 0;
+      type = t; power = pw; q = 1; label = 'PARFAIT';
+    } else if (pl.charging && !r.pending) {
       // le joueur charge encore : on attend qu'il relâche (coup en retard)
       r.pending = this.simTime; r.contactTried = false;
       return;
     }
     const since = this.simTime - pl.releaseT;
-    if (r.pending && pl.releaseType) {
+    if (this.ctrl[p] === 'human') { /* coup humain déjà réglé */ } else if (r.pending && pl.releaseType) {
       // relâché après le passage de la balle
       const late = this.simTime - r.pending;
       const g = gradeTiming(-(late + IDEAL_REL));
@@ -406,6 +430,11 @@ export class Game {
   checkPending(p) {
     const r = this.rally, pl = this.players[p], b = this.ball.p;
     const late = this.simTime - r.pending;
+    if (this.ctrl[p] === 'human') {
+      if (pl.charging || pl.releaseType) { r.contactTried = false; this.checkContact(p, b.z - pl.side * 1, true); r.pending = 0; return; }
+      if (late > 0.2 || b.y < 0.42) { r.contactTried = true; r.pending = 0; this.hooks.feedback && this.hooks.feedback(p, 'RATÉ', 0); }
+      return;
+    }
     const behind = pl.side * (b.z - (pl.z - pl.side * PLANE_OFF));
     const lost = late > 0.24 || b.y < 0.42 || behind > 0.5;
     if (!pl.charging || lost) {

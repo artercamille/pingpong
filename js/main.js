@@ -209,11 +209,7 @@ function togglePause(v) {
 
 // ------------------------------------------------------------------ HUD
 let fbT = 0, oppT = 0, banT = 0, hintT = 0;
-const GRADE = { 'PARFAIT': 3, 'SERVICE PARFAIT': 3, 'BON': 2, 'BON SERVICE': 2, 'TROP TÔT': 1, 'SERVICE TROP TÔT': 1, 'TROP TARD': 0, 'SERVICE RATÉ': 0, 'SERVICE TROP TARD': 0 };
-function showFeedback(label, q, shot) {
-  if (label in GRADE) lockMeter(GRADE[label]);
-  else if (q > 0) lockMeter(q >= 0.9 ? 3 : q >= 0.7 ? 2 : q >= 0.45 ? 1 : 0);
-}
+function showFeedback() {}
 function showOpp() {}
 function banner(text, sub, t) {
   $('#banner').innerHTML = text + (sub ? `<small>${sub}</small>` : '');
@@ -238,7 +234,6 @@ function updateHUD(dt) {
   if ((banT -= dt) <= 0) $('#banner').classList.remove('show');
   if ((hintT -= dt) <= 0) $('#hint').classList.remove('show');
 
-  updateMeter(dt);
   const me = game.players[game.me];
   const ch = $('#charge');
   if (false) {
@@ -247,32 +242,6 @@ function updateHUD(dt) {
     ch.querySelector('.fill').style.width = (Math.max(0.15, p) * 100) + '%';
     ch.querySelector('.lbl').textContent = SHOT_LABEL[me.chargeType] || '';
   } else ch.classList.remove('show');
-}
-
-// jauge de timing façon TopSpin : une barre qui se remplit, une seule zone verte au bout
-let meterLock = null;
-function updateMeter(dt) {
-  const el = $('#meter');
-  const me = game.players[game.me];
-  const pr = game.pred[game.me];
-  const hp = R.paddleScreen(game.me);
-  if (meterLock) { meterLock.t -= dt; if (meterLock.t <= 0) meterLock = null; }
-  const active = pr && (me.charging || me.releaseType) && (game.state === 'rally' || game.state === 'toss');
-  if (!active && !meterLock) { el.classList.remove('show'); el.className = ''; return; }
-  el.style.left = Math.max(90, Math.min(innerWidth - 90, hp.x - 40)) + 'px';
-  el.style.top = Math.max(80, Math.min(innerHeight - 40, hp.y - 110)) + 'px';
-  el.classList.add('show');
-  const LEAD = TIMING.lead, len = LEAD + TIMING.perfect;
-  el.querySelector('.z.perfect').style.width = (2 * TIMING.perfect / len * 100) + '%';
-  if (meterLock) { el.querySelector('.fill').style.width = meterLock.pos + '%'; return; }
-  const tR = pr.t - (pr.serve ? 0 : IDEAL_REL);
-  const pos = Math.max(0, Math.min(1, (game.simTime - (tR - LEAD)) / len));
-  el.querySelector('.fill').style.width = (pos * 100) + '%';
-}
-function lockMeter(grade) {
-  const w = parseFloat($('#meter .fill').style.width) || 0;
-  meterLock = { pos: grade === 0 ? 100 : w, t: 0.6 };
-  $('#meter').className = 'show r' + grade;
 }
 
 // ------------------------------------------------------------------ boucle

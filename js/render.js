@@ -181,7 +181,7 @@ export class Renderer {
     this.r.setSize(w, h, false);
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
-    this.camera.fov = w / h < 1.3 ? 68 : 55;
+    this.camera.fov = w / h < 1.3 ? 64 : 50;
     this.camera.updateProjectionMatrix();
   }
 
@@ -593,8 +593,8 @@ export class Renderer {
     // vue à la première personne, juste derrière la raquette
     const me = game.players[game.me];
     const s = me.side;
-    const target = V(me.x * 0.75, 1.55, s * (Math.abs(me.z) + 0.55));
-    const look = V(me.x * 0.3 + game.ball.p.x * 0.08, 0.72, -s * 1.1);
+    const target = V(me.x * 0.6, 1.95, s * (Math.abs(me.z) + 1.7));
+    const look = V(me.x * 0.25 + game.ball.p.x * 0.08, 0.68, -s * 0.9);
     const k = Math.min(1, dt * 6);
     this.camPos.lerp(target, k);
     this.camLook.lerp(look, Math.min(1, dt * 4));

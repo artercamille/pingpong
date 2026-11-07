@@ -95,15 +95,15 @@ h1 span { color: #ffb43c; }
 #board .pts { border-radius: 4px; font-size: 20px; }
 #setinfo { order: -1; background: rgba(255,180,60,.12); color: #ffb43c; font-weight: 800; }
 
-#meter { position: absolute; transform: translate(-50%, -100%); width: 150px; opacity: 0; transition: opacity .12s; }
-#meter.show { opacity: 1; }
-#meter .track { position: relative; height: 10px; background: rgba(10,12,20,.9); border: 1px solid rgba(255,255,255,.55); box-shadow: 0 2px 10px rgba(0,0,0,.6); }
-#meter .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #e9ecf3; }
-#meter .z.perfect { position: absolute; top: 0; bottom: 0; right: 0; background: #2fe06a; }
-#meter.r3 .fill { background: #2fe06a; box-shadow: 0 0 12px #2fe06a; }
-#meter.r2 .fill { background: #b8f05a; }
-#meter.r1 .fill { background: #ffc531; }
-#meter.r0 .fill { background: #ff4b4b; }
+#meter-unused { position: absolute; transform: translate(-50%, -100%); width: 150px; opacity: 0; transition: opacity .12s; }
+#meter-unused.show { opacity: 1; }
+#meter-unused .track { position: relative; height: 10px; background: rgba(10,12,20,.9); border: 1px solid rgba(255,255,255,.55); box-shadow: 0 2px 10px rgba(0,0,0,.6); }
+#meter-unused .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #e9ecf3; }
+#meter-unused .z.perfect { position: absolute; top: 0; bottom: 0; right: 0; background: #2fe06a; }
+#meter-unused.r3 .fill { background: #2fe06a; box-shadow: 0 0 12px #2fe06a; }
+#meter-unused.r2 .fill { background: #b8f05a; }
+#meter-unused.r1 .fill { background: #ffc531; }
+#meter-unused.r0 .fill { background: #ff4b4b; }
 #feedback { top: 22%; }
 #feedback .big { font-size: 40px; }
 

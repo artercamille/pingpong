@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aura Pong — ping-pong 3D en ligne</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+<script src="lib/peerjs.min.js"></script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="board">
+    <div class="row" data-p="0"><span class="srv"></span><span class="nm"></span><span class="sets"></span><span class="pts"></span></div>
+    <div class="row" data-p="1"><span class="srv"></span><span class="nm"></span><span class="sets"></span><span class="pts"></span></div>
+    <div id="setinfo"></div>
+  </div>
+  <div id="ping"></div>
+  <div id="feedback"><div class="big"></div><div class="small"></div></div>
+  <div id="oppfb"></div>
+  <div id="banner"></div>
+  <div id="hint"></div>
+  <div id="charge"><div class="lbl"></div><div class="bar"><div class="fill"></div></div></div>
+</div>
+
+<!-- MENUS -->
+<div id="menu" class="overlay">
+  <div class="panel" id="scr-main">
+    <h1>AURA <span>PONG</span></h1>
+    <p class="sub">Ping-pong 3D — en ligne entre potes, à la manette</p>
+    <label class="field">Ton pseudo <input id="name" maxlength="14" placeholder="Camille"></label>
+    <button data-go="scr-ai">Jouer contre l'IA</button>
+    <button data-go="scr-host" class="accent">Créer une partie en ligne</button>
+    <button data-go="scr-join" class="accent">Rejoindre une partie</button>
+    <button data-go="scr-ctrl" class="ghost">Commandes</button>
+    <p class="pad" id="padstatus">Branche ta manette et appuie sur un bouton</p>
+  </div>
+
+  <div class="panel hidden" id="scr-ai">
+    <h2>Contre l'IA</h2>
+    <div class="choice" id="ai-level">
+      <button data-v="0">Facile</button><button data-v="1" class="on">Normal</button><button data-v="2">Difficile</button>
+    </div>
+    <div class="choice format" id="ai-format">
+      <button data-v="1">1 set</button><button data-v="3" class="on">3 sets</button><button data-v="5">5 sets</button>
+    </div>
+    <button id="ai-go" class="accent">Lancer le match</button>
+    <button data-go="scr-main" class="ghost">Retour</button>
+  </div>
+
+  <div class="panel hidden" id="scr-host">
+    <h2>Créer une partie</h2>
+    <div class="choice format" id="host-format">
+      <button data-v="1">1 set</button><button data-v="3" class="on">3 sets</button><button data-v="5">5 sets</button>
+    </div>
+    <button id="host-go" class="accent">Générer le code</button>
+    <div id="host-box" class="hidden">
+      <p>Envoie ce code à ton pote :</p>
+      <div id="host-code" class="code">·····</div>
+      <button id="copy" class="ghost small">Copier le code</button>
+      <p class="status" id="host-status">En attente de ton pote…</p>
+    </div>
+    <button data-go="scr-main" class="ghost" id="host-back">Retour</button>
+  </div>
+
+  <div class="panel hidden" id="scr-join">
+    <h2>Rejoindre</h2>
+    <input id="join-code" class="code-input" maxlength="5" placeholder="CODE" autocomplete="off">
+    <button id="join-go" class="accent">Rejoindre</button>
+    <p class="status" id="join-status"></p>
+    <button data-go="scr-main" class="ghost" id="join-back">Retour</button>
+  </div>
+
+  <div class="panel hidden wide" id="scr-ctrl">
+    <h2>Commandes</h2>
+    <table class="ctrl">
+      <tr><th></th><th>Manette</th><th>Clavier</th></tr>
+      <tr><td>Se déplacer / viser</td><td>Stick gauche</td><td>Z Q S D ou flèches</td></tr>
+      <tr><td>Lift (top spin)</td><td>A / Croix</td><td>J ou Espace</td></tr>
+      <tr><td>Frappe à plat / smash</td><td>B / Rond</td><td>K</td></tr>
+      <tr><td>Coupé (backspin)</td><td>X / Carré</td><td>U</td></tr>
+      <tr><td>Lob / défense</td><td>Y / Triangle</td><td>I</td></tr>
+      <tr><td>Effet latéral</td><td>LB / RB</td><td>A / E</td></tr>
+      <tr><td>Pause (contre l'IA)</td><td>Start</td><td>Échap</td></tr>
+    </table>
+    <ul class="tips">
+      <li><b>Maintiens</b> le bouton pour charger la puissance, <b>relâche</b> juste avant que la balle arrive : le timing décide de la qualité du coup.</li>
+      <li>Pendant la charge, le stick vise : gauche/droite pour la direction, haut = long, bas = court. Le cercle jaune montre la cible.</li>
+      <li>Place-toi pour avoir la balle à environ un demi-mètre sur le côté : trop près ou trop loin, le coup perd en précision.</li>
+      <li>Plus tu tapes fort, plus c'est risqué. Un coupé adverse fait tomber ta balle dans le filet, un gros lift la fait partir long.</li>
+      <li>Service : appuie pour lancer la balle, relâche quand elle redescend à hauteur de poitrine.</li>
+    </ul>
+    <button data-go="scr-main" class="ghost">Retour</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>Pause</h2>
+    <button id="resume" class="accent">Reprendre</button>
+    <button id="quit" class="ghost">Quitter le match</button>
+  </div>
+</div>
+
+<div id="end" class="overlay hidden">
+  <div class="panel">
+    <h2 id="end-title">Victoire !</h2>
+    <div id="end-sets"></div>
+    <button id="again" class="accent">Rejouer (A)</button>
+    <button id="tomenu" class="ghost">Menu</button>
+    <p class="status" id="end-status"></p>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

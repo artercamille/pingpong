@@ -41,4 +41,3 @@ Le jeu est ensuite disponible sur `https://artercamille.github.io/pingpong/`.
 
 - Moteur 3D : [Three.js](https://threejs.org) (MIT)
 - Connexion en ligne : [PeerJS](https://peerjs.com) (MIT)
-- Modèle d'athlète : « X Bot » de Mixamo (Adobe), fourni avec les exemples Three.js — à remplacer par un modèle maison avant une sortie commerciale si besoin.

@@ -268,14 +268,14 @@ function updateMeter(dt) {
   const el = $('#meter');
   const me = game.players[game.me];
   const pr = game.pred[game.me];
-  const hp = R.headScreen(game.me);
+  const hp = R.paddleScreen(game.me);
   if (meterRes) meterRes.t -= dt;
   const resEl = el.querySelector('.res');
   if (meterRes && meterRes.t > 0) { resEl.textContent = meterRes.label; resEl.className = 'res ' + meterRes.cls; }
   else { resEl.textContent = ''; meterRes = null; }
   const active = pr && (game.state === 'rally' || game.state === 'toss');
   if (!hp || (!active && !meterRes)) { el.classList.remove('show'); frozen = null; return; }
-  el.style.left = hp.x + 'px'; el.style.top = (hp.y - 18) + 'px';
+  el.style.left = Math.max(130, Math.min(innerWidth - 130, hp.x - 60)) + 'px'; el.style.top = Math.max(120, Math.min(innerHeight - 40, hp.y - 120)) + 'px';
   el.classList.add('show');
   if (!active) return;
   const LEAD = 0.8, TAIL = 0.3, len = LEAD + TAIL;

@@ -10,7 +10,7 @@ const $ = s => document.querySelector(s);
 const R = new Renderer($('#c'));
 const input = new Input();
 let game = null, net = null, setup = null, last = performance.now();
-let demo = null, ready = false;
+let demo = null, ready = false, lastPad = null, tuto = null;
 function newDemo() {
   demo = new Game({ mode: 'ai', ctrl: ['ai', 'ai'], me: 0, names: ['Démo', 'Démo'], bestOf: 5, firstServer: 0, hooks: {} });
   demo.ai[0] = new AI(demo, 0, 2); demo.ai[1] = new AI(demo, 1, 2);
@@ -30,7 +30,9 @@ const myName = () => ($('#name').value.trim() || 'Joueur').slice(0, 14);
 
 // ------------------------------------------------------------------ navigation
 function show(id) {
-  document.querySelectorAll('#menu .panel').forEach(p => p.classList.toggle('hidden', p.id !== id));
+  document.querySelectorAll('#menu .screen').forEach(p => p.classList.toggle('hidden', p.id !== id));
+  $('#profile-name').textContent = myName();
+  focusIdx = 0; refreshFocus();
 }
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
   initAudio(); sfx.ui();
@@ -38,12 +40,93 @@ document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', 
   if (b.id === 'host-back' || b.id === 'join-back') resetNet();
   show(b.dataset.go);
 }));
-document.querySelectorAll('.choice').forEach(c => c.addEventListener('click', e => {
-  if (e.target.tagName !== 'BUTTON') return;
-  c.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target));
-  sfx.ui();
-}));
-const choice = id => +document.querySelector(`#${id} .on`).dataset.v;
+// sélecteurs ◀ valeur ▶
+function optRender(o) { o.querySelector('.ov').textContent = o.dataset.values.split('|')[+o.dataset.i]; }
+function optStep(o, d) {
+  const n = o.dataset.values.split('|').length;
+  o.dataset.i = (+o.dataset.i + d + n) % n; optRender(o); sfx.ui();
+}
+document.querySelectorAll('.opt').forEach(o => {
+  optRender(o);
+  o.addEventListener('click', e => { initAudio(); const r = o.getBoundingClientRect(); optStep(o, e.clientX < r.left + r.width * 0.5 ? -1 : 1); });
+});
+const choice = id => { const o = $('#' + id); return +o.dataset.v.split('|')[+o.dataset.i]; };
+
+// navigation manette / clavier dans les menus
+let focusIdx = 0, navCool = 0;
+function activeLayer() {
+  if (!$('#end').classList.contains('hidden')) return $('#end');
+  if (!$('#pause').classList.contains('hidden')) return $('#pause');
+  if (!$('#menu').classList.contains('hidden')) return document.querySelector('#menu .screen:not(.hidden)');
+  return null;
+}
+function navItems() {
+  const L = activeLayer();
+  if (!L) return [];
+  return [...L.querySelectorAll('.mbtn, .opt, [data-nav]')].filter(e => e.offsetParent !== null);
+}
+function refreshFocus() {
+  const items = navItems();
+  if (!items.length) return;
+  focusIdx = Math.max(0, Math.min(items.length - 1, focusIdx));
+  document.querySelectorAll('.focus').forEach(e => e.classList.remove('focus'));
+  const el = items[focusIdx];
+  el.classList.add('focus');
+  if (el.tagName === 'INPUT') el.focus(); else if (document.activeElement && document.activeElement.tagName === 'INPUT') document.activeElement.blur();
+}
+document.addEventListener('mouseover', e => {
+  const t = e.target.closest && e.target.closest('.mbtn, .opt, [data-nav]');
+  if (!t) return;
+  const i = navItems().indexOf(t);
+  if (i >= 0 && i !== focusIdx) { focusIdx = i; refreshFocus(); }
+});
+function navBack() {
+  const L = activeLayer();
+  if (!L) return;
+  if (L.id === 'pause') { togglePause(false); return; }
+  const back = L.querySelector('.mbtn.ghost[data-go]');
+  if (back) back.click();
+}
+function navInput(inp, dt) {
+  const items = navItems();
+  if (!items.length) return;
+  navCool -= dt;
+  const v = inp.my > 0.6 ? -1 : inp.my < -0.6 ? 1 : 0;
+  const h = inp.mx > 0.6 ? 1 : inp.mx < -0.6 ? -1 : 0;
+  const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
+  if ((v || h) && navCool <= 0 && !(typing && h)) {
+    navCool = 0.2;
+    if (v) { focusIdx = (focusIdx + v + items.length) % items.length; refreshFocus(); sfx.ui(); }
+    else if (items[focusIdx].classList.contains('opt')) optStep(items[focusIdx], h);
+  }
+  if (!v && !h) navCool = 0;
+  if (inp.pressed.top && !typing) { initAudio(); const el = items[focusIdx]; if (el.classList.contains('opt')) optStep(el, 1); else el.click(); }
+  if (inp.pressed.plat && !typing) navBack();
+}
+addEventListener('keydown', e => {
+  if (!activeLayer()) return;
+  if (e.key === 'Enter') { const el = navItems()[focusIdx]; if (el) { e.preventDefault(); initAudio(); el.tagName === 'INPUT' ? (el.id === 'join-code' ? $('#join-go').click() : $('#scr-profile .mbtn').click()) : el.click(); } }
+  if (e.key === 'Escape' && $('#pause').classList.contains('hidden')) navBack();
+  if (document.activeElement.tagName === 'INPUT' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault(); focusIdx += e.key === 'ArrowUp' ? -1 : 1; refreshFocus();
+  }
+});
+
+// glyphes de touches selon le périphérique
+function kb(name) {
+  const pad = !!input.padName;
+  const P = { top: ['a', 'A'], plat: ['b', 'B'], coupe: ['x', 'X'], lob: ['y', 'Y'], ok: ['a', 'A'], back: ['b', 'B'] };
+  const K = { top: 'J', plat: 'K', coupe: 'U', lob: 'I', ok: 'Entrée', back: 'Échap', start: 'Échap', move: 'ZQSD', sideL: 'A', sideR: 'E' };
+  if (pad) {
+    if (P[name]) return `<span class="kb pad ${P[name][0]}">${P[name][1]}</span>`;
+    if (name === 'move') return '<span class="kb pad">Stick gauche</span>';
+    if (name === 'start') return '<span class="kb pad">Start</span>';
+  }
+  return `<span class="kb key">${K[name] || name}</span>`;
+}
+function refreshGlyphs() {
+  document.querySelectorAll('.kb[data-k]').forEach(e => { e.outerHTML = kb(e.dataset.k).replace('<span ', `<span data-k="${e.dataset.k}" `); });
+}
 
 // ------------------------------------------------------------------ démarrage
 function hooks() {
@@ -98,7 +181,8 @@ function enterGame() {
 }
 
 function quitToMenu() {
-  game = null;
+  game = null; tuto = null;
+  $('#tuto').classList.add('hidden'); $('#board').classList.remove('hidden');
   resetNet();
   $('#hud').classList.add('hidden');
   $('#end').classList.add('hidden');
@@ -188,6 +272,7 @@ function showEnd(m) {
   $('#end-sets').innerHTML = m.history.map((h, i) => `Set ${i + 1} : <b>${h[0]}</b> – <b>${h[1]}</b>`).join('<br>');
   $('#end-status').textContent = '';
   $('#end').classList.remove('hidden');
+  focusIdx = 0; refreshFocus();
   (win ? sfx.applause(1.6) : 0);
 }
 function again() {
@@ -205,6 +290,7 @@ function togglePause(v) {
   if (!game || setup.mode !== 'ai') return;
   game.paused = v ?? !game.paused;
   $('#pause').classList.toggle('hidden', !game.paused);
+  focusIdx = 0; refreshFocus();
 }
 
 // ------------------------------------------------------------------ HUD
@@ -244,20 +330,95 @@ function updateHUD(dt) {
   } else ch.classList.remove('show');
 }
 
+// ------------------------------------------------------------------ tutoriel
+const TUTO = [
+  { title: 'Déplacement', text: () => `Bouge ta raquette avec ${kb('move')}. Pendant les échanges, elle se place aussi toute seule vers la balle.`, need: 1.5, check: 'move' },
+  { title: 'Le lift', text: () => `Quand la balle arrive, appuie sur ${kb('top')}. Ta raquette frappe toute seule au bon moment. Réussis 2 lifts.`, need: 2, check: 'top' },
+  { title: 'La frappe', text: () => `${kb('plat')} : une frappe rapide et à plat. Sur une balle haute, c'est un smash.`, need: 1, check: 'plat' },
+  { title: 'Le coupé', text: () => `${kb('coupe')} : une balle lente avec effet arrière, qui freine sur la table.`, need: 1, check: 'coupe' },
+  { title: 'Le lob', text: () => `${kb('lob')} : une balle haute et lente pour te défendre.`, need: 1, check: 'lob' },
+  { title: 'Viser', text: () => `Maintiens un coup et pousse ${kb('move')} à gauche ou à droite. Le cercle jaune montre où ira la balle.`, need: 1, check: 'aim' },
+  { title: 'La puissance', text: () => `Maintiens le bouton longtemps avant que la balle arrive pour frapper plus fort. Attention : plus c'est fort, plus c'est risqué.`, need: 1, check: 'power' },
+  { title: 'Le service', text: () => `À toi de servir : appuie sur un coup (${kb('top')}, ${kb('coupe')}…). Vise avec ${kb('move')}.`, need: 1, check: 'serve' },
+];
+function startTuto() {
+  setup = { mode: 'ai', level: 3, bestOf: 99 };
+  game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [myName(), 'Coach'], bestOf: 99, firstServer: 1, hooks: { ...hooks(), point: () => {}, hit: tutoHit } });
+  game.ai[1] = new AI(game, 1, 3);
+  game.forcedServer = 1;
+  tuto = { step: 0, count: 0, moved: 0, lx: 0, lz: 2.1, done: 0 };
+  enterGame();
+  $('#board').classList.add('hidden');
+  $('#tuto').classList.remove('hidden');
+  tutoRender();
+}
+function tutoRender() {
+  const el = $('#tuto');
+  if (tuto.step >= TUTO.length) {
+    el.classList.add('done');
+    el.querySelector('.tstep').textContent = 'TUTORIEL TERMINÉ';
+    el.querySelector('.ttitle').textContent = 'Bravo !';
+    el.querySelector('.ttext').innerHTML = 'Tu connais les bases. Lance un match contre l\'IA ou défie un pote en ligne.';
+    el.querySelector('.tprog div').style.width = '100%';
+    return;
+  }
+  const st = TUTO[tuto.step];
+  el.classList.remove('done');
+  el.querySelector('.tstep').textContent = `ÉTAPE ${tuto.step + 1} / ${TUTO.length}`;
+  el.querySelector('.ttitle').textContent = st.title;
+  el.querySelector('.ttext').innerHTML = st.text();
+  el.querySelector('.tprog div').style.width = (tuto.step / TUTO.length * 100) + '%';
+  el.querySelector('.tskip').innerHTML = `${kb('start')} Quitter le tutoriel`;
+}
+function tutoAdvance(n = 1) {
+  if (!tuto || tuto.step >= TUTO.length) return;
+  tuto.count += n;
+  if (tuto.count >= TUTO[tuto.step].need) {
+    tuto.step++; tuto.count = 0;
+    sfx.applause(0.6);
+    if (tuto.step === TUTO.length - 1) game.forcedServer = 0;
+    tutoRender();
+  }
+}
+function tutoHit(p, h) {
+  if (!tuto || p !== game.me || tuto.step >= TUTO.length) return;
+  const c = TUTO[tuto.step].check;
+  if (c === 'serve' ? h.serve : h.serve) { if (c === 'serve') tutoAdvance(); return; }
+  if ((c === h.type) || (c === 'aim' && Math.abs(h.aimX) > 0.45) || (c === 'power' && h.power > 0.75)) tutoAdvance();
+}
+function tutoUpdate(dt) {
+  const pl = game.players[game.me];
+  if (tuto.step < TUTO.length && TUTO[tuto.step].check === 'move') {
+    tuto.moved += Math.hypot(pl.x - tuto.lx, pl.z - tuto.lz);
+    if (tuto.moved >= 1.5) { tuto.count = 0; tuto.moved = -999; tutoAdvance(1.5); }
+  }
+  tuto.lx = pl.x; tuto.lz = pl.z;
+  if (tuto.step >= TUTO.length) { tuto.done += dt; if (tuto.done > 4) quitToMenu(); }
+}
+$('#btn-tuto').addEventListener('click', () => { initAudio(); sfx.ui(); startTuto(); });
+
 // ------------------------------------------------------------------ boucle
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   const inp = input.poll();
   const pad = $('#padstatus');
-  if (input.padName) { pad.textContent = '🎮 Manette détectée'; pad.classList.add('ok'); }
-  else { pad.textContent = 'Branche ta manette et appuie sur un bouton (ou joue au clavier)'; pad.classList.remove('ok'); }
+  const hasPad = !!input.padName;
+  if (hasPad !== lastPad) {
+    lastPad = hasPad;
+    pad.textContent = hasPad ? '🎮 Manette connectée' : '⌨️ Clavier — branche une manette et appuie sur un bouton';
+    pad.classList.toggle('ok', hasPad);
+    refreshGlyphs();
+    if (tuto) tutoRender();
+  }
+  if (activeLayer()) navInput(inp, dt);
 
   if (game) {
     setMuted(false);
     R.orbit = false;
-    if (inp.pressed.start) togglePause();
-    if (game.state === 'over' && inp.pressed.top) again();
+    if (inp.pressed.start) { if (tuto) quitToMenu(); else togglePause(); }
+    if (!game) { requestAnimationFrame(loop); return; }
+    if (tuto) tutoUpdate(dt);
     game.update(dt, inp);
     if (!window.__noRender) R.update(game, dt);
     updateHUD(dt);
@@ -273,4 +434,5 @@ function loop(now) {
 requestAnimationFrame(loop);
 
 // accès debug / tests
-window.__pp = { get game() { return game; }, get demo() { return demo; }, R, startAI, AI };
+window.__pp = { get game() { return game; }, get demo() { return demo; }, get tuto() { return tuto; }, tutoUpdate: d => tutoUpdate(d), R, startAI, startTuto, AI };
+show('scr-main');

@@ -1,6 +1,6 @@
 # PingPong
 
-Ping-pong 3D dans le navigateur façon TopSpin, dans une salle de championnats du monde : jauge de timing, effets, placement. On y joue en ligne à deux, chacun sur son PC, à la manette.
+Ping-pong 3D dans le navigateur, vue raquette, dans une arène de championnats du monde. Contre l IA, en ligne entre potes, avec tutoriel. On y joue en ligne à deux, chacun sur son PC, à la manette.
 
 ## Jouer
 

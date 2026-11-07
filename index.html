@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PingPong — World Championships</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/menu.css">
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }</script>
 <script src="lib/peerjs.min.js"></script>
 </head>
@@ -24,93 +25,131 @@
   <div id="banner"></div>
   <div id="hint"></div>
   <div id="charge"><div class="lbl"></div><div class="bar"><div class="fill"></div></div></div>
+  <div id="tuto" class="hidden">
+    <div class="tstep"></div>
+    <div class="ttitle"></div>
+    <div class="ttext"></div>
+    <div class="tprog"><div></div></div>
+    <div class="tskip"><span class="kb" data-k="start"></span> Passer le tutoriel</div>
+  </div>
 </div>
 
-<!-- MENUS -->
-<div id="menu" class="overlay">
-  <div class="panel" id="scr-main">
-    <h1>PING<span>PONG</span></h1>
-    <p class="sub">WORLD CHAMPIONSHIPS</p>
-    <label class="field">Ton pseudo <input id="name" maxlength="14" placeholder="Camille"></label>
-    <button data-go="scr-ai">Jouer contre l'IA</button>
-    <button data-go="scr-host" class="accent">Créer une partie en ligne</button>
-    <button data-go="scr-join" class="accent">Rejoindre une partie</button>
-    <button data-go="scr-ctrl" class="ghost">Commandes</button>
-    <p class="pad" id="padstatus">Branche ta manette et appuie sur un bouton</p>
-  </div>
-
-  <div class="panel hidden" id="scr-ai">
-    <h2>Contre l'IA</h2>
-    <div class="choice" id="ai-level">
-      <button data-v="0">Facile</button><button data-v="1" class="on">Normal</button><button data-v="2">Difficile</button>
+<!-- MENU PRINCIPAL -->
+<div id="menu" class="menu">
+  <div class="mside">
+    <div class="brand">
+      <div class="ballmark"></div>
+      <div>
+        <h1>PING<span>PONG</span></h1>
+        <p>WORLD CHAMPIONSHIPS</p>
+      </div>
     </div>
-    <div class="choice format" id="ai-format">
-      <button data-v="1">1 set</button><button data-v="3" class="on">3 sets</button><button data-v="5">5 sets</button>
-    </div>
-    <button id="ai-go" class="accent">Lancer le match</button>
-    <button data-go="scr-main" class="ghost">Retour</button>
-  </div>
 
-  <div class="panel hidden" id="scr-host">
-    <h2>Créer une partie</h2>
-    <div class="choice format" id="host-format">
-      <button data-v="1">1 set</button><button data-v="3" class="on">3 sets</button><button data-v="5">5 sets</button>
-    </div>
-    <button id="host-go" class="accent">Générer le code</button>
-    <div id="host-box" class="hidden">
-      <p>Envoie ce code à ton pote :</p>
-      <div id="host-code" class="code">·····</div>
-      <button id="copy" class="ghost small">Copier le code</button>
-      <p class="status" id="host-status">En attente de ton pote…</p>
-    </div>
-    <button data-go="scr-main" class="ghost" id="host-back">Retour</button>
-  </div>
+    <section class="screen" id="scr-main">
+      <button class="mbtn big" data-go="scr-ai">
+        <i><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="6.5"/><path d="M13.5 13.5l6 6"/><circle cx="19" cy="5" r="2"/></svg></i>
+        <span><b>Jouer contre l'IA</b><small>Match rapide en solo</small></span>
+      </button>
+      <button class="mbtn big" data-go="scr-online">
+        <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></i>
+        <span><b>En ligne</b><small>Défie un pote, chacun sur son PC</small></span>
+      </button>
+      <button class="mbtn" id="btn-tuto">
+        <i><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg></i>
+        <span><b>Tutoriel</b><small>Apprends les bases en 2 minutes</small></span>
+      </button>
+      <button class="mbtn" data-go="scr-ctrl">
+        <i><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 014 4v1a4 4 0 01-7 2.6L14 15h-4l-1 .6A4 4 0 012 13v-1a4 4 0 014-4z"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r=".6"/><circle cx="18" cy="13.5" r=".6"/></svg></i>
+        <span><b>Commandes</b><small>Manette et clavier</small></span>
+      </button>
+      <button class="mbtn" data-go="scr-profile">
+        <i><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></i>
+        <span><b>Profil</b><small id="profile-name">Joueur</small></span>
+      </button>
+    </section>
 
-  <div class="panel hidden" id="scr-join">
-    <h2>Rejoindre</h2>
-    <input id="join-code" class="code-input" maxlength="5" placeholder="CODE" autocomplete="off">
-    <button id="join-go" class="accent">Rejoindre</button>
-    <p class="status" id="join-status"></p>
-    <button data-go="scr-main" class="ghost" id="join-back">Retour</button>
-  </div>
+    <section class="screen hidden" id="scr-ai">
+      <h2>Contre l'IA</h2>
+      <div class="opt" id="ai-level" data-values="Facile|Normal|Difficile" data-v="0|1|2" data-i="1"><span class="ol">Difficulté</span><span class="ov"></span></div>
+      <div class="opt" id="ai-format" data-values="1 set|3 sets|5 sets" data-v="1|3|5" data-i="1"><span class="ol">Format</span><span class="ov"></span></div>
+      <button class="mbtn accent" id="ai-go"><span><b>Lancer le match</b></span></button>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
 
-  <div class="panel hidden wide" id="scr-ctrl">
-    <h2>Commandes</h2>
-    <table class="ctrl">
-      <tr><th></th><th>Manette</th><th>Clavier</th></tr>
-      <tr><td>Se déplacer / viser</td><td>Stick gauche</td><td>Z Q S D ou flèches</td></tr>
-      <tr><td>Lift (top spin)</td><td>A / Croix</td><td>J ou Espace</td></tr>
-      <tr><td>Frappe à plat / smash</td><td>B / Rond</td><td>K</td></tr>
-      <tr><td>Coupé (backspin)</td><td>X / Carré</td><td>U</td></tr>
-      <tr><td>Lob / défense</td><td>Y / Triangle</td><td>I</td></tr>
-      <tr><td>Effet latéral</td><td>LB / RB</td><td>A / E</td></tr>
-      <tr><td>Pause (contre l'IA)</td><td>Start</td><td>Échap</td></tr>
-    </table>
-    <ul class="tips">
-      <li>Appuie sur un bouton de coup quand la balle arrive : ta raquette frappe toute seule au bon moment. Maintiens le bouton plus longtemps pour un coup plus puissant.</li>
-      <li>Pendant la charge, le stick vise : gauche/droite pour la direction, haut = long, bas = court. Le cercle jaune montre la cible.</li>
-            <li>Plus tu tapes fort, plus c'est risqué. Un coupé adverse fait tomber ta balle dans le filet, un gros lift la fait partir long.</li>
-      <li>Service : appuie sur un coup, la balle est lancée et frappée automatiquement.</li>
-      <li>Ton joueur se place tout seul en partie : le stick sert surtout à ajuster et à viser.</li>
-    </ul>
-    <button data-go="scr-main" class="ghost">Retour</button>
+    <section class="screen hidden" id="scr-online">
+      <h2>En ligne</h2>
+      <button class="mbtn" data-go="scr-host">
+        <i><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></i>
+        <span><b>Créer une partie</b><small>Tu reçois un code à envoyer</small></span>
+      </button>
+      <button class="mbtn" data-go="scr-join">
+        <i><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5"/></svg></i>
+        <span><b>Rejoindre une partie</b><small>Entre le code de ton pote</small></span>
+      </button>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden" id="scr-host">
+      <h2>Créer une partie</h2>
+      <div class="opt" id="host-format" data-values="1 set|3 sets|5 sets" data-v="1|3|5" data-i="1"><span class="ol">Format</span><span class="ov"></span></div>
+      <button class="mbtn accent" id="host-go"><span><b>Générer le code</b></span></button>
+      <div id="host-box" class="hidden">
+        <p class="status">Envoie ce code à ton pote</p>
+        <div id="host-code" class="code">·····</div>
+        <button class="mbtn small" id="copy"><span><b>Copier le code</b></span></button>
+        <p class="status" id="host-status">En attente de ton pote…</p>
+      </div>
+      <button class="mbtn ghost" data-go="scr-online" id="host-back"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden" id="scr-join">
+      <h2>Rejoindre</h2>
+      <input id="join-code" class="code-input" maxlength="5" placeholder="CODE" autocomplete="off" data-nav>
+      <button class="mbtn accent" id="join-go"><span><b>Rejoindre</b></span></button>
+      <p class="status" id="join-status"></p>
+      <button class="mbtn ghost" data-go="scr-online" id="join-back"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden" id="scr-profile">
+      <h2>Profil</h2>
+      <label class="field">Ton pseudo<input id="name" maxlength="14" placeholder="Camille" data-nav></label>
+      <button class="mbtn accent" data-go="scr-main"><span><b>Valider</b></span></button>
+    </section>
+
+    <section class="screen hidden wide" id="scr-ctrl">
+      <h2>Commandes</h2>
+      <div class="ctrlgrid">
+        <div class="cg"><span class="kb pad a">A</span><span><b>Lift</b><small>Coup de base, la balle plonge grâce à l'effet</small></span><span class="kb key">J</span></div>
+        <div class="cg"><span class="kb pad b">B</span><span><b>Frappe</b><small>Rapide et à plat, smash sur balle haute</small></span><span class="kb key">K</span></div>
+        <div class="cg"><span class="kb pad x">X</span><span><b>Coupé</b><small>Balle lente qui freine et tombe</small></span><span class="kb key">U</span></div>
+        <div class="cg"><span class="kb pad y">Y</span><span><b>Lob</b><small>Balle haute pour te défendre</small></span><span class="kb key">I</span></div>
+        <div class="cg"><span class="kb pad">L</span><span><b>Viser</b><small>Stick gauche pendant que tu maintiens un coup</small></span><span class="kb key">ZQSD</span></div>
+        <div class="cg"><span class="kb pad">LB RB</span><span><b>Effet latéral</b><small>La balle tourne à gauche ou à droite</small></span><span class="kb key">A E</span></div>
+      </div>
+      <p class="status">Maintiens le bouton plus longtemps pour frapper plus fort. Plus c'est fort, plus c'est risqué.</p>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+  </div>
+  <div class="mfoot">
+    <span id="padstatus">🎮 Aucune manette</span>
+    <span class="navhelp"><span class="kb" data-k="ok"></span> Valider <span class="kb" data-k="back"></span> Retour</span>
   </div>
 </div>
 
 <div id="pause" class="overlay hidden">
-  <div class="panel">
+  <div class="mpanel">
     <h2>Pause</h2>
-    <button id="resume" class="accent">Reprendre</button>
-    <button id="quit" class="ghost">Quitter le match</button>
+    <button class="mbtn accent" id="resume"><span><b>Reprendre</b></span></button>
+    <button class="mbtn ghost" id="quit"><span><b>Quitter le match</b></span></button>
   </div>
 </div>
 
 <div id="end" class="overlay hidden">
-  <div class="panel">
+  <div class="mpanel">
     <h2 id="end-title">Victoire !</h2>
     <div id="end-sets"></div>
-    <button id="again" class="accent">Rejouer (A)</button>
-    <button id="tomenu" class="ghost">Menu</button>
+    <button class="mbtn accent" id="again"><span><b>Rejouer</b></span></button>
+    <button class="mbtn ghost" id="tomenu"><span><b>Menu</b></span></button>
     <p class="status" id="end-status"></p>
   </div>
 </div>

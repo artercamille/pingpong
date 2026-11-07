@@ -8,7 +8,7 @@ export const SERVE_LABEL = { top: 'SERVICE LIFT', plat: 'SERVICE RAPIDE', coupe:
 export const PLANE_OFF = 0.38;   // le plan de frappe est 38 cm devant le joueur
 export const IDEAL_REL = 0.06;   // délai idéal entre relâchement et contact
 export const TIMING = { perfect: 0.05, good: 0.16, lead: 0.75 }; // fenêtres de timing (s)
-export const MAX_CHARGE = 0.8;   // temps de charge max (s)
+export const MAX_CHARGE = 0.6;   // temps de charge max (s)
 const REACH = 1.05;
 const MOVE_SPEED = 4.2;
 const RELEASE_WIN = 0.7;
@@ -71,6 +71,7 @@ export class Game {
   power(pl) { return clamp(pl.chargeT / MAX_CHARGE, 0.15, 1); }
 
   server() {
+    if (this.forcedServer !== undefined) return this.forcedServer;
     const m = this.match;
     const first = (m.firstServer + m.setIdx) % 2;
     const tot = m.score[0] + m.score[1];
@@ -330,6 +331,7 @@ export class Game {
     this.startSwing(i, true, type);
     sfx.paddle(power * 0.6);
     this.hooks.feedback && this.hooks.feedback(i, label, q, SERVE_LABEL[type]);
+    this.hooks.hit && this.hooks.hit(i, { type, power, aimX: pl.aimX, aimY: pl.aimY, serve: true });
     this.sendHit(i, type, true, label, q);
   }
 
@@ -424,6 +426,7 @@ export class Game {
     sfx.paddle(power);
     this.fx.push({ type: 'hit', x: b.x, y: b.y, z: b.z, power, smash: shot.smash });
     this.hooks.feedback && this.hooks.feedback(p, shot.smash ? 'SMASH !' : label, q, SHOT_LABEL[type]);
+    this.hooks.hit && this.hooks.hit(p, { type, power, aimX: pl.aimX, aimY: pl.aimY, serve: false });
     this.sendHit(p, type, false, shot.smash ? 'SMASH !' : label, q);
   }
 

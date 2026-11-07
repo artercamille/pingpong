@@ -7,6 +7,7 @@ const LEVELS = [
   { name: 'Facile', noise: 0.1, slip: 0.16, react: 0.3, speed: 0.72, power: 0.5, aim: 0.6 },
   { name: 'Normal', noise: 0.06, slip: 0.09, react: 0.18, speed: 0.9, power: 0.68, aim: 0.8 },
   { name: 'Difficile', noise: 0.035, slip: 0.045, react: 0.1, speed: 1, power: 0.82, aim: 0.95 },
+  { name: 'Coach', noise: 0.01, slip: 0, react: 0.1, speed: 1, power: 0.32, aim: 0.25 },
 ];
 const gauss = () => (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 0.577;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -31,9 +32,9 @@ export class AI {
       this.serveT += dt;
       tx = s * 0.25; tz = s * 1.6;
       if (this.serveT > 1.1 && !this.hold) {
-        const t = ['top', 'coupe', 'coupe', 'lob', 'plat'][Math.floor(Math.random() * 5)];
+        const t = this.L.name === 'Coach' ? 'top' : ['top', 'coupe', 'coupe', 'lob', 'plat'][Math.floor(Math.random() * 5)];
         inp.aimX = (Math.random() * 2 - 1) * this.L.aim;
-        inp.aimY = (Math.random() * 2 - 1) * 0.7;
+        inp.aimY = this.L.name === 'Coach' ? 0.3 : (Math.random() * 2 - 1) * 0.7;
         this.serveRelY = 1.06 + gauss() * this.L.noise * 1.5;
         this.serveCharge = 0.3 + Math.random() * 0.4;
         this.press(t);
@@ -108,6 +109,7 @@ export class AI {
     else if (incTop < -60) type = r < 0.5 ? 'coupe' : 'top';
     else type = r < 0.62 ? 'top' : r < 0.8 ? 'coupe' : r < 0.94 ? 'plat' : 'lob';
     if (type === 'plat' && C.y < 0.95) power *= 0.6;
+    if (this.L.name === 'Coach') { type = 'top'; power = 0.3; }
     let tErr = gauss() * this.L.noise;
     if (Math.random() < this.L.slip) tErr += (Math.random() < 0.5 ? -1 : 1) * (0.12 + Math.random() * 0.15); // grosse erreur
     const tRelease = tC - IDEAL_REL + tErr;

@@ -5,7 +5,7 @@ import { AI } from './ai.js';
 import { Input } from './input.js';
 import { Net } from './net.js';
 import { initAudio, sfx, setMuted, setCrowd, setMuffle } from './audio.js';
-import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMETICS, ACHIEVEMENTS, unlock, recordMatch, isUnlocked } from './profile.js';
+import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMETICS, ACHIEVEMENTS, unlock, recordMatch, isUnlocked, daily, dailyProgress } from './profile.js';
 import { Recorder, Player, recordCanvas } from './replay.js';
 
 const $ = s => document.querySelector(s);
@@ -38,6 +38,7 @@ function show(id) {
   document.querySelectorAll('#menu .screen').forEach(p => p.classList.toggle('hidden', p.id !== id));
   $('#profile-name').textContent = myName();
   renderPCard();
+  renderDaily(id === 'scr-main');
   if (id === 'scr-profile') renderProfile();
   if (id === 'scr-locker') renderLocker();
   focusIdx = 0; refreshFocus();
@@ -54,6 +55,16 @@ function renderPCard() {
     <div class="pinfo"><div class="pname">${myName()}</div><div class="prank">${rankLine(profile.lp)}</div>
     <div class="plp">${r.lp} LP <div class="xbar"><div style="width:${r.apex ? 100 : r.lp}%;background:${r.glow}"></div></div></div>
     <div class="plvl">NIV. ${L.level} <div class="xbar"><div style="width:${L.cur / L.need * 100}%"></div></div></div></div>`;
+}
+function renderDaily(visible) {
+  const el = $('#daily');
+  el.style.display = visible ? '' : 'none';
+  if (!visible) return;
+  const D = daily();
+  const h = new Date(); const left = 24 - h.getHours();
+  el.innerHTML = `<h3><span>DÉFIS DU JOUR</span><small>encore ${left} h</small></h3>` + D.list.map(c => `<div class="dc ${c.done ? 'done' : ''}">
+    <span>${c.done ? '✔ ' : ''}${c.text}<b>${c.progress}/${c.target}</b></span><div class="xbar"><div style="width:${c.progress / c.target * 100}%"></div></div></div>`).join('')
+    + `<small>+80 XP par défi · +150 XP bonus si tu fais les 3</small>`;
 }
 function renderProfile() {
   const tot = profile.wins + profile.losses;
@@ -213,6 +224,11 @@ function hooks() {
       if (m.over) banner(`${game.names[m.winner]} remporte le match`, '', 2.6);
       else if (setWon) banner(`Set ${game.names[w]}`, '', 2.5);
       else if (game.pressure) banner(game.pressure.type === 'match' ? 'BALLE DE MATCH' : 'BALLE DE SET', game.names[game.pressure.p], 2);
+      const run = game.run;
+      if (run.n >= 3 && !m.over) showStreak(run.p === game.me ? `${run.n} points d'affilée 🔥` : `${game.names[run.p]} enchaîne : ${run.n} points`);
+      const pts = document.querySelector(`#board .row[data-p="${w}"] .pts`);
+      if (pts) { pts.classList.remove('pop'); void pts.offsetWidth; pts.classList.add('pop'); }
+      if (m.over && m.winner === game.me) R.confetti();
       // ralenti sur les gros points
       const ls = game.lastShot[w] || {};
       const big = rally + 1 >= 8 || ((ls.smash || ls.sup) && reason === 'Point gagnant') || setWon || m.over || game.ach.includes('save_mp') && !replayDone.save_mp;
@@ -256,6 +272,7 @@ function enterGame(oppPaddle, oppTrail) {
   initAudio();
   applyCosmetics(oppPaddle, oppTrail);
   recorder.reset(); bestClip = null; replay = null; postPoint = null; replayDone = {};
+  if (!tuto) { game.stateT = 3.4; R.intro = 3.2; showVS(); } else R.intro = 0;
   document.body.classList.remove('replaying'); $('#replay').classList.add('hidden');
   $('#menu').classList.add('hidden');
   $('#end').classList.add('hidden');
@@ -267,6 +284,7 @@ function enterGame(oppPaddle, oppTrail) {
 function quitToMenu() {
   game = null; tuto = null;
   $('#tuto').classList.add('hidden'); $('#board').classList.remove('hidden');
+  $('#vs').classList.add('hidden'); R.intro = 0;
   resetNet();
   $('#hud').classList.add('hidden');
   $('#end').classList.add('hidden');
@@ -396,9 +414,11 @@ function showEnd(m) {
     <tr><td colspan="3">Plus long échange : <b>${sum.longest} coups</b></td></tr></table>`;
   $('#bestpt').classList.toggle('hidden', !bestClip);
   for (const u of res.unlocks) toast('🎁', 'DÉBLOQUÉ', u.name, u.kind === 'paddle' ? 'Nouvelle raquette' : u.kind === 'trail' ? 'Nouvelle traînée' : 'Nouvelle salle');
+  const dd = dailyProgress({ wins: win ? 1 : 0, aces: S[me].aces, smashes: S[me].smashes, superWins: S[me].superWins, longest: sum.longest,
+    points: S[me].points, winners: S[me].winners, online: setup.mode === 'online' ? 1 : 0 });
+  dd.forEach((c, k) => setTimeout(() => toast('⭐', c.bonus ? 'BONUS' : 'DÉFI DU JOUR RÉUSSI', c.text, c.bonus ? '+150 XP' : '+80 XP'), 600 + k * 700));
   $('#end').classList.remove('hidden');
   focusIdx = 0; refreshFocus();
-  (win ? sfx.applause(1.6) : 0);
 }
 function again() {
   sfx.ui();
@@ -443,6 +463,31 @@ function banner(text, sub, t) {
   $('#banner').innerHTML = text + (sub ? `<small>${sub}</small>` : '');
   $('#banner').classList.add('show');
   banT = t;
+}
+function showStreak(t) {
+  const el = $('#streak'); el.textContent = t;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+function showVS() {
+  const el = $('#vs');
+  const me = game.me, op = 1 - me;
+  const side = (k, p) => {
+    const box = el.querySelector('.vsside.' + k);
+    box.querySelector('.n').textContent = game.names[p];
+    let lp = null, label = '';
+    if (p === me) lp = profile.lp;
+    else if (setup.mode === 'online') lp = opp.lp || 0;
+    if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
+    else { label = ['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'; box.querySelector('.emb').innerHTML = ''; }
+    box.querySelector('.r').innerHTML = label;
+  };
+  side('l', me); side('r', op);
+  el.querySelector('.vsf').textContent = (setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
+  el.classList.remove('hidden');
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  el.querySelectorAll('*').forEach(e => { e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; });
+  setTimeout(() => el.classList.add('hidden'), 3300);
+  sfx.whoosh(); setTimeout(() => sfx.crowd(2), 350);
 }
 function hint(text, t) { $('#hint').textContent = text; $('#hint').classList.add('show'); hintT = t; }
 
@@ -555,7 +600,7 @@ function tutoAdvance(n = 1) {
   tuto.count += n;
   if (tuto.count >= TUTO[tuto.step].need) {
     tuto.step++; tuto.count = 0;
-    sfx.applause(0.6);
+    sfx.unlock();
     if (tuto.step === TUTO.length - 1) game.forcedServer = 0;
     tutoRender();
   }

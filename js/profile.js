@@ -74,6 +74,7 @@ function fresh() {
     wins: 0, losses: 0, streak: 0, h2h: {}, ach: {},
     cos: { paddle: 'rouge', trail: 'blanc', arena: 'finale' },
     best: { rally: 0, speed: 0 },
+    daily: null,
   };
 }
 export const profile = (() => {
@@ -189,4 +190,47 @@ export function recordMatch(res) {
   for (let L = out.levelBefore + 1; L <= lvl; L++) out.unlocks.push(...unlocksAt(L));
   save();
   return out;
+}
+
+// ------------------------------------------------------------------ défis du jour
+const DAILY_POOL = [
+  { id: 'wins', text: 'Gagne {n} matchs', n: [2, 3], key: 'wins' },
+  { id: 'aces', text: 'Réussis {n} aces', n: [2, 3], key: 'aces' },
+  { id: 'smash', text: 'Gagne {n} points sur un smash', n: [2, 3], key: 'smashes' },
+  { id: 'super', text: 'Gagne {n} points avec un super coup', n: [1, 2], key: 'superWins' },
+  { id: 'rally', text: 'Joue un échange de {n} coups', n: [10, 14], key: 'longest', max: true },
+  { id: 'points', text: 'Marque {n} points', n: [25, 40], key: 'points' },
+  { id: 'winners', text: 'Réussis {n} coups gagnants', n: [8, 12], key: 'winners' },
+  { id: 'online', text: 'Joue {n} match en ligne', n: [1, 1], key: 'online' },
+];
+const today = () => new Date().toISOString().slice(0, 10);
+function seeded(str) { let h = 2166136261; for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; }
+export function daily() {
+  const d = today();
+  if (!profile.daily || profile.daily.date !== d) {
+    const r = seeded(d);
+    const pool = [...DAILY_POOL];
+    const list = [];
+    while (list.length < 3) {
+      const t = pool.splice(Math.floor(r() * pool.length), 1)[0];
+      const n = t.n[0] + Math.floor(r() * (t.n[1] - t.n[0] + 1));
+      list.push({ id: t.id, text: t.text.replace('{n}', n), target: n, key: t.key, max: !!t.max, progress: 0, done: false });
+    }
+    profile.daily = { date: d, list, bonus: false };
+    save();
+  }
+  return profile.daily;
+}
+// met à jour les défis avec les stats d'un match ; renvoie les défis terminés
+export function dailyProgress(m) {
+  const D = daily(), done = [];
+  for (const c of D.list) {
+    if (c.done) continue;
+    const v = m[c.key] || 0;
+    c.progress = c.max ? Math.max(c.progress, v) : c.progress + v;
+    if (c.progress >= c.target) { c.progress = c.target; c.done = true; profile.xp += 80; done.push(c); }
+  }
+  if (!D.bonus && D.list.every(c => c.done)) { D.bonus = true; profile.xp += 150; done.push({ text: 'Tous les défis du jour', bonus: true }); }
+  save();
+  return done;
 }

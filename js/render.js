@@ -143,6 +143,49 @@ class PaddleRig {
   }
 }
 
+// ------------------------------------------------------------------ particules
+class Particles {
+  constructor(scene, n, additive) {
+    this.n = n; this.i = 0;
+    this.p = new Float32Array(n * 3); this.v = new Float32Array(n * 3); this.c = new Float32Array(n * 3);
+    this.life = new Float32Array(n); this.max = new Float32Array(n); this.size = new Float32Array(n); this.g = new Float32Array(n);
+    this.a = new Float32Array(n);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(this.p, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(this.c, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(this.size, 1));
+    geo.setAttribute('alpha', new THREE.BufferAttribute(this.a, 1));
+    this.mesh = new THREE.Points(geo, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      vertexShader: `attribute float size; attribute float alpha; attribute vec3 color; varying vec3 vc; varying float va;
+        void main(){ vc = color; va = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(size * 300.0 / -mv.z, 20.0); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: additive
+        ? `varying vec3 vc; varying float va; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vc * va * (1.0 - d * 2.0) * 1.6, 1.0); }`
+        : `varying vec3 vc; varying float va; void main(){ if (va < 0.01) discard; gl_FragColor = vec4(vc, va); }`,
+    }));
+    this.mesh.frustumCulled = false;
+    scene.add(this.mesh);
+  }
+  spawn(x, y, z, vx, vy, vz, color, life, size, grav) {
+    const i = this.i; this.i = (this.i + 1) % this.n;
+    this.p.set([x, y, z], i * 3); this.v.set([vx, vy, vz], i * 3); this.c.set(color, i * 3);
+    this.life[i] = life; this.max[i] = life; this.size[i] = size; this.g[i] = grav;
+  }
+  update(dt, flutter = 0, t = 0) {
+    for (let i = 0; i < this.n; i++) {
+      if (this.life[i] <= 0) { this.a[i] = 0; continue; }
+      this.life[i] -= dt;
+      const k = i * 3;
+      this.v[k + 1] -= this.g[i] * dt;
+      if (flutter) { this.v[k] += Math.sin(t * 3 + i) * flutter * dt; this.v[k] *= 0.98; this.v[k + 2] *= 0.98; }
+      this.p[k] += this.v[k] * dt; this.p[k + 1] += this.v[k + 1] * dt; this.p[k + 2] += this.v[k + 2] * dt;
+      this.a[i] = Math.max(0, Math.min(1, this.life[i] / this.max[i] * 1.5));
+    }
+    const at = this.mesh.geometry.attributes;
+    at.position.needsUpdate = at.color.needsUpdate = at.size.needsUpdate = at.alpha.needsUpdate = true;
+  }
+}
+
 // ------------------------------------------------------------------ rendu
 export class Renderer {
   constructor(canvas) {
@@ -181,6 +224,9 @@ export class Renderer {
     this.buildScreens();
     this.buildBall();
     this.paddles = [new PaddleRig(this.scene, 0xd0102e), new PaddleRig(this.scene, 0xd0102e)];
+    this.sparks = new Particles(this.scene, 500, true);
+    this.confettiP = new Particles(this.scene, 900, false);
+    this.flash = 0; this.intro = 0;
 
     const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType });
     this.composer = new EffectComposer(this.r, rt);
@@ -275,6 +321,7 @@ export class Renderer {
       const face = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.04, 0.56),
         new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.85, roughness: 0.5 }));
       face.position.set(0, 0.36, 0.031); g.add(face);
+      this.boardMats = this.boardMats || []; this.boardMats.push(face.material);
       this.boards = this.boards || []; this.boards.push(t);
       const line = new THREE.Mesh(new THREE.BoxGeometry(w, 0.018, 0.02), neon); line.position.set(0, 0.745, 0.02); g.add(line);
       const line2 = new THREE.Mesh(new THREE.BoxGeometry(w, 0.01, 0.02), neon); line2.position.set(0, 0.04, 0.035); g.add(line2);
@@ -286,7 +333,7 @@ export class Renderer {
     // table de l'arbitre
     const dark = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.5, metalness: 0.4 });
     const desk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.74, 1.1), dark); desk.position.set(3.2, 0.37, 0); desk.castShadow = true; s.add(desk);
-    const deskLine = new THREE.Mesh(new THREE.BoxGeometry(0.51, 0.012, 1.11), neon); deskLine.position.set(3.2, 0.74, 0); s.add(deskLine);
+    const deskLine = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.015, 1.11), neon); deskLine.position.set(2.95, 0.73, 0); s.add(deskLine);
     this.counterTex = canvasTex(512, 256, () => {});
     const cMat = new THREE.MeshBasicMaterial({ map: this.counterTex });
     const counter = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.42), [dark, dark, dark, dark, cMat, cMat]);
@@ -294,7 +341,7 @@ export class Renderer {
     // boîtes à serviettes
     for (const z of [-COURT.hz + 0.7, COURT.hz - 0.7]) {
       const b = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.65, 0.35), dark); b.position.set(-COURT.hx + 0.5, 0.325, z); b.castShadow = true; s.add(b);
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.012, 0.36), neon); l.position.set(-COURT.hx + 0.5, 0.65, z); s.add(l);
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.015, 0.015), neon); l.position.set(-COURT.hx + 0.5, 0.64, z + (z > 0 ? -0.18 : 0.18)); s.add(l);
     }
     // anneau lumineux au plafond + rampes
     const truss = new THREE.MeshStandardMaterial({ color: 0x15141c, roughness: 0.6, metalness: 0.6 });
@@ -547,9 +594,13 @@ export class Renderer {
 
     if (game.fx.length > 8) game.fx.splice(0, game.fx.length - 8);
     for (const f of game.fx) {
-      if (f.type === 'bounce') this.addMark(f.x, f.z);
-      if (f.type === 'cheer') this.cheer = f.big ? 1.4 : 0.8;
-      if (f.type === 'hit' && f.smash) this.shake = 0.25;
+      if (f.type === 'bounce') { this.addMark(f.x, f.z); this.burst(f.x, TABLE.H + 0.01, f.z, 6, [0.9, 0.9, 1], 0.9, 0.25, 0.012); }
+      if (f.type === 'cheer') { this.cheer = f.big ? 1.4 : 0.8; this.flash = f.big ? 1 : 0.5; }
+      if (f.type === 'hit') {
+        if (f.sup) this.burst(f.x, f.y, f.z, 45, [1, 0.5, 0.1], 3.5, 0.5, 0.03);
+        else this.burst(f.x, f.y, f.z, f.smash ? 26 : 12, this.neonRGB(), f.smash ? 2.6 : 1.6, 0.3, 0.02);
+        if (f.smash || f.sup) this.shake = 0.25;
+      }
     }
     game.fx.length = 0;
     this.marks = this.marks.filter(mk => {
@@ -561,6 +612,16 @@ export class Renderer {
     });
 
     game.players.forEach((pl, i) => this.paddles[i].update(dt, pl, game, i));
+    // balle en feu (super coup)
+    if (game.superBall && game.state === 'rally' && Math.random() < 0.9) {
+      const p = game.ball.p;
+      this.sparks.spawn(p.x, p.y, p.z, (Math.random() - 0.5) * 0.4, Math.random() * 0.4, (Math.random() - 0.5) * 0.4, [1, 0.35 + Math.random() * 0.3, 0.05], 0.3, 0.035, -0.5);
+    }
+    this.sparks.update(dt);
+    this.confettiP.update(dt, 2.5, this.time);
+    this.flash = Math.max(0, this.flash - dt * 1.6);
+    this.mats.neon.emissiveIntensity = 3 + this.flash * 2.5;
+    for (const m of this.boardMats) m.emissiveIntensity = 0.85 + this.flash * 0.5;
     const key = JSON.stringify([game.match.score, game.match.sets, game.names]);
     if (key !== this.lastScoreKey) { this.lastScoreKey = key; this.drawScreen(game); }
     for (const t of this.boards) t.offset.x = (this.time * 0.015) % 1;
@@ -593,6 +654,22 @@ export class Renderer {
       pos[i * 6 + 3] = px - wx; pos[i * 6 + 4] = py - wy; pos[i * 6 + 5] = pz - wz;
     }
     this.trail.geometry.attributes.position.needsUpdate = true;
+  }
+
+  neonRGB() { const c = this.mats.neon.emissive; return [Math.min(1, c.r + 0.3), Math.min(1, c.g + 0.3), Math.min(1, c.b + 0.3)]; }
+  burst(x, y, z, n, color, speed, life, size) {
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2, e = Math.random() * Math.PI - Math.PI / 2;
+      const v = speed * (0.4 + Math.random() * 0.6);
+      this.sparks.spawn(x, y, z, Math.cos(a) * Math.cos(e) * v, Math.abs(Math.sin(e)) * v * 0.8 + 0.3, Math.sin(a) * Math.cos(e) * v, color, life * (0.6 + Math.random() * 0.6), size, 6);
+    }
+  }
+  confetti() {
+    const cols = [[1, 0.25, 0.4], [0.3, 0.6, 1], [1, 0.85, 0.2], [0.3, 1, 0.5], [0.85, 0.3, 1], [1, 1, 1]];
+    for (let k = 0; k < 900; k++) {
+      this.confettiP.spawn((Math.random() - 0.5) * 9, 3 + Math.random() * 4, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 0.5, -0.8 - Math.random(), (Math.random() - 0.5) * 0.5,
+        cols[k % cols.length], 7 + Math.random() * 3, 0.05, 0.25);
+    }
   }
 
   addMark(x, z) {
@@ -638,6 +715,18 @@ export class Renderer {
       this.camLook.lerp(V(b.x * 0.5, 0.9, b.z * 0.85), Math.min(1, rdt * 5));
       this.camera.position.copy(this.camPos);
       this.camera.lookAt(this.camLook);
+      return;
+    }
+    if (this.intro > 0 && game.players) {
+      // présentation du match : la caméra plonge de haut en bas vers la table
+      this.intro -= dt;
+      const me = game.players[game.me], s = me.side;
+      const u = ease(Math.min(1, Math.max(0, 1 - this.intro / 3.2)));
+      const a = (1 - u) * 2.2;
+      const Rr = lerp(9, Math.abs(me.z) + 1.7, u);
+      this.camPos.set(Math.sin(a) * Rr, lerp(6.5, 1.95, u), s * Math.cos(a) * Rr);
+      this.camLook.set(0, lerp(0.6, 0.68, u), lerp(0, -s * 0.9, u));
+      this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
       return;
     }
     if (this.orbit) {

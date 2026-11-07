@@ -15,6 +15,8 @@ Ping-pong 3D dans le navigateur, vue raquette, dans une arène de championnats d
 - **Succès** : 17 défis (ace, smash gagnant, échange de 20 coups, set parfait, remontada, balle de match sauvée…).
 - **Super coup** : la jauge SUPER se remplit avec les bons coups ; pleine, RT (ou L) arme un coup surpuissant.
 - **Ralentis** sur les gros points, statistiques de fin de match et vidéo du meilleur point à télécharger.
+- **Défis du jour** : 3 nouveaux défis chaque jour, avec XP bonus.
+- **Présentation VS** avant chaque match, séries de points, confettis à la victoire.
 
 Le profil est sauvegardé dans le navigateur.
 
@@ -50,6 +52,8 @@ Le jeu est ensuite disponible sur `https://artercamille.github.io/pingpong/`.
 - `lib/` : Three.js et PeerJS embarqués (aucun CDN nécessaire)
 
 ## Crédits
+
+- Sons de public : enregistrements CC0 de freesound.org (« Large crowd applause » par Bansemer, « Crowd Cheering » par SoundsExciting), recoupés et normalisés.
 
 - Moteur 3D : [Three.js](https://threejs.org) (MIT)
 - Connexion en ligne : [PeerJS](https://peerjs.com) (MIT)

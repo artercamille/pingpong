@@ -53,7 +53,8 @@ export class Game {
     this.rallyCount = 0;
     this.paused = false;
     this.pred = [null, null];   // prévision du point de contact (pour la jauge et l'aide au placement)
-    this.stats = [0, 1].map(() => ({ points: 0, winners: 0, errors: 0, aces: 0, smashes: 0, supers: 0, hits: 0, maxSpeed: 0 }));
+    this.stats = [0, 1].map(() => ({ points: 0, winners: 0, errors: 0, aces: 0, smashes: 0, supers: 0, superWins: 0, hits: 0, maxSpeed: 0 }));
+    this.run = { p: -1, n: 0 };   // série de points consécutifs
     this.longest = 0;
     this.momentum = [0, 0];
     this.pressure = null;        // { type: 'set' | 'match', p } : balle de set / de match
@@ -151,7 +152,7 @@ export class Game {
     this.simTime += DT;
     for (const e of ev) {
       if (e.type === 'table') { sfx.table(e.speed); this.fx.push({ type: 'bounce', x: e.x, z: e.z }); }
-      else if (e.type === 'net') { sfx.net(); if (e.cord) sfx.ooh && sfx.ooh(); }
+      else if (e.type === 'net') sfx.net();
       else if (e.type === 'floor' && e.speed > 0.8) sfx.floor();
       if (this.state === 'rally' && this.rally && this.local(1 - this.rally.hitter)) this.rallyEvent(e);
     }
@@ -588,7 +589,8 @@ export class Game {
     this.stateT = this.match.over ? 2.6 : setWon ? 3 : 1.9;
     for (const pl of this.players) { pl.charging = false; pl.releaseType = null; }
     const big = this.rallyCount >= 6 || setWon || this.match.over;
-    sfx.applause(big ? 1.4 : 0.8);
+    const winnerShot = reason === 'Point gagnant' || reason === 'Ace !';
+    sfx.crowd(setWon || this.match.over || this.rallyCount + 1 >= 10 ? 3 : (this.rallyCount + 1 >= 5 || winnerShot) ? 2 : 1);
     this.fx.push({ type: 'cheer', big });
     this.hooks.point && this.hooks.point(winner, reason, setWon, this.rallyCount);
   }
@@ -603,6 +605,7 @@ export class Game {
       const ls = this.lastShot[w] || {};
       if (reason === 'Ace !') st[w].aces++;
       if (ls.smash) st[w].smashes++;
+      if (ls.sup) st[w].superWins++;
       if (w === me) {
         if (reason === 'Ace !') this.addAch('ace');
         if (ls.smash) this.addAch('smash');
@@ -611,6 +614,7 @@ export class Game {
       }
     } else if (reason !== 'Temps') st[l].errors++;
     this.longest = Math.max(this.longest, this.rallyCount + 1);
+    if (this.run.p === w) this.run.n++; else this.run = { p: w, n: 1 };
     if (this.rallyCount + 1 >= 20) this.addAch('rally20');
     this.momentum[w] = Math.min(1, this.momentum[w] + 0.12);
     // balle de match sauvée

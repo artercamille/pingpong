@@ -1,5 +1,6 @@
 // Sons synthétisés (aucun fichier audio nécessaire)
-let ctx = null, master = null, noiseBuf = null;
+let ctx = null, master = null, noiseBuf = null, muted = false;
+export function setMuted(v) { muted = v; }
 
 export function initAudio() {
   if (ctx) { ctx.resume(); return; }
@@ -15,7 +16,7 @@ export function initAudio() {
 }
 
 function tone(freq, dur, vol, type = 'sine', drop = 0.5) {
-  if (!ctx) return;
+  if (!ctx || muted) return;
   const t = ctx.currentTime;
   const o = ctx.createOscillator();
   const g = ctx.createGain();
@@ -29,7 +30,7 @@ function tone(freq, dur, vol, type = 'sine', drop = 0.5) {
 }
 
 function noise(dur, vol, freq, q = 1, attack = 0.002) {
-  if (!ctx) return;
+  if (!ctx || muted) return;
   const t = ctx.currentTime;
   const s = ctx.createBufferSource();
   s.buffer = noiseBuf;
@@ -50,7 +51,7 @@ export const sfx = {
   floor() { tone(1500, 0.06, 0.15, 'triangle', 0.7); },
   toss() { noise(0.05, 0.08, 4000, 1); },
   applause(intensity = 1) {
-    if (!ctx) return;
+    if (!ctx || muted) return;
     for (let i = 0; i < 26 * intensity; i++) {
       setTimeout(() => noise(0.05 + Math.random() * 0.05, 0.05 + Math.random() * 0.06, 1500 + Math.random() * 2500, 1.2), Math.random() * 1600 * intensity);
     }

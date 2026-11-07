@@ -34,7 +34,7 @@ export class AI {
         const t = ['top', 'coupe', 'coupe', 'lob', 'plat'][Math.floor(Math.random() * 5)];
         inp.aimX = (Math.random() * 2 - 1) * this.L.aim;
         inp.aimY = (Math.random() * 2 - 1) * 0.7;
-        this.serveRelY = 1.0 + gauss() * this.L.noise * 1.5;
+        this.serveRelY = 1.06 + gauss() * this.L.noise * 1.5;
         this.serveCharge = 0.3 + Math.random() * 0.4;
         this.press(t);
       }

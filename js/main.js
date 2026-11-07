@@ -1,15 +1,24 @@
 // Point d'entrée : menus, boucle de jeu, HUD, lobby en ligne.
 import { Renderer } from './render.js';
-import { Game, SHOT_LABEL, MAX_CHARGE } from './game.js';
+import { Game, SHOT_LABEL, MAX_CHARGE, IDEAL_REL, TIMING } from './game.js';
 import { AI } from './ai.js';
 import { Input } from './input.js';
 import { Net } from './net.js';
-import { initAudio, sfx } from './audio.js';
+import { initAudio, sfx, setMuted } from './audio.js';
 
 const $ = s => document.querySelector(s);
 const R = new Renderer($('#c'));
 const input = new Input();
 let game = null, net = null, setup = null, last = performance.now();
+let demo = null, ready = false;
+function newDemo() {
+  demo = new Game({ mode: 'ai', ctrl: ['ai', 'ai'], me: 0, names: ['Démo', 'Démo'], bestOf: 5, firstServer: 0, hooks: {} });
+  demo.ai[0] = new AI(demo, 0, 2); demo.ai[1] = new AI(demo, 1, 2);
+}
+R.load(p => { $('#loading .lbar div').style.width = (p * 100) + '%'; }).then(() => {
+  ready = true; newDemo();
+  $('#loading').classList.add('hidden');
+}).catch(e => { $('#loading p').textContent = 'Erreur de chargement : ' + e.message; });
 let oppName = 'Adversaire';
 
 const store = {
@@ -54,7 +63,7 @@ function hooks() {
     },
     serve: s => {
       if (!game) return;
-      if (s === game.me) hint('Service : appuie sur un coup pour lancer la balle, relâche quand elle redescend', 3);
+      if (s === game.me && (game.hintCount = (game.hintCount || 0) + 1) <= 2) hint('Service : appuie sur un coup pour lancer la balle, relâche quand le curseur est dans le vert', 3.5);
     },
     message: t => banner(t, '', 1.5),
     over: m => showEnd(m),
@@ -88,7 +97,7 @@ function enterGame() {
   $('#end').classList.add('hidden');
   $('#pause').classList.add('hidden');
   $('#hud').classList.remove('hidden');
-  R.setView(game.players[game.me].side);
+
 }
 
 function quitToMenu() {
@@ -203,12 +212,16 @@ function togglePause(v) {
 
 // ------------------------------------------------------------------ HUD
 let fbT = 0, oppT = 0, banT = 0, hintT = 0;
+let meterRes = null;
 function showFeedback(label, q, shot) {
-  const el = $('#feedback');
-  el.className = 'show ' + (q >= 0.9 ? 'perfect' : q >= 0.6 ? 'good' : 'bad');
-  el.querySelector('.big').textContent = label;
-  el.querySelector('.small').textContent = shot || '';
-  fbT = 0.9;
+  meterRes = { label, cls: q >= 0.9 ? 'perfect' : q >= 0.6 ? 'good' : 'bad', shot, t: 1.0 };
+  if (label === 'SMASH !' || label === 'HORS DE PORTÉE' || label === 'RATÉ') {
+    const el = $('#feedback');
+    el.className = 'show ' + meterRes.cls;
+    el.querySelector('.big').textContent = label;
+    el.querySelector('.small').textContent = shot || '';
+    fbT = 0.9;
+  }
 }
 function showOpp(label, shot) {
   $('#oppfb').textContent = `${game.names[1 - game.me]} : ${shot || ''} — ${label}`;
@@ -238,14 +251,45 @@ function updateHUD(dt) {
   if ((banT -= dt) <= 0) $('#banner').classList.remove('show');
   if ((hintT -= dt) <= 0) $('#hint').classList.remove('show');
 
+  updateMeter(dt);
   const me = game.players[game.me];
   const ch = $('#charge');
-  if (me.charging) {
+  if (false) {
     ch.classList.add('show');
     const p = Math.min(1, me.chargeT / MAX_CHARGE);
     ch.querySelector('.fill').style.width = (Math.max(0.15, p) * 100) + '%';
     ch.querySelector('.lbl').textContent = SHOT_LABEL[me.chargeType] || '';
   } else ch.classList.remove('show');
+}
+
+// jauge de timing au-dessus du joueur (façon TopSpin)
+let frozen = null;
+function updateMeter(dt) {
+  const el = $('#meter');
+  const me = game.players[game.me];
+  const pr = game.pred[game.me];
+  const hp = R.headScreen(game.me);
+  if (meterRes) meterRes.t -= dt;
+  const resEl = el.querySelector('.res');
+  if (meterRes && meterRes.t > 0) { resEl.textContent = meterRes.label; resEl.className = 'res ' + meterRes.cls; }
+  else { resEl.textContent = ''; meterRes = null; }
+  const active = pr && (game.state === 'rally' || game.state === 'toss');
+  if (!hp || (!active && !meterRes)) { el.classList.remove('show'); frozen = null; return; }
+  el.style.left = hp.x + 'px'; el.style.top = (hp.y - 18) + 'px';
+  el.classList.add('show');
+  if (!active) return;
+  const LEAD = 0.8, TAIL = 0.3, len = LEAD + TAIL;
+  const tR = pr.t - (pr.serve ? 0 : IDEAL_REL);
+  const start = tR - LEAD;
+  const c = LEAD / len;
+  const zone = (cls, w) => { const z = el.querySelector('.z.' + cls); z.style.left = ((c - w / len) * 100) + '%'; z.style.width = (2 * w / len * 100) + '%'; };
+  zone('ok', TIMING.ok); zone('good', TIMING.good); zone('perfect', TIMING.perfect);
+  let t = game.simTime;
+  if (me.releaseType && game.simTime - me.releaseT < 0.8) t = me.releaseT;
+  const pos = Math.max(0, Math.min(1, (t - start) / len));
+  el.querySelector('.cur').style.left = (pos * 100) + '%';
+  el.classList.toggle('dim', !me.charging && !me.releaseType && !pr.serve);
+  el.querySelector('.shot').textContent = me.charging ? (SHOT_LABEL[me.chargeType] + ' · ' + Math.round(Math.min(1, me.chargeT / MAX_CHARGE) * 100) + '%') : (pr.serve ? '' : 'MAINTIENS UN COUP');
 }
 
 // ------------------------------------------------------------------ boucle
@@ -258,15 +302,23 @@ function loop(now) {
   else { pad.textContent = 'Branche ta manette et appuie sur un bouton (ou joue au clavier)'; pad.classList.remove('ok'); }
 
   if (game) {
+    setMuted(false);
+    R.orbit = false;
     if (inp.pressed.start) togglePause();
     if (game.state === 'over' && inp.pressed.top) again();
     game.update(dt, inp);
     if (!window.__noRender) R.update(game, dt);
     updateHUD(dt);
-  } else R.idle(dt);
+  } else if (ready) {
+    setMuted(true);
+    R.orbit = true;
+    if (demo.state === 'over') newDemo();
+    demo.update(dt, null);
+    if (!window.__noRender) R.update(demo, dt);
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
 // accès debug / tests
-window.__pp = { get game() { return game; }, R, startAI, AI };
+window.__pp = { get game() { return game; }, get demo() { return demo; }, R, startAI, AI };

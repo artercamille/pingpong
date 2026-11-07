@@ -1,6 +1,6 @@
-# Aura Pong
+# PingPong
 
-Ping-pong 3D dans le navigateur, façon TopSpin : timing, effets et placement. On y joue en ligne à deux, chacun sur son PC, à la manette.
+Ping-pong 3D dans le navigateur façon TopSpin, dans une salle de championnats du monde : jauge de timing, effets, placement. On y joue en ligne à deux, chacun sur son PC, à la manette.
 
 ## Jouer
 
@@ -36,3 +36,9 @@ Le jeu est ensuite disponible sur `https://artercamille.github.io/pingpong/`.
 - `js/input.js` : manette + clavier
 - `js/audio.js` : sons synthétisés
 - `lib/` : Three.js et PeerJS embarqués (aucun CDN nécessaire)
+
+## Crédits
+
+- Moteur 3D : [Three.js](https://threejs.org) (MIT)
+- Connexion en ligne : [PeerJS](https://peerjs.com) (MIT)
+- Modèle d'athlète : « X Bot » de Mixamo (Adobe), fourni avec les exemples Three.js — à remplacer par un modèle maison avant une sortie commerciale si besoin.

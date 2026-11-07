@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aura Pong — ping-pong 3D en ligne</title>
+<title>PingPong — World Championships</title>
 <link rel="stylesheet" href="css/style.css">
-<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }</script>
 <script src="lib/peerjs.min.js"></script>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="loading" class="overlay"><div class="load"><h1>PING<span>PONG</span></h1><div class="lbar"><div></div></div><p>Chargement de la salle…</p></div></div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
@@ -19,6 +20,7 @@
     <div id="setinfo"></div>
   </div>
   <div id="ping"></div>
+  <div id="meter"><div class="res"></div><div class="track"><div class="z ok"></div><div class="z good"></div><div class="z perfect"></div><div class="cur"></div></div><div class="shot"></div></div>
   <div id="feedback"><div class="big"></div><div class="small"></div></div>
   <div id="oppfb"></div>
   <div id="banner"></div>
@@ -29,8 +31,8 @@
 <!-- MENUS -->
 <div id="menu" class="overlay">
   <div class="panel" id="scr-main">
-    <h1>AURA <span>PONG</span></h1>
-    <p class="sub">Ping-pong 3D — en ligne entre potes, à la manette</p>
+    <h1>PING<span>PONG</span></h1>
+    <p class="sub">WORLD CHAMPIONSHIPS</p>
     <label class="field">Ton pseudo <input id="name" maxlength="14" placeholder="Camille"></label>
     <button data-go="scr-ai">Jouer contre l'IA</button>
     <button data-go="scr-host" class="accent">Créer une partie en ligne</button>
@@ -87,11 +89,11 @@
       <tr><td>Pause (contre l'IA)</td><td>Start</td><td>Échap</td></tr>
     </table>
     <ul class="tips">
-      <li><b>Maintiens</b> le bouton pour charger la puissance, <b>relâche</b> juste avant que la balle arrive : le timing décide de la qualité du coup.</li>
+      <li><b>Maintiens</b> le bouton de coup quand la balle arrive : la jauge apparaît au-dessus de ton joueur. <b>Relâche quand le curseur passe dans le vert</b> pour un coup parfait. Plus tu maintiens longtemps, plus le coup est puissant.</li>
       <li>Pendant la charge, le stick vise : gauche/droite pour la direction, haut = long, bas = court. Le cercle jaune montre la cible.</li>
-      <li>Place-toi pour avoir la balle à environ un demi-mètre sur le côté : trop près ou trop loin, le coup perd en précision.</li>
-      <li>Plus tu tapes fort, plus c'est risqué. Un coupé adverse fait tomber ta balle dans le filet, un gros lift la fait partir long.</li>
-      <li>Service : appuie pour lancer la balle, relâche quand elle redescend à hauteur de poitrine.</li>
+            <li>Plus tu tapes fort, plus c'est risqué. Un coupé adverse fait tomber ta balle dans le filet, un gros lift la fait partir long.</li>
+      <li>Service : appuie pour lancer la balle, puis relâche quand le curseur de la jauge est dans le vert.</li>
+      <li>Ton joueur se place tout seul en partie : le stick sert surtout à ajuster et à viser.</li>
     </ul>
     <button data-go="scr-main" class="ghost">Retour</button>
   </div>

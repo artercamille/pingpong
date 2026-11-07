@@ -95,18 +95,39 @@ h1 span { color: #ffb43c; }
 #board .pts { border-radius: 4px; font-size: 20px; }
 #setinfo { order: -1; background: rgba(255,180,60,.12); color: #ffb43c; font-weight: 800; }
 
-#meter { position: absolute; transform: translate(-50%, -100%); width: 220px; text-align: center; opacity: 0; transition: opacity .15s; }
+#meter { position: absolute; transform: translate(-50%, -100%); width: 150px; opacity: 0; transition: opacity .12s; }
 #meter.show { opacity: 1; }
-#meter.dim .track { opacity: .45; }
-#meter .track { position: relative; height: 14px; border-radius: 7px; background: rgba(6,10,22,.85); border: 2px solid rgba(255,255,255,.85);
-  overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-#meter .z { position: absolute; top: 0; bottom: 0; }
-#meter .z.ok { background: rgba(255,140,40,.55); }
-#meter .z.good { background: rgba(255,225,77,.85); }
-#meter .z.perfect { background: #3dff8a; box-shadow: 0 0 10px #3dff8a; }
-#meter .cur { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 6px #fff; }
-#meter .res { white-space: nowrap; height: 30px; font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: 1px; text-shadow: 0 3px 12px rgba(0,0,0,.8); }
-#meter .res.perfect { color: #3dff8a; } #meter .res.good { color: #ffe14d; } #meter .res.bad { color: #ff6b6b; }
-#meter .shot { margin-top: 4px; font-size: 11px; font-weight: 800; letter-spacing: 3px; color: #e8eeff; text-shadow: 0 2px 6px #000; }
+#meter .track { position: relative; height: 10px; background: rgba(10,12,20,.9); border: 1px solid rgba(255,255,255,.55); box-shadow: 0 2px 10px rgba(0,0,0,.6); }
+#meter .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #e9ecf3; }
+#meter .z.perfect { position: absolute; top: 0; bottom: 0; right: 0; background: #2fe06a; }
+#meter.r3 .fill { background: #2fe06a; box-shadow: 0 0 12px #2fe06a; }
+#meter.r2 .fill { background: #b8f05a; }
+#meter.r1 .fill { background: #ffc531; }
+#meter.r0 .fill { background: #ff4b4b; }
 #feedback { top: 22%; }
 #feedback .big { font-size: 40px; }
+
+/* ---------- tableau de score (style diffusion TV) ---------- */
+#board { top: 22px; left: 22px; bottom: auto; min-width: 0; width: 250px; border: 0; border-radius: 0; background: none; box-shadow: none;
+  display: flex; flex-direction: column; filter: drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
+#board .row { display: grid; grid-template-columns: 4px 1fr 30px 44px; gap: 0; padding: 0; height: 34px; align-items: stretch;
+  background: rgba(12,10,20,.92); font-size: 15px; }
+#board .row + .row { border-top: 1px solid rgba(255,255,255,.06); }
+#board .row[data-p="0"] { border-radius: 6px 6px 0 0; }
+#board .row[data-p="1"] { border-radius: 0 0 6px 6px; }
+#board .row::before { content: ''; grid-column: 1; background: #3d7bff; }
+#board .row[data-p="0"]::before { border-radius: 6px 0 0 0; }
+#board .row[data-p="1"]::before { background: #ff3d6b; border-radius: 0 0 0 6px; }
+#board .nm { grid-column: 2; display: flex; align-items: center; gap: 8px; padding-left: 12px; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #f2f0fa; }
+#board .srv { position: absolute; }
+#board .sets { grid-column: 3; display: flex; align-items: center; justify-content: center; width: auto; color: #9b93b8; font-weight: 800; background: rgba(255,255,255,.04); }
+#board .pts { grid-column: 4; display: flex; align-items: center; justify-content: center; width: auto; border-radius: 0; padding: 0;
+  font-size: 19px; font-weight: 900; color: #fff !important; background: linear-gradient(180deg, #8a4bea, #6a2fc8) !important; }
+#board .row[data-p="0"] .pts { border-radius: 0 6px 0 0; }
+#board .row[data-p="1"] .pts { border-radius: 0 0 6px 0; }
+#board .srv { position: static; grid-column: 2; display: none; }
+#board .row .nm::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: transparent; }
+#board .row.serving .nm::after { background: #fff; box-shadow: 0 0 8px #fff; }
+#setinfo { order: 3; align-self: flex-start; margin-top: 6px; padding: 3px 10px; border-radius: 4px; background: rgba(138,75,234,.9); color: #fff;
+  font-size: 10px; font-weight: 900; letter-spacing: 2px; }
+#banner { top: 12%; font-size: 18px; padding: 10px 22px; background: rgba(12,10,20,.88); border-bottom: 2px solid #8a4bea; border-radius: 6px; }

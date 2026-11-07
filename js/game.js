@@ -7,7 +7,7 @@ export const SHOT_LABEL = { top: 'LIFT', plat: 'FRAPPE', coupe: 'COUPÉ', lob: '
 export const SERVE_LABEL = { top: 'SERVICE LIFT', plat: 'SERVICE RAPIDE', coupe: 'SERVICE COUPÉ', lob: 'SERVICE LATÉRAL' };
 export const PLANE_OFF = 0.38;   // le plan de frappe est 38 cm devant le joueur
 export const IDEAL_REL = 0.06;   // délai idéal entre relâchement et contact
-export const TIMING = { perfect: 0.05, good: 0.11, ok: 0.2 }; // fenêtres de timing (s)
+export const TIMING = { perfect: 0.05, good: 0.16, lead: 0.75 }; // fenêtres de timing (s)
 export const MAX_CHARGE = 0.8;   // temps de charge max (s)
 const REACH = 1.05;
 const MOVE_SPEED = 4.2;
@@ -19,11 +19,11 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // err > 0 : relâché trop tôt, err < 0 : trop tard
 export function gradeTiming(err) {
-  const a = Math.abs(err);
-  if (a <= TIMING.perfect) return { q: 1, label: 'PARFAIT', grade: 3 };
-  if (a <= TIMING.good) return { q: 0.82, label: 'BIEN', grade: 2 };
-  if (a <= TIMING.ok) return { q: 0.58, label: err > 0 ? 'TÔT' : 'TARD', grade: 1 };
-  return { q: 0.32, label: err > 0 ? 'TROP TÔT' : 'TROP TARD', grade: 0 };
+  // façon TopSpin : vert = parfait, un peu avant = bon, bien avant = trop tôt (moyen), après le vert = trop tard (le pire)
+  if (Math.abs(err) <= TIMING.perfect) return { q: 1, label: 'PARFAIT', grade: 3 };
+  if (err > 0 && err <= TIMING.good) return { q: 0.8, label: 'BON', grade: 2 };
+  if (err > 0) return { q: 0.55, label: 'TROP TÔT', grade: 1 };
+  return { q: 0.28, label: 'TROP TARD', grade: 0 };
 }
 const gauss = () => (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 0.577;
 
@@ -524,7 +524,7 @@ export class Game {
   doLet() {
     if (this.state !== 'rally') return;
     this.state = 'pointEnd'; this.stateT = 1.5;
-    this.hooks.message && this.hooks.message('LET — on rejoue le service');
+    this.hooks.message && this.hooks.message('LET');
     this.net && this.net.send({ t: 'let' });
   }
 
@@ -569,7 +569,7 @@ export class Game {
         break;
       case 'let':
         this.state = 'pointEnd'; this.stateT = 1.5;
-        this.hooks.message && this.hooks.message('LET — on rejoue le service');
+        this.hooks.message && this.hooks.message('LET');
         break;
     }
   }

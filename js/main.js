@@ -55,15 +55,12 @@ function hooks() {
     },
     point: (w, reason, setWon, rally) => {
       const m = game.match;
-      let sub = reason;
-      if (rally >= 8) sub += ` · échange de ${rally + 1} coups`;
-      if (m.over) banner(`${game.names[m.winner]} remporte le match !`, sub, 2.6);
-      else if (setWon) banner(`Set pour ${game.names[w]}`, `${m.history[m.history.length - 1].join(' – ')}`, 3);
-      else banner(`Point ${game.names[w]}`, sub, 1.7);
+      if (m.over) banner(`${game.names[m.winner]} remporte le match`, '', 2.6);
+      else if (setWon) banner(`Set ${game.names[w]}`, '', 2.5);
     },
     serve: s => {
       if (!game) return;
-      if (s === game.me && (game.hintCount = (game.hintCount || 0) + 1) <= 2) hint('Service : appuie sur un coup pour lancer la balle, relâche quand le curseur est dans le vert', 3.5);
+
     },
     message: t => banner(t, '', 1.5),
     over: m => showEnd(m),
@@ -212,22 +209,12 @@ function togglePause(v) {
 
 // ------------------------------------------------------------------ HUD
 let fbT = 0, oppT = 0, banT = 0, hintT = 0;
-let meterRes = null;
+const GRADE = { 'PARFAIT': 3, 'SERVICE PARFAIT': 3, 'BON': 2, 'BON SERVICE': 2, 'TROP TÔT': 1, 'SERVICE TROP TÔT': 1, 'TROP TARD': 0, 'SERVICE RATÉ': 0, 'SERVICE TROP TARD': 0 };
 function showFeedback(label, q, shot) {
-  meterRes = { label, cls: q >= 0.9 ? 'perfect' : q >= 0.6 ? 'good' : 'bad', shot, t: 1.0 };
-  if (label === 'SMASH !' || label === 'HORS DE PORTÉE' || label === 'RATÉ') {
-    const el = $('#feedback');
-    el.className = 'show ' + meterRes.cls;
-    el.querySelector('.big').textContent = label;
-    el.querySelector('.small').textContent = shot || '';
-    fbT = 0.9;
-  }
+  if (label in GRADE) lockMeter(GRADE[label]);
+  else if (q > 0) lockMeter(q >= 0.9 ? 3 : q >= 0.7 ? 2 : q >= 0.45 ? 1 : 0);
 }
-function showOpp(label, shot) {
-  $('#oppfb').textContent = `${game.names[1 - game.me]} : ${shot || ''} — ${label}`;
-  $('#oppfb').classList.add('show');
-  oppT = 1.4;
-}
+function showOpp() {}
 function banner(text, sub, t) {
   $('#banner').innerHTML = text + (sub ? `<small>${sub}</small>` : '');
   $('#banner').classList.add('show');
@@ -243,11 +230,11 @@ function updateHUD(dt) {
     row.querySelector('.sets').textContent = m.sets[p];
     row.querySelector('.pts').textContent = m.score[p];
     row.querySelector('.srv').classList.toggle('on', srv === p);
+    row.classList.toggle('serving', srv === p);
   });
-  $('#setinfo').textContent = `SET ${Math.min(m.setIdx + 1, game.bestOf)} · AU MEILLEUR DES ${game.bestOf} SET${game.bestOf > 1 ? 'S' : ''}`;
+  $('#setinfo').textContent = `SET ${Math.min(m.setIdx + 1, game.bestOf)}`;
   $('#ping').textContent = net && setup.mode === 'online' ? `Ping ${Math.round(net.rtt)} ms` : '';
   if ((fbT -= dt) <= 0) $('#feedback').classList.remove('show');
-  if ((oppT -= dt) <= 0) $('#oppfb').classList.remove('show');
   if ((banT -= dt) <= 0) $('#banner').classList.remove('show');
   if ((hintT -= dt) <= 0) $('#hint').classList.remove('show');
 
@@ -262,34 +249,30 @@ function updateHUD(dt) {
   } else ch.classList.remove('show');
 }
 
-// jauge de timing au-dessus du joueur (façon TopSpin)
-let frozen = null;
+// jauge de timing façon TopSpin : une barre qui se remplit, une seule zone verte au bout
+let meterLock = null;
 function updateMeter(dt) {
   const el = $('#meter');
   const me = game.players[game.me];
   const pr = game.pred[game.me];
   const hp = R.paddleScreen(game.me);
-  if (meterRes) meterRes.t -= dt;
-  const resEl = el.querySelector('.res');
-  if (meterRes && meterRes.t > 0) { resEl.textContent = meterRes.label; resEl.className = 'res ' + meterRes.cls; }
-  else { resEl.textContent = ''; meterRes = null; }
-  const active = pr && (game.state === 'rally' || game.state === 'toss');
-  if (!hp || (!active && !meterRes)) { el.classList.remove('show'); frozen = null; return; }
-  el.style.left = Math.max(130, Math.min(innerWidth - 130, hp.x - 60)) + 'px'; el.style.top = Math.max(120, Math.min(innerHeight - 40, hp.y - 120)) + 'px';
+  if (meterLock) { meterLock.t -= dt; if (meterLock.t <= 0) meterLock = null; }
+  const active = pr && (me.charging || me.releaseType) && (game.state === 'rally' || game.state === 'toss');
+  if (!active && !meterLock) { el.classList.remove('show'); el.className = ''; return; }
+  el.style.left = Math.max(90, Math.min(innerWidth - 90, hp.x - 40)) + 'px';
+  el.style.top = Math.max(80, Math.min(innerHeight - 40, hp.y - 110)) + 'px';
   el.classList.add('show');
-  if (!active) return;
-  const LEAD = 0.8, TAIL = 0.3, len = LEAD + TAIL;
+  const LEAD = TIMING.lead, len = LEAD + TIMING.perfect;
+  el.querySelector('.z.perfect').style.width = (2 * TIMING.perfect / len * 100) + '%';
+  if (meterLock) { el.querySelector('.fill').style.width = meterLock.pos + '%'; return; }
   const tR = pr.t - (pr.serve ? 0 : IDEAL_REL);
-  const start = tR - LEAD;
-  const c = LEAD / len;
-  const zone = (cls, w) => { const z = el.querySelector('.z.' + cls); z.style.left = ((c - w / len) * 100) + '%'; z.style.width = (2 * w / len * 100) + '%'; };
-  zone('ok', TIMING.ok); zone('good', TIMING.good); zone('perfect', TIMING.perfect);
-  let t = game.simTime;
-  if (me.releaseType && game.simTime - me.releaseT < 0.8) t = me.releaseT;
-  const pos = Math.max(0, Math.min(1, (t - start) / len));
-  el.querySelector('.cur').style.left = (pos * 100) + '%';
-  el.classList.toggle('dim', !me.charging && !me.releaseType && !pr.serve);
-  el.querySelector('.shot').textContent = me.charging ? (SHOT_LABEL[me.chargeType] + ' · ' + Math.round(Math.min(1, me.chargeT / MAX_CHARGE) * 100) + '%') : (pr.serve ? '' : 'MAINTIENS UN COUP');
+  const pos = Math.max(0, Math.min(1, (game.simTime - (tR - LEAD)) / len));
+  el.querySelector('.fill').style.width = (pos * 100) + '%';
+}
+function lockMeter(grade) {
+  const w = parseFloat($('#meter .fill').style.width) || 0;
+  meterLock = { pos: grade === 0 ? 100 : w, t: 0.6 };
+  $('#meter').className = 'show r' + grade;
 }
 
 // ------------------------------------------------------------------ boucle

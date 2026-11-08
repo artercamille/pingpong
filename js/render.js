@@ -145,77 +145,88 @@ class PaddleRig {
 
 // ------------------------------------------------------------------ bonhomme néon
 const UP = new THREE.Vector3(0, 1, 0);
+// ------------------------------------------------------------------ athlète néon animé
+// Corps volumique en verre néon (contour lumineux), squelette procédural :
+// appuis au sol, pas chassés, split-step, rotation du buste dans les coups,
+// bras libre d'équilibre, regard sur la balle, respiration, célébrations.
+function neonBodyMat(color) {
+  return new THREE.ShaderMaterial({
+    uniforms: { col: { value: new THREE.Color(color) }, core: { value: new THREE.Color(0x07060e) }, glow: { value: 1 } },
+    vertexShader: `varying vec3 vN; varying vec3 vV;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 col; uniform vec3 core; uniform float glow; varying vec3 vN; varying vec3 vV;
+      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0);
+        vec3 c = mix(core + col * 0.1, col * (1.9 + glow), f); gl_FragColor = vec4(c, 1.0); }`,
+  });
+}
+const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+const vv = () => new THREE.Vector3();
+
 class StickFigure {
   constructor(scene, color) {
     this.g = new THREE.Group();
-    // tube néon : cœur lumineux + halo additif
-    this.mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
-    this.jointMat = this.mat;
-    this.halo = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    this.mat = neonBodyMat(color);
+    this.lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
     this.setColor(color);
-    const seg = new THREE.CylinderGeometry(0.019, 0.019, 1, 10, 1, false);
-    seg.translate(0, 0.5, 0);
-    const segH = new THREE.CylinderGeometry(0.048, 0.048, 1, 12, 1, true);
-    segH.translate(0, 0.5, 0);
-    this.segs = {};
-    for (const k of ['spine', 'shoulders', 'hips', 'uaL', 'faL', 'uaR', 'faR', 'thL', 'shL', 'thR', 'shR', 'neck']) {
-      const m = new THREE.Mesh(seg, this.mat); m.castShadow = true;
-      m.add(new THREE.Mesh(segH, this.halo));
-      this.g.add(m); this.segs[k] = m;
-    }
-    const jg = new THREE.SphereGeometry(0.03, 12, 10);
-    const jh = new THREE.SphereGeometry(0.06, 12, 10);
+    const cyl = (r1, r2) => { const g = new THREE.CylinderGeometry(r2, r1, 1, 14, 1, false); g.translate(0, 0.5, 0); return g; };
+    const mk = (geo, mat = this.mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; this.g.add(m); return m; };
+    this.segs = {
+      thL: mk(cyl(0.078, 0.055)), thR: mk(cyl(0.078, 0.055)), shL: mk(cyl(0.052, 0.036)), shR: mk(cyl(0.052, 0.036)),
+      uaL: mk(cyl(0.05, 0.04)), uaR: mk(cyl(0.05, 0.04)), faL: mk(cyl(0.04, 0.03)), faR: mk(cyl(0.04, 0.03)), neck: mk(cyl(0.045, 0.04)),
+    };
+    const sph = new THREE.SphereGeometry(1, 20, 14);
     this.joints = {};
-    for (const k of ['shL', 'shR', 'elL', 'elR', 'haL', 'haR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR', 'pelvis', 'neck']) {
-      const m = new THREE.Mesh(jg, this.jointMat); m.castShadow = true;
-      m.add(new THREE.Mesh(jh, this.halo));
-      this.g.add(m); this.joints[k] = m;
+    for (const [k, r] of [['shL', 0.06], ['shR', 0.06], ['elL', 0.043], ['elR', 0.043], ['haL', 0.04], ['haR', 0.04], ['hiL', 0.07], ['hiR', 0.07], ['knL', 0.056], ['knR', 0.056]]) {
+      const m = mk(sph); m.scale.setScalar(r); this.joints[k] = m;
     }
-    // tête : anneau lumineux + disque sombre
+    this.chest = mk(sph); this.abdo = mk(sph); this.hips = mk(sph);
+    const shoe = new THREE.BoxGeometry(0.1, 0.07, 0.26); shoe.translate(0, 0.035, 0.05);
+    this.feet = [mk(shoe), mk(shoe)];
+    // tête : volume néon + visière sombre + liseré lumineux
     this.head = new THREE.Group();
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.02, 12, 48), this.mat);
-    ring.add(new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.05, 12, 48), this.halo));
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.11, 32), new THREE.MeshBasicMaterial({ color: 0x07060c }));
-    disc.position.z = -0.004;
-    ring.castShadow = true;
-    this.head.add(ring, disc);
+    const skull = new THREE.Mesh(sph, this.mat); skull.scale.set(0.105, 0.125, 0.11); skull.castShadow = true;
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, Math.PI / 2 - 0.9, 1.8, 1.0, 0.75), new THREE.MeshBasicMaterial({ color: 0x05040a })); visor.scale.set(0.108, 0.125, 0.113);
+    visor.rotation.y = 0;
+    const brow = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 6, 40, Math.PI * 0.9), this.lineMat); brow.rotation.set(Math.PI / 2, 0, Math.PI * 0.05 + Math.PI); brow.position.set(0, 0.015, 0.012);
+    this.head.add(skull, visor, brow);
     this.g.add(this.head);
+    // lignes lumineuses (couture néon le long du corps)
     // accessoires
     this.acc = {
-      band: new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.03), this.mat),
+      band: new THREE.Mesh(new THREE.TorusGeometry(0.112, 0.016, 8, 40), this.lineMat),
       cap: new THREE.Group(),
-      wristL: new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 20), this.mat),
-      wristR: new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 20), this.mat),
+      wristL: new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.014, 8, 20), this.lineMat),
+      wristR: new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.014, 8, 20), this.lineMat),
     };
-    this.acc.band.position.set(0, 0.035, 0.01); this.head.add(this.acc.band);
-    const dome = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 10, 32, Math.PI), this.mat);
-    dome.position.y = 0.025; dome.scale.set(1.08, 0.9, 1);
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.022, 0.03), this.mat); visor.position.set(0.09, 0.03, 0.02);
-    this.acc.cap.add(dome, visor); this.head.add(this.acc.cap);
+    this.acc.band.rotation.x = Math.PI / 2; this.acc.band.position.y = 0.05; this.head.add(this.acc.band);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.118, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), this.lineMat); dome.position.y = 0.02;
+    const peak = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.1), this.lineMat); peak.position.set(0, 0.03, 0.14);
+    this.acc.cap.add(dome, peak); this.head.add(this.acc.cap);
     this.g.add(this.acc.wristL, this.acc.wristR);
     this.setAccessory(0);
     scene.add(this.g);
-    this.walk = 0; this.lx = null; this.mood = 0; this.moodT = 0; this.jump = 0;
-    this.v = {}; for (const k of ['pelvis', 'neck', 'headC', 'shL', 'shR', 'haL', 'haR', 'elL', 'elR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR']) this.v[k] = new THREE.Vector3();
+    this.mood = 0; this.moodT = 0;
+    this.v = {}; for (const k of ['pelvis', 'neck', 'headC', 'chest', 'shL', 'shR', 'haL', 'haR', 'elL', 'elR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR']) this.v[k] = vv();
+    // état d'animation
+    this.ft = null; this.stepT = [0, 0]; this.stepFrom = [vv(), vv()]; this.stepTo = [vv(), vv()]; this.nextFoot = 0;
+    this.vel = vv(); this.prev = null; this.t = Math.random() * 10; this.split = 0; this.lastHitId = null; this.look = vv(); this.lean = 0; this.yaw = 0;
   }
   setColor(c) {
-    const col = new THREE.Color(c);
-    this.mat.color.copy(col).lerp(new THREE.Color(0xffffff), 0.22).multiplyScalar(1.5);
-    this.halo.color.copy(col);
+    this.mat.uniforms.col.value.set(c);
+    this.lineMat.color.set(c).lerp(new THREE.Color(0xffffff), 0.4).multiplyScalar(1.6);
   }
   setAccessory(a) {
     this.accId = a;
     this.acc.band.visible = a === 1; this.acc.cap.visible = a === 2;
     this.acc.wristL.visible = this.acc.wristR.visible = a === 3;
   }
-  celebrate(win) { this.mood = win ? 1 : -1; this.moodT = 1.6; }
-  // logo du sponsor sur la poitrine
+  celebrate(win) { this.mood = win ? 1 : -1; this.moodT = win ? 1.8 : 1.6; this.moodType = Math.floor(Math.random() * 3); }
   setBadge(text, color) {
     if (!this.badge) {
       const c = document.createElement('canvas'); c.width = 256; c.height = 96;
       this.badgeCanvas = c; this.badgeTex = new THREE.CanvasTexture(c); this.badgeTex.colorSpace = THREE.SRGBColorSpace;
       this.badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.badgeTex, transparent: true, toneMapped: false, depthWrite: false }));
-      this.badge.scale.set(0.26, 0.1, 1); this.g.add(this.badge);
+      this.badge.scale.set(0.22, 0.085, 1); this.g.add(this.badge);
     }
     this.badge.visible = !!text;
     if (!text) return;
@@ -227,11 +238,16 @@ class StickFigure {
     g.fillText(text.toUpperCase().slice(0, 11), 128, 50);
     this.badgeTex.needsUpdate = true;
   }
-
   place(m, a, b) {
-    const d = b.clone().sub(a); const L = d.length();
+    const d = _a.copy(b).sub(a); const L = d.length();
     m.position.copy(a); m.scale.set(1, Math.max(L, 0.001), 1);
     m.quaternion.setFromUnitVectors(UP, d.normalize());
+  }
+  // ellipsoïde orienté selon un repère (x latéral, y axe, z avant)
+  orient(m, pos, xAxis, yAxis, sx, sy, sz) {
+    const y = _b.copy(yAxis).normalize(), x = _a.copy(xAxis).addScaledVector(y, -xAxis.dot(y)).normalize(), z = _c.crossVectors(x, y);
+    _m.makeBasis(x, y, z); m.quaternion.setFromRotationMatrix(_m);
+    m.position.copy(pos); m.scale.set(sx, sy, sz);
   }
   ik(a, target, l1, l2, pole, outElbow, outHand) {
     const d = target.clone().sub(a); let L = d.length();
@@ -245,81 +261,140 @@ class StickFigure {
   }
 
   update(dt, pl, game, i, paddleObj, camera) {
-    const s = pl.side, V0 = this.v;
-    const f = new THREE.Vector3(0, 0, -s), r = new THREE.Vector3(s * (pl.hand || 1), 0, 0);
-    const root = new THREE.Vector3(pl.x, 0, pl.z);
-    // déplacement → pas
-    if (this.lx === null) this.lx = pl.x;
-    const moved = Math.abs(pl.x - this.lx) + 0;
-    this.lx = pl.x;
-    this.walk += moved * 9;
-    const stepping = Math.min(1, moved / Math.max(dt, 1e-3) / 2.5);
+    dt = Math.min(dt, 0.05);
+    this.t += dt;
+    const s = pl.side, hd = pl.hand || 1, V0 = this.v;
+    const f = vv().set(0, 0, -s), r = vv().set(s * hd, 0, 0);
+    const root = vv().set(pl.x, 0, pl.z);
+    // vitesse lissée
+    if (!this.prev) this.prev = root.clone();
+    const rawV = root.clone().sub(this.prev).divideScalar(Math.max(dt, 1e-3)); this.prev.copy(root);
+    if (rawV.length() > 12) { rawV.set(0, 0, 0); this.ft = null; }
+    this.vel.lerp(rawV, Math.min(1, dt * 10));
+    const speed = Math.hypot(this.vel.x, this.vel.z);
     this.moodT = Math.max(0, this.moodT - dt); if (this.moodT <= 0) this.mood = 0;
-    const celebrating = this.mood === 1, sad = this.mood === -1;
-    const hop = celebrating ? Math.abs(Math.sin(this.moodT * 9)) * (this.celebType === 3 ? 0.3 : 0.12) : 0;
-    const crouch = sad ? 0.02 : celebrating ? -0.02 : 0.11;
-    V0.pelvis.copy(root).setY(0.95 - crouch + hop).addScaledVector(f, 0.02);
-    const lean = sad ? 0.18 : celebrating ? -0.02 : 0.12;
-    V0.neck.copy(V0.pelvis).add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(f, lean);
-    V0.headC.copy(V0.neck).add(new THREE.Vector3(0, 0.17, 0)).addScaledVector(f, sad ? 0.1 : 0.03);
-    if (sad) V0.headC.y -= 0.06;
-    const shY = V0.neck.clone().add(new THREE.Vector3(0, -0.04, 0));
-    V0.shL.copy(shY).addScaledVector(r, -0.19); V0.shR.copy(shY).addScaledVector(r, 0.19);
-    V0.hiL.copy(V0.pelvis).addScaledVector(r, -0.11); V0.hiR.copy(V0.pelvis).addScaledVector(r, 0.11);
-    // pieds : écartés, petit pas quand il se déplace
-    const ph = this.walk;
-    const fL = root.clone().addScaledVector(r, -0.34).addScaledVector(f, 0.1);
-    const fR = root.clone().addScaledVector(r, 0.34).addScaledVector(f, -0.06);
-    fL.y = Math.max(0, Math.sin(ph)) * 0.09 * stepping + hop * 0.6; fR.y = Math.max(0, -Math.sin(ph)) * 0.09 * stepping + hop * 0.6;
-    fL.x += Math.sin(ph) * 0.06 * stepping; fR.x -= Math.sin(ph) * 0.06 * stepping;
-    const kneePole = f.clone().multiplyScalar(1).add(new THREE.Vector3(0, 0.1, 0));
-    this.ik(V0.hiL, fL.clone().setY(fL.y + 0.04), 0.47, 0.47, kneePole, V0.knL, V0.ftL);
-    this.ik(V0.hiR, fR.clone().setY(fR.y + 0.04), 0.47, 0.47, kneePole, V0.knR, V0.ftR);
-    // bras droit : tient la raquette
-    let handR, handL;
-    if (celebrating) {
-      const ct = this.celebType || 0;
-      if (ct === 1) { // poing levé
-        handR = V0.neck.clone().add(new THREE.Vector3(0, 0.55, 0)).addScaledVector(r, 0.12);
-        handL = V0.pelvis.clone().addScaledVector(r, -0.22).addScaledVector(f, 0.05);
-      } else if (ct === 2) { // bras en croix
-        handR = V0.neck.clone().add(new THREE.Vector3(0, 0.05, 0)).addScaledVector(r, 0.62);
-        handL = V0.neck.clone().add(new THREE.Vector3(0, 0.05, 0)).addScaledVector(r, -0.62);
-      } else {
-        handR = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, 0.3);
-        handL = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, -0.3);
-      }
-    } else if (sad) {
-      handR = V0.pelvis.clone().addScaledVector(r, 0.25).add(new THREE.Vector3(0, -0.15, 0));
-      handL = V0.pelvis.clone().addScaledVector(r, -0.25).add(new THREE.Vector3(0, -0.15, 0));
-    } else {
-      handR = paddleObj.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(paddleObj.quaternion), -0.04);
-      const tossing = (game.state === 'serve' || game.state === 'toss') && game.server && game.server() === i;
-      handL = tossing && game.state === 'serve' ? new THREE.Vector3(game.ball.p.x, game.ball.p.y - 0.03, game.ball.p.z)
-        : V0.pelvis.clone().add(new THREE.Vector3(0, 0.12, 0)).addScaledVector(r, -0.28).addScaledVector(f, 0.28);
-      if (tossing && game.state === 'toss') handL = V0.neck.clone().add(new THREE.Vector3(0, 0.1, 0)).addScaledVector(r, -0.2).addScaledVector(f, 0.3);
+    const win = this.mood === 1, sad = this.mood === -1;
+    const state = game.state;
+    const relaxed = state === 'between' || state === 'pointEnd' || state === 'over';
+    // split-step quand l'adversaire frappe
+    const lh = game.lastHit;
+    if (lh && lh.time !== undefined && lh.time !== this.lastHitId) { this.lastHitId = lh.time; if (lh.p !== i && state === 'rally') this.split = 0.22; }
+    this.split = Math.max(0, this.split - dt);
+    const hop = this.split > 0 ? Math.sin((1 - this.split / 0.22) * Math.PI) * 0.045 : 0;
+    // swing : phase 0..1 (armé → frappe → accompagnement)
+    const sw = pl.swingT >= 0 && pl.swingT !== undefined ? Math.min(1, pl.swingT / 0.42) : -1;
+    const fore = pl.swingFore !== false;
+    let yawT = 0;
+    if (sw >= 0) { const k = sw < 0.35 ? -sw / 0.35 : -1 + (sw - 0.35) / 0.65 * 2.1; yawT = (fore ? 1 : -1) * k * 0.55; }
+    else if (this.vel.x * s * hd > 0.4) yawT = 0.15; else if (this.vel.x * s * hd < -0.4) yawT = -0.15;
+    this.yaw += (yawT - this.yaw) * Math.min(1, dt * (sw >= 0 ? 22 : 6));
+    // posture
+    const breath = Math.sin(this.t * 2.2) * 0.008;
+    let crouch = relaxed ? 0.04 : 0.15;
+    if (state === 'toss' && game.server && game.server() === i) crouch = 0.2;
+    if (sw >= 0) crouch += Math.sin(sw * Math.PI) * 0.05;
+    let jump = 0, forward = relaxed ? 0.04 : 0.16;
+    if (win) { const ct = this.celebType || 0; jump = ct === 3 ? Math.abs(Math.sin(this.moodT * 7)) * 0.32 : Math.abs(Math.sin(this.moodT * 9)) * 0.1; crouch = 0.02; forward = -0.04; }
+    if (sad) { crouch = this.moodType === 0 ? 0.25 : 0.06; forward = this.moodType === 0 ? 0.42 : 0.2; }
+    const leanSide = Math.max(-0.12, Math.min(0.12, this.vel.x * 0.05)) * (sw >= 0 ? 0.3 : 1);
+    this.lean += (leanSide - this.lean) * Math.min(1, dt * 8);
+    V0.pelvis.copy(root).setY(0.97 - crouch + hop + jump + breath * 0.5);
+    V0.pelvis.addScaledVector(f, -0.02);
+    // pieds : appuis plantés, pas chassés quand le corps s'éloigne
+    const sideV = vv().set(s, 0, 0); // axe latéral monde
+    const stance = relaxed ? 0.17 : 0.27;
+    const ideal = [root.clone().addScaledVector(sideV, -stance).addScaledVector(f, 0.05 * hd), root.clone().addScaledVector(sideV, stance).addScaledVector(f, -0.05 * hd)];
+    if (!this.ft || this.ft[0].distanceTo(ideal[0]) > 1.2) { this.ft = [ideal[0].clone(), ideal[1].clone()]; this.stepT = [0, 0]; }
+    for (let k = 0; k < 2; k++) {
+      if (this.stepT[k] > 0) {
+        this.stepT[k] = Math.max(0, this.stepT[k] - dt);
+        const u = 1 - this.stepT[k] / this.stepDur;
+        this.ft[k].lerpVectors(this.stepFrom[k], this.stepTo[k], u * u * (3 - 2 * u));
+        this.ft[k].y = Math.sin(u * Math.PI) * (0.05 + Math.min(0.06, speed * 0.02));
+      } else this.ft[k].y = 0;
     }
-    if (this.badge && this.badge.visible) this.badge.position.copy(V0.neck).lerp(V0.pelvis, 0.3).addScaledVector(f, 0.06);
-    const elbowPole = new THREE.Vector3(0, -1, 0).addScaledVector(f, -0.4);
-    this.ik(V0.shR, handR, 0.3, 0.29, elbowPole.clone().addScaledVector(r, 0.6), V0.elR, V0.haR);
-    this.ik(V0.shL, handL, 0.3, 0.29, elbowPole.clone().addScaledVector(r, -0.6), V0.elL, V0.haL);
+    const busy = this.stepT[0] > 0 || this.stepT[1] > 0;
+    if (!busy) {
+      const d0 = this.ft[0].distanceTo(ideal[0]), d1 = this.ft[1].distanceTo(ideal[1]);
+      const k = d0 > d1 ? 0 : 1, dmax = Math.max(d0, d1);
+      if (dmax > (speed > 0.5 ? 0.09 : 0.16)) {
+        this.stepDur = Math.max(0.09, 0.17 - speed * 0.02);
+        this.stepT[k] = this.stepDur; this.stepFrom[k].copy(this.ft[k]); this.stepFrom[k].y = 0;
+        this.stepTo[k].copy(ideal[k]).addScaledVector(this.vel, 0.08); this.stepTo[k].y = 0;
+      }
+    }
+    if (win || jump > 0.001 || hop > 0) { for (const F of this.ft) F.y = Math.max(F.y, (jump + hop) * 0.8); }
+    // hanches et buste : rotation autour de la colonne
+    const rotY = (v, a) => v.clone().applyAxisAngle(UP, a);
+    const hipAxis = rotY(r, this.yaw * 0.45);
+    V0.hiL.copy(V0.pelvis).addScaledVector(hipAxis, -0.11); V0.hiR.copy(V0.pelvis).addScaledVector(hipAxis, 0.11);
+    const spineDir = vv().set(0, 1, 0).addScaledVector(f, forward).addScaledVector(r, this.lean * hd).normalize();
+    V0.chest.copy(V0.pelvis).addScaledVector(spineDir, 0.34);
+    V0.neck.copy(V0.pelvis).addScaledVector(spineDir, 0.52);
+    const shAxis = rotY(r, this.yaw);
+    const shY = V0.neck.clone().addScaledVector(spineDir, -0.05);
+    V0.shL.copy(shY).addScaledVector(shAxis, -0.2); V0.shR.copy(shY).addScaledVector(shAxis, 0.2);
+    // jambes (genoux vers l'avant et un peu vers l'extérieur)
+    for (const [hip, fk, kn, ftv, out] of [[V0.hiL, 0, V0.knL, V0.ftL, -1], [V0.hiR, 1, V0.knR, V0.ftR, 1]]) {
+      const tgt = this.ft[fk].clone(); tgt.y += 0.075;
+      const pole = f.clone().addScaledVector(sideV, out * 0.35).add(vv().set(0, 0.2, 0));
+      this.ik(hip, tgt, 0.46, 0.45, pole, kn, ftv);
+    }
+    // tête : regarde la balle
+    const ball = game.ball && game.ball.p;
+    this.look.lerp(ball && !relaxed ? vv().set(ball.x, ball.y, ball.z) : V0.neck.clone().addScaledVector(f, 2).setY(1.2), Math.min(1, dt * 10));
+    V0.headC.copy(V0.neck).addScaledVector(spineDir, 0.14).addScaledVector(f, 0.02);
+    if (sad) V0.headC.addScaledVector(f, 0.06).y -= 0.08;
+    // bras
+    let handR, handL;
+    const elbowPole = vv().set(0, -1, 0).addScaledVector(f, -0.35);
+    if (win) {
+      const ct = this.celebType || 0;
+      if (ct === 1) { const p = Math.sin(this.moodT * 10) * 0.08; handR = V0.neck.clone().add(vv().set(0, 0.5 + p, 0)).addScaledVector(r, 0.14); handL = V0.pelvis.clone().addScaledVector(r, -0.24).add(vv().set(0, 0.05, 0)); }
+      else if (ct === 2) { handR = V0.neck.clone().add(vv().set(0, 0.06, 0)).addScaledVector(r, 0.62); handL = V0.neck.clone().add(vv().set(0, 0.06, 0)).addScaledVector(r, -0.62); }
+      else { const p = Math.sin(this.moodT * 8) * 0.06; handR = V0.neck.clone().add(vv().set(0, 0.48 + p, 0)).addScaledVector(r, 0.28); handL = V0.neck.clone().add(vv().set(0, 0.48 - p, 0)).addScaledVector(r, -0.28); }
+    } else if (sad) {
+      if (this.moodType === 0) { handR = V0.knR.clone().addScaledVector(f, 0.06).add(vv().set(0, 0.04, 0)); handL = V0.knL.clone().addScaledVector(f, 0.06).add(vv().set(0, 0.04, 0)); }
+      else { handR = V0.pelvis.clone().addScaledVector(r, 0.22).add(vv().set(0, 0.02, 0)).addScaledVector(f, -0.03); handL = V0.pelvis.clone().addScaledVector(r, -0.22).add(vv().set(0, 0.02, 0)).addScaledVector(f, -0.03); }
+    } else {
+      handR = paddleObj.position.clone().addScaledVector(vv().set(0, 1, 0).applyQuaternion(paddleObj.quaternion), -0.05);
+      const serving = (state === 'serve' || state === 'toss') && game.server && game.server() === i;
+      if (serving && state === 'serve') handL = vv().set(game.ball.p.x, game.ball.p.y - 0.035, game.ball.p.z);
+      else if (serving && state === 'toss') handL = V0.neck.clone().add(vv().set(0, 0.18, 0)).addScaledVector(r, -0.18).addScaledVector(f, 0.28);
+      else {
+        // bras libre : équilibre, suit la rotation du buste
+        const swing = sw >= 0 ? Math.sin(sw * Math.PI) : 0;
+        handL = V0.chest.clone().addScaledVector(shAxis, -0.32 + (fore ? 0.12 : -0.1) * swing).addScaledVector(f, 0.28 + (fore ? -0.1 : 0.12) * swing).add(vv().set(0, -0.06 + breath, 0));
+      }
+    }
+    this.ik(V0.shR, handR, 0.3, 0.28, elbowPole.clone().addScaledVector(r, 0.7), V0.elR, V0.haR);
+    this.ik(V0.shL, handL, 0.3, 0.28, elbowPole.clone().addScaledVector(r, -0.7), V0.elL, V0.haL);
 
+    // pose des volumes
     const S = this.segs, J = this.joints;
-    this.place(S.spine, V0.pelvis, V0.neck);
-    this.place(S.neck, V0.neck, V0.headC.clone().addScaledVector(new THREE.Vector3(0, 1, 0), -0.11));
-    this.place(S.shoulders, V0.shL, V0.shR);
-    this.place(S.hips, V0.hiL, V0.hiR);
-    this.place(S.uaL, V0.shL, V0.elL); this.place(S.faL, V0.elL, V0.haL);
-    this.place(S.uaR, V0.shR, V0.elR); this.place(S.faR, V0.elR, V0.haR);
     this.place(S.thL, V0.hiL, V0.knL); this.place(S.shL, V0.knL, V0.ftL);
     this.place(S.thR, V0.hiR, V0.knR); this.place(S.shR, V0.knR, V0.ftR);
-    for (const k of Object.keys(J)) J[k].position.copy(V0[{ shL: 'shL', shR: 'shR', elL: 'elL', elR: 'elR', haL: 'haL', haR: 'haR', hiL: 'hiL', hiR: 'hiR', knL: 'knL', knR: 'knR', ftL: 'ftL', ftR: 'ftR', pelvis: 'pelvis', neck: 'neck' }[k]]);
-    this.head.position.copy(V0.headC);
-    if (this.accId === 3) {
-      this.acc.wristL.position.copy(V0.elL).lerp(V0.haL, 0.85); this.acc.wristL.lookAt(V0.haL);
-      this.acc.wristR.position.copy(V0.elR).lerp(V0.haR, 0.85); this.acc.wristR.lookAt(V0.haR);
+    this.place(S.uaL, V0.shL, V0.elL); this.place(S.faL, V0.elL, V0.haL);
+    this.place(S.uaR, V0.shR, V0.elR); this.place(S.faR, V0.elR, V0.haR);
+    this.place(S.neck, V0.neck, V0.headC);
+    for (const k of Object.keys(J)) J[k].position.copy(V0[k]);
+    this.orient(this.chest, V0.chest.clone().addScaledVector(spineDir, 0.02), shAxis, spineDir, 0.17, 0.2, 0.11);
+    this.orient(this.abdo, V0.pelvis.clone().addScaledVector(spineDir, 0.17), rotY(r, this.yaw * 0.7), spineDir, 0.135, 0.15, 0.095);
+    this.orient(this.hips, V0.pelvis.clone().addScaledVector(spineDir, 0.02), hipAxis, spineDir, 0.15, 0.09, 0.1);
+    for (let k = 0; k < 2; k++) {
+      const F = this.feet[k], A = k === 0 ? V0.ftL : V0.ftR;
+      F.position.set(A.x, Math.max(0, A.y - 0.075), A.z);
+      F.rotation.set(0, Math.atan2(f.x, f.z) + (k === 0 ? -0.25 : 0.25) * s * hd, 0);
     }
-    this.head.lookAt(camera.position);
+    this.head.position.copy(V0.headC);
+    this.head.lookAt(this.look);
+    if (this.badge && this.badge.visible) this.badge.position.copy(V0.chest).addScaledVector(f, 0.12);
+    if (this.accId === 3) {
+      this.acc.wristL.position.copy(V0.elL).lerp(V0.haL, 0.82); this.acc.wristL.lookAt(V0.haL);
+      this.acc.wristR.position.copy(V0.elR).lerp(V0.haR, 0.82); this.acc.wristR.lookAt(V0.haR);
+    }
+    // les joueurs immobiles du podium gardent la pose
+    void camera;
   }
 }
 

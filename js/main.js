@@ -98,13 +98,14 @@ function applyCosmetics(oppPaddle, oppTrail) {
   const me = game ? game.me : 0;
   R.setTheme(cosmetic('arena'));
   const pad = cosmetic('paddle');
-  R.paddles[me].setColor(pad.color, pad.metal);
   const op = oppPaddle ? COSMETICS.paddle.find(c => c.id === oppPaddle) : null;
   const opp = op || (pad.id === 'bleu' ? COSMETICS.paddle[0] : COSMETICS.paddle[1]);
-  R.paddles[1 - me].setColor(opp.color, opp.metal);
-  R.trailColors[me] = cosmetic('trail').color;
   const ot = oppTrail ? COSMETICS.trail.find(c => c.id === oppTrail) : null;
-  R.trailColors[1 - me] = ot ? ot.color : COSMETICS.trail[0].color;
+  for (let i = 0; i < 4; i++) {
+    const c = i === me ? pad : (i % 2 !== me % 2 && i < 2 ? opp : COSMETICS.paddle[(i + 2) % COSMETICS.paddle.length]);
+    R.paddles[i].setColor(c.color, c.metal);
+    R.trailColors[i] = i === me ? cosmetic('trail').color : (ot && i % 2 !== me % 2 ? ot.color : COSMETICS.trail[0].color);
+  }
 }
 function toast(icon, small, title, text) {
   const t = document.createElement('div');
@@ -219,11 +220,12 @@ addEventListener('keydown', e => {
 function kb(name) {
   const pad = !!input.padName;
   const P = { top: ['a', 'A'], plat: ['b', 'B'], coupe: ['x', 'X'], lob: ['y', 'Y'], ok: ['a', 'A'], back: ['b', 'B'] };
-  const K = { top: 'J', plat: 'K', coupe: 'U', lob: 'I', ok: 'Entrée', back: 'Échap', start: 'Échap', move: 'ZQSD', sideL: 'A', sideR: 'E' };
+  const K = { top: 'J', plat: 'K', coupe: 'U', lob: 'I', ok: 'Entrée', back: 'Échap', start: 'Échap', move: 'ZQSD', sideL: 'A', sideR: 'E', super: 'L' };
   if (pad) {
     if (P[name]) return `<span class="kb pad ${P[name][0]}">${P[name][1]}</span>`;
     if (name === 'move') return '<span class="kb pad">Stick gauche</span>';
     if (name === 'start') return '<span class="kb pad">Start</span>';
+    if (name === 'super') return '<span class="kb pad">RT</span>';
   }
   return `<span class="kb key">${K[name] || name}</span>`;
 }
@@ -245,14 +247,15 @@ function hooks() {
       else if (setWon) banner(`Set ${game.names[w]}`, '', 2.5);
       else if (game.pressure) banner(game.pressure.type === 'match' ? 'BALLE DE MATCH' : 'BALLE DE SET', game.names[game.pressure.p], 2);
       const run = game.run;
-      if (run.n >= 3 && !m.over) showStreak(run.p === game.me ? `${run.n} points d'affilée 🔥` : `${game.names[run.p]} enchaîne : ${run.n} points`);
+      if (run.n >= 3 && !m.over) showStreak(run.p === game.myTeam ? `${run.n} points d'affilée 🔥` : `${game.names[run.p]} enchaîne : ${run.n} points`);
       const pts = document.querySelector(`#board .row[data-p="${w}"] .pts`);
       if (pts) { pts.classList.remove('pop'); void pts.offsetWidth; pts.classList.add('pop'); }
-      if (m.over && m.winner === game.me) R.confetti();
+      if (m.over && m.winner === game.myTeam) R.confetti();
       // réactions des bonshommes
       const ls2 = game.lastShot[w] || {};
       const hype = rally + 1 >= 6 || setWon || m.over || ((ls2.smash || ls2.sup) && reason === 'Point gagnant');
-      if (hype) { R.figures[w].celebrate(true); if (setWon || m.over) R.figures[1 - w].celebrate(false); }
+      const teamOf = t => game.doubles ? [t, t + 2] : [t];
+      if (hype) { teamOf(w).forEach(i => R.figures[i].celebrate(true)); if (setWon || m.over) teamOf(1 - w).forEach(i => R.figures[i].celebrate(false)); }
       // voix
       if (m.over) announcer.say(`Jeu, set et match, ${game.names[m.winner]} !`, true);
       else if (setWon) announcer.say(`Set, ${game.names[w]}`, true);
@@ -285,8 +288,20 @@ function hooks() {
 function startAI() {
   const level = choice('ai-level'), bestOf = choice('ai-format');
   setup = { mode: 'ai', level, bestOf };
+  const doubles = choice('ai-mode') === 'double';
+  const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
+  const first = n => n.split(' ')[0];
+  if (doubles) {
+    const pn = [myName(), pool[0], pool[1], pool[2]];   // 0 toi, 1 adv., 2 ton partenaire, 3 adv.
+    setup.aiStyle = '';
+    game = new Game({ mode: 'ai', ctrl: ['human', 'ai', 'ai', 'ai'], me: 0, names: [`${first(pn[0])} / ${first(pn[2])}`, `${first(pn[1])} / ${first(pn[3])}`],
+      playerNames: pn, assist: profile.settings.assist, bestOf, firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks() });
+    for (let i = 1; i < 4; i++) game.ai[i] = new AI(game, i, level);
+    enterGame();
+    return;
+  }
   const ai = new AI(null, 1, level);
-  const nm = AI_NAMES[Math.floor(Math.random() * AI_NAMES.length)];
+  const nm = pool[0];
   setup.aiName = nm; setup.aiStyle = ai.style.name;
   game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [myName(), nm], assist: profile.settings.assist,
     bestOf, firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks() });
@@ -310,13 +325,17 @@ function renderTrain(ok, T) {
 }
 $('#tr-go').addEventListener('click', () => { initAudio(); sfx.ui(); startTraining(); });
 
-function startOnline(me, bestOf, firstServer, names) {
-  setup = { mode: 'online', me, bestOf };
-  const ctrl = me === 0 ? ['human', 'remote'] : ['remote', 'human'];
-  game = new Game({ mode: 'online', ctrl, me, names, bestOf, firstServer, net, hooks: hooks(), assist: profile.settings.assist });
+function startOnline(me, bestOf, firstServer, names, dbl = null) {
+  setup = { mode: 'online', me, bestOf, dbl };
+  let ctrl;
+  if (dbl) ctrl = dbl.kinds.map((k, i) => i === me ? 'human' : (k === 'ai' && net.isHost ? 'ai' : 'remote'));
+  else ctrl = me === 0 ? ['human', 'remote'] : ['remote', 'human'];
+  game = new Game({ mode: 'online', ctrl, me, names, playerNames: dbl ? dbl.playerNames : names, bestOf, firstServer, net, hooks: hooks(), assist: profile.settings.assist });
+  if (dbl) ctrl.forEach((c, i) => { if (c === 'ai') game.ai[i] = new AI(game, i, 1); });
   net.onMessage = onNetMessage;
   net.onClose = () => {
-    banner('Ton pote s\'est déconnecté', 'Retour au menu…', 3);
+    if (net && net.isHost) net.send({ t: 'quit' });
+    banner(dbl ? 'Un joueur s\'est déconnecté' : 'Ton pote s\'est déconnecté', 'Retour au menu…', 3);
     setTimeout(() => quitToMenu(), 2500);
   };
   enterGame(opp.paddle, opp.trail);
@@ -348,16 +367,14 @@ function quitToMenu() {
   $('#pause').classList.add('hidden');
   $('#menu').classList.remove('hidden');
   show('scr-main');
-applyCosmetics();
-applySettings();
-addEventListener('pointerdown', () => { initAudio(); applySettings(); }, { once: true });
-addEventListener('keydown', () => { initAudio(); applySettings(); }, { once: true });
+  applyCosmetics();
 }
 
 function resetNet() {
   if (net) { net.onClose = () => {}; net.destroy(); net = null; }
   $('#host-box').classList.add('hidden');
   $('#host-go').classList.remove('hidden');
+  $('#host-start').classList.add('hidden'); $('#host-lobby').innerHTML = '';
   $('#host-status').textContent = 'En attente de ton pote…';
   $('#join-status').textContent = '';
 }
@@ -371,6 +388,10 @@ $('#host-go').addEventListener('click', () => {
   resetNet();
   net = new Net();
   const bestOf = choice('host-format');
+  const dblMode = choice('host-mode') === 'double';
+  net.maxGuests = dblMode ? 3 : 1;
+  lobby = [];
+  renderLobby(dblMode);
   $('#host-go').classList.add('hidden');
   $('#host-box').classList.remove('hidden');
   $('#host-code').textContent = '·····';
@@ -378,9 +399,14 @@ $('#host-go').addEventListener('click', () => {
   net.host(code => {
     $('#host-code').textContent = code;
     $('#host-status').textContent = 'En attente de ton pote…';
-  }, () => {
-    $('#host-status').textContent = 'Pote connecté !';
-    net.onMessage = msg => {
+  }, conn => {
+    $('#host-status').textContent = dblMode ? 'Un joueur a rejoint !' : 'Pote connecté !';
+    net.onMessage = (msg, from) => {
+      if (msg.t === 'hello' && dblMode) {
+        if (!lobby.find(l => l.conn === from)) lobby.push({ conn: from, name: (msg.name || 'Invité').slice(0, 14), paddle: msg.paddle, trail: msg.trail });
+        renderLobby(true);
+        return;
+      }
       if (msg.t === 'hello') {
         oppName = (msg.name || 'Invité').slice(0, 14);
         const firstServer = Math.random() < 0.5 ? 0 : 1;
@@ -391,6 +417,30 @@ $('#host-go').addEventListener('click', () => {
       }
     };
   }, err => { $('#host-status').textContent = err; });
+});
+let lobby = [];
+function renderLobby(dbl) {
+  const el = $('#host-lobby');
+  $('#host-start').classList.toggle('hidden', !dbl || !lobby.length);
+  if (!dbl) { el.innerHTML = ''; return; }
+  const slot = k => k === 0 ? `<div>${myName()} (toi)</div>` : lobby[k - 1] ? `<div>${lobby[k - 1].name}</div>` : '<div class="ai">IA</div>';
+  el.innerHTML = `<div class="team"><b>ÉQUIPE BLEUE</b>${slot(0)}${slot(2)}</div><div class="team r"><b>ÉQUIPE ROUGE</b>${slot(1)}${slot(3)}</div>`;
+  $('#host-status').textContent = lobby.length ? `${lobby.length + 1} joueur${lobby.length ? 's' : ''} · jusqu'à 4` : 'Envoie le code à 1, 2 ou 3 potes…';
+}
+$('#host-start').addEventListener('click', () => {
+  if (!net || !lobby.length) return;
+  net.locked = true;
+  const bestOf = choice('host-format');
+  const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
+  const first = n => n.split(' ')[0];
+  const kinds = [0, 1, 2, 3].map(k => k === 0 ? 'host' : lobby[k - 1] ? 'guest' : 'ai');
+  const playerNames = [0, 1, 2, 3].map(k => k === 0 ? myName() : lobby[k - 1] ? lobby[k - 1].name : pool[k]);
+  const names = [`${first(playerNames[0])} / ${first(playerNames[2])}`, `${first(playerNames[1])} / ${first(playerNames[3])}`];
+  const firstServer = Math.random() < 0.5 ? 0 : 1;
+  const dbl = { kinds, playerNames };
+  lobby.forEach((l, k) => net.sendTo(l.conn, { t: 'start', lobby: true, mode: 'double', me: k + 1, bestOf, firstServer, names, dbl }));
+  opp = { lp: 0 };
+  startOnline(0, bestOf, firstServer, names, dbl);
 });
 $('#copy').addEventListener('click', () => {
   const c = $('#host-code').textContent;
@@ -408,9 +458,11 @@ $('#join-go').addEventListener('click', () => {
   net.join(code, () => {
     $('#join-status').textContent = 'Connecté ! Lancement…';
     net.onMessage = msg => {
+      if (msg.t === 'start' && msg.mode === 'double') { opp = { lp: 0 }; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl); return; }
       if (msg.t === 'start') { opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names); }
+      if (msg.t === 'full') $('#join-status').textContent = 'La partie est complète ou déjà lancée.';
     };
-    net.send({ t: 'hello', name: myName(), lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail });
+    net.send({ t: 'hello', lobby: true, name: myName(), lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail });
   }, err => { $('#join-status').textContent = err; });
 });
 $('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#join-go').click(); });
@@ -429,20 +481,20 @@ function onNetMessage(msg) {
 }
 function restartOnline(fs) {
   const names = game.names;
-  startOnline(setup.me, setup.bestOf, fs, names);
+  startOnline(setup.me, setup.bestOf, fs, names, setup.dbl);
 }
 
 // ------------------------------------------------------------------ fin / pause
 function showEnd(m) {
   setTimeout(() => music.start(0.4), 1500);
-  const me = game.me, op = 1 - me;
+  const me = game.myTeam, op = 1 - me;
   const win = m.winner === me;
   $('#end-title').textContent = setup.mode === 'ai' ? (win ? 'Victoire !' : 'Défaite…') : (win ? 'Tu as gagné !' : `${game.names[m.winner]} gagne`);
   $('#end-sets').innerHTML = m.history.map((h, i) => `Set ${i + 1} : <b>${h[me]}</b> – <b>${h[op]}</b>`).join('<br>');
   $('#end-status').textContent = '';
   const sum = game.summary();
   const setsWon = m.sets[me], setsLost = m.sets[op];
-  const ranked = setup.mode === 'online';
+  const ranked = setup.mode === 'online' && !game.doubles;
   const res = recordMatch({ won: win, mode: setup.mode, oppName: game.names[op], oppLp: opp.lp, ranked, aiLevel: setup.level,
     setsWon, setsLost, stats: { longest: sum.longest, maxSpeed: sum.stats[me].maxSpeed, ach: sum.ach } });
   // rang
@@ -509,6 +561,22 @@ $('#bestpt').addEventListener('click', async () => {
   });
 });
 $('#tomenu').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(); });
+// options accessibles depuis la pause
+(function buildPauseOptions() {
+  const box = $('#pause-opts');
+  document.querySelectorAll('#scr-options .opt.set').forEach(o => {
+    const c = o.cloneNode(true);
+    c.classList.remove('focus');
+    box.appendChild(c);
+    c.addEventListener('click', e => {
+      initAudio(); const r = c.getBoundingClientRect(); optStep(c, e.clientX < r.left + r.width * 0.5 ? -1 : 1); settingStep(c);
+    });
+  });
+})();
+function syncPauseOptions() {
+  document.querySelectorAll('#pause-opts .opt.set').forEach(o => { o.dataset.i = profile.settings[o.dataset.key]; optRender(o); });
+}
+$('#pause-opt-btn').addEventListener('click', () => { syncPauseOptions(); $('#pause-opts').classList.toggle('hidden'); sfx.ui(); });
 $('#resume').addEventListener('click', () => { if (timeout) endTimeout(true); else togglePause(false); });
 $('#quit').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(); });
 // temps mort en ligne (1 par joueur et par match, 30 s max)
@@ -563,19 +631,21 @@ function showStreak(t) {
 }
 function showVS() {
   const el = $('#vs');
-  const me = game.me, op = 1 - me;
+  const me = game.myTeam, op = 1 - me;
   const side = (k, p) => {
     const box = el.querySelector('.vsside.' + k);
     box.querySelector('.n').textContent = game.names[p];
     let lp = null, label = '';
-    if (p === me) lp = profile.lp;
+    if (game.doubles) lp = null;
+    else if (p === me) lp = profile.lp;
     else if (setup.mode === 'online') lp = opp.lp || 0;
     if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
+    else if (game.doubles) { label = 'Équipe ' + (p === 0 ? 'bleue' : 'rouge'); box.querySelector('.emb').innerHTML = ''; }
     else { label = `${['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'} · ${setup.aiStyle || ''}`; box.querySelector('.emb').innerHTML = ''; }
     box.querySelector('.r').innerHTML = label;
   };
   side('l', me); side('r', op);
-  el.querySelector('.vsf').textContent = (setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
+  el.querySelector('.vsf').textContent = (game.doubles ? 'DOUBLE · ' : setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
   el.classList.remove('hidden');
   el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
   el.querySelectorAll('*').forEach(e => { e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; });
@@ -623,7 +693,7 @@ function updateRing(dt) {
   if (ringFlash > 0) { ringFlash -= dt; if (ringFlash <= 0) el.className = ''; return; }
   const pr = game.pred[me];
   let active = false, P = null;
-  if (pr && game.state === 'rally' && game.rally && game.rally.hitter !== me && !game.rally.contactTried && !pl.pressType) { active = true; P = { x: pr.x, y: pr.y, z: pr.z }; }
+  if (pr && game.state === 'rally' && game.rally && game.nextHitter() === me && !game.rally.contactTried && !pl.pressType) { active = true; P = { x: pr.x, y: pr.y, z: pr.z }; }
   if (pr && pr.serve && game.state === 'toss' && game.server() === me) { active = true; P = { x: game.ball.p.x, y: 1.06, z: game.ball.p.z }; }
   const rem = active ? pr.t - game.simTime : 99;
   if (!active || rem > RING_T || rem < -0.2) { el.className = ''; return; }
@@ -655,7 +725,7 @@ function endReplay() {
 function updateMomentum() {
   const el = $('#mom');
   const i = game.me, v = game.momentum[i];
-  el.style.display = tuto ? 'none' : '';
+  el.style.display = tuto && !(TUTO[tuto.step] && TUTO[tuto.step].fill) ? 'none' : '';
   el.querySelector('.mbar div').style.width = (v * 100) + '%';
   el.classList.toggle('full', v >= 1);
   el.classList.toggle('armed', !!game.players[i].superArmed);
@@ -680,6 +750,9 @@ const TUTO = [
   { title: 'Le coupé', text: () => `${kb('coupe')} : une balle lente avec effet arrière, qui freine sur la table.`, need: 1, check: 'coupe' },
   { title: 'Le lob', text: () => `${kb('lob')} : une balle haute et lente pour te défendre.`, need: 1, check: 'lob' },
   { title: 'Viser', text: () => `Pendant que la balle arrive, pousse ${kb('move')} à gauche ou à droite. Le cercle jaune sur la table montre où ira ta balle.`, need: 1, check: 'aim' },
+  { title: 'Le flip', text: () => `Sur une balle courte qui tombe près du filet, ${kb('top')} devient un flip : une petite balle rapide et placée. Avance vers la balle !`, need: 1, check: 'flip', coach: 'short' },
+  { title: 'Contre et bloc', text: () => `Le coach va lifter fort. ${kb('plat')} fait un contre (tu renvoies sa vitesse), ${kb('coupe')} fait un bloc (renvoi sûr qui absorbe l'effet).`, need: 1, check: 'counter', coach: 'fast' },
+  { title: 'Le super coup', text: () => `Tes bons coups remplissent la jauge SUPER (en haut à gauche). Elle est pleine : appuie sur ${kb('super')}, puis frappe la balle.`, need: 1, check: 'super', fill: true },
   { title: 'Le service', text: () => `À toi de servir : appuie sur un coup pour lancer la balle, puis rappuie quand le cercle se referme. Vise avec ${kb('move')}.`, need: 1, check: 'serve' },
 ];
 function startTuto() {
@@ -718,18 +791,30 @@ function tutoAdvance(n = 1) {
     tuto.step++; tuto.count = 0;
     sfx.unlock();
     if (tuto.step === TUTO.length - 1) game.forcedServer = 0;
+    tutoApplyStep();
     tutoRender();
   }
+}
+function tutoApplyStep() {
+  const st = TUTO[tuto.step];
+  game.coachMode = st ? st.coach || null : null;
+  if (st && st.fill) game.momentum[game.me] = 1;
 }
 function tutoHit(p, h) {
   if (!tuto || p !== game.me || tuto.step >= TUTO.length) return;
   const c = TUTO[tuto.step].check;
   if (c === 'serve' ? h.serve : h.serve) { if (c === 'serve') tutoAdvance(); return; }
   const base = { flip: 'top', contre: 'plat', bloc: 'coupe' }[h.type] || h.type;
+  if (c === 'flip' && h.type === 'flip') return tutoAdvance();
+  if (c === 'counter' && (h.type === 'contre' || h.type === 'bloc')) return tutoAdvance();
+  if (c === 'super' && h.sup) return tutoAdvance();
+  if (c === 'flip' || c === 'counter' || c === 'super') return;
   if ((c === base) || (c === 'aim' && Math.abs(h.aimX) > 0.45) || (c === 'power' && h.power > 0.75)) tutoAdvance();
 }
 function tutoUpdate(dt) {
   const pl = game.players[game.me];
+  const st = TUTO[tuto.step];
+  if (st && st.fill && game.momentum[game.me] < 1 && !pl.superArmed) game.momentum[game.me] = 1;
   if (tuto.step < TUTO.length && TUTO[tuto.step].check === 'move') {
     tuto.moved += Math.hypot(pl.x - tuto.lx, pl.z - tuto.lz);
     if (tuto.moved >= 1.5) { tuto.count = 0; tuto.moved = -999; tutoAdvance(1.5); }

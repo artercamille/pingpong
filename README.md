@@ -5,7 +5,9 @@ Ping-pong 3D dans le navigateur, vue raquette, dans une arène de championnats d
 ## Jouer
 
 - **Contre l'IA** : trois niveaux, matchs en 1, 3 ou 5 sets.
-- **En ligne** : un joueur crée la partie et envoie le code de 5 lettres, l'autre le saisit. La connexion se fait directement entre les deux PC (WebRTC via PeerJS), sans serveur à héberger.
+- **En ligne** : un joueur crée la partie et envoie le code de 5 lettres, l'autre le saisit. La connexion se fait directement entre les PC (WebRTC via PeerJS), sans serveur à héberger.
+- **Double (2 contre 2)** : contre l'IA (avec un partenaire IA) ou en ligne jusqu'à 4 joueurs, les places vides sont prises par l'IA. Service en diagonale et frappes à tour de rôle, comme en vrai.
+- **Entraînement** : robot lanceur de balles réglable.
 
 ## Progression
 

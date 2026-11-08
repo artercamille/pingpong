@@ -38,11 +38,12 @@ export class AI {
   update(dt) {
     const g = this.g, pl = g.players[this.i], s = pl.side, inp = this.inp;
     for (const k of Object.keys(inp.pressed)) { inp.pressed[k] = false; inp.released[k] = false; }
-    let tx = 0, tz = s * 2.1, moving = true;
+    const home = g.doubles ? g.waitSpot(this.i) : { x: 0, z: s * 2.1 };
+    let tx = home.x, tz = home.z, moving = true;
 
     if (g.state === 'serve' && g.server() === this.i) {
       this.serveT += dt;
-      tx = s * 0.25; tz = s * 1.6;
+      tx = g.doubles ? s * 0.45 : s * 0.25; tz = s * 1.6;
       if (this.serveT > 1.1 && !this.hold) {
         const t = this.L.name === 'Coach' ? 'top' : ['top', 'coupe', 'coupe', 'lob', 'plat'][Math.floor(Math.random() * 5)];
         inp.aimX = (Math.random() * 2 - 1) * this.L.aim;
@@ -59,7 +60,7 @@ export class AI {
     }
 
     if (g.state === 'rally' && g.rally) {
-      if (g.rally.hitter !== this.i) {
+      if (g.nextHitter() === this.i) {
         if (this.planId !== g.rally.id) this.makePlan();
         const p = this.plan;
         if (p) {
@@ -71,7 +72,7 @@ export class AI {
         }
       } else {
         if (this.hold) this.releaseAll();
-        tx = g.ball.p.x * 0.3; tz = s * 2.1;
+        if (!g.doubles) { tx = g.ball.p.x * 0.3; tz = s * 2.1; }
       }
     } else if (g.state === 'pointEnd' || g.state === 'between') {
       if (this.hold) this.releaseAll();
@@ -92,7 +93,7 @@ export class AI {
 
   // vise le côté où l'adversaire fait le plus de fautes (l'IA s'adapte)
   aimWeak() {
-    const g = this.g, op = 1 - this.i, e = g.errSide[op];
+    const g = this.g, op = 1 - (this.i % 2), e = g.errSide[op];
     const tot = e[0] + e[1];
     const aim = this.L.aim * this.style.aim;
     if (tot >= 3 && Math.random() < 0.6) {
@@ -112,7 +113,7 @@ export class AI {
     const res = predict(g.ball, 3, (b, t, ev) => {
       for (const e of ev) {
         if (e.type === 'floor') { bad = true; return true; }
-        if (e.type === 'table' && e.side === this.i) { if (bounced) { bad = true; return true; } bounced = true; }
+        if (e.type === 'table' && e.side === this.i % 2) { if (bounced) { bad = true; return true; } bounced = true; }
       }
       if (!bounced) return false;
       const depth = s * b.p.z;
@@ -141,7 +142,11 @@ export class AI {
     if (this.recent.length >= 3 && this.recent.slice(-3).every(t => t === type)) type = type === 'coupe' ? 'top' : 'coupe';
     this.recent.push(type); if (this.recent.length > 6) this.recent.shift();
     if (type === 'plat' && C.y < 0.95) power *= 0.6;
-    if (this.L.name === 'Coach') { type = 'top'; power = 0.3; }
+    if (this.L.name === 'Coach') {
+      type = 'top'; power = 0.3;
+      if (g.coachMode === 'short') { type = 'coupe'; power = 0.15; }
+      if (g.coachMode === 'fast') { type = 'top'; power = 0.85; }
+    }
     let tErr = gauss() * this.L.noise * st.noise;
     if (Math.random() < this.L.slip) tErr += (Math.random() < 0.5 ? -1 : 1) * (0.12 + Math.random() * 0.15); // grosse erreur
     const tRelease = tC - IDEAL_REL + tErr;
@@ -150,7 +155,7 @@ export class AI {
       px: clamp(px, -2.6, 2.6), pz: s * pzd, tRelease, tPress, type, done: false,
       startT: g.simTime + this.L.react,
       aimX: this.aimWeak(),
-      aimY: clamp((Math.random() * 2 - 1) * 0.8, -1, 1),
+      aimY: g.coachMode === 'short' && this.L.name === 'Coach' ? -1 : clamp((Math.random() * 2 - 1) * 0.8, -1, 1),
     };
   }
 }

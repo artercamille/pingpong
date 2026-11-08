@@ -352,8 +352,8 @@ export class Renderer {
     this.buildStands();
     this.buildScreens();
     this.buildBall();
-    this.paddles = [new PaddleRig(this.scene, 0xd0102e), new PaddleRig(this.scene, 0xd0102e)];
-    this.figures = [new StickFigure(this.scene, 0x3d8bff), new StickFigure(this.scene, 0xff3d6b)];
+    this.paddles = [0, 1, 2, 3].map(() => new PaddleRig(this.scene, 0xd0102e));
+    this.figures = [0x3d8bff, 0xff3d6b, 0x3de8ff, 0xffa23d].map(c => new StickFigure(this.scene, c));
     this.robot = this.buildRobot();
     this.camMode = 'raquette';
     this.sparks = new Particles(this.scene, 500, true);
@@ -706,7 +706,7 @@ export class Renderer {
           if (uRainbow > 0.5) c = 0.55 + 0.45 * cos(6.2831 * (va * 1.5 + uTime * 0.8 + vec3(0.0, 0.33, 0.67)));
           gl_FragColor = vec4(c * va * uBoost, 1.0); }`,
     }));
-    this.trailColors = [[0.85, 0.7, 1.0], [0.85, 0.7, 1.0]];
+    this.trailColors = [0, 1, 2, 3].map(() => [0.85, 0.7, 1.0]);
     this.trailWidth = 1;
     this.trail.frustumCulled = false;
     this.scene.add(this.trail);
@@ -721,7 +721,7 @@ export class Renderer {
     this.ballMesh.visible = this.glow.visible = game.state !== 'between';
     this.updateSpin(game, dt);
     const lh = game.lastHit ? game.lastHit.p : 0;
-    const tc = game.superBall ? [1.0, 0.42, 0.08] : this.trailColors[lh];
+    const tc = game.superBall ? [1.0, 0.42, 0.08] : (this.trailColors[lh] || this.trailColors[0]);
     if (tc === 'rainbow') this.trailU.uRainbow.value = 1;
     else { this.trailU.uRainbow.value = 0; this.trailU.uColor.value.set(tc[0], tc[1], tc[2]); }
     this.trailU.uTime.value = this.time;
@@ -749,6 +749,7 @@ export class Renderer {
     });
 
     game.players.forEach((pl, i) => this.paddles[i].update(dt, pl, game, i));
+    for (let i = game.players.length; i < 4; i++) { this.paddles[i].obj.visible = false; this.figures[i].g.visible = false; }
     const robotMode = game.ctrl && game.ctrl[1] === 'robot';
     this.robot.visible = robotMode;
     game.players.forEach((pl, i) => {
@@ -862,7 +863,7 @@ export class Renderer {
   updateAim(game) {
     const me = game.players[game.me];
     const serve = (game.state === 'serve' || game.state === 'toss') && game.server() === game.me;
-    const incoming = game.state === 'rally' && game.rally && game.rally.hitter !== game.me && game.pred && game.pred[game.me];
+    const incoming = game.state === 'rally' && game.rally && game.nextHitter && game.nextHitter() === game.me && game.pred && game.pred[game.me];
     const show = (me.charging && !serve) || serve || !!incoming;
     this.aimRing.visible = show;
     if (!show) return;

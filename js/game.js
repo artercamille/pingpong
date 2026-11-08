@@ -39,14 +39,19 @@ const gauss = () => (Math.random() + Math.random() + Math.random() + Math.random
 export class Game {
   constructor(o) {
     this.mode = o.mode;               // 'ai' | 'online'
-    this.ctrl = o.ctrl;               // ex. ['human','ai'] ou ['human','remote']
+    this.ctrl = o.ctrl;               // ex. ['human','ai'] ; en double 4 joueurs (0 et 2 contre 1 et 3)
+    this.n = this.ctrl.length;
+    this.doubles = this.n === 4;
     this.me = o.me ?? 0;              // joueur humain local
-    this.names = o.names || ['Joueur 1', 'Joueur 2'];
+    this.myTeam = this.me % 2;
+    this.names = o.names || ['Joueur 1', 'Joueur 2'];          // noms des équipes (ou des joueurs en simple)
+    this.playerNames = o.playerNames || this.names;
     this.bestOf = o.bestOf || 3;
     this.net = o.net || null;
     this.hooks = o.hooks || {};
     this.ball = makeBall();
-    this.players = [0, 1].map(i => this.makePlayer(i));
+    this.players = this.ctrl.map((_, i) => this.makePlayer(i));
+    this.order = [0, 1];
     this.match = { score: [0, 0], sets: [0, 0], setIdx: 0, firstServer: o.firstServer ?? 0, history: [], over: false, winner: -1 };
     this.state = 'between';
     this.stateT = 1.2;
@@ -55,8 +60,8 @@ export class Game {
     this.acc = 0;
     this.hitId = 0;
     this.sendT = 0;
-    this.inputs = [emptyInput(), emptyInput()];
-    this.ai = [null, null];
+    this.inputs = this.ctrl.map(() => emptyInput());
+    this.ai = this.ctrl.map(() => null);
     this.fx = [];          // évènements visuels pour le rendu
     this.lastHit = null;
     this.rallyCount = 0;
@@ -65,11 +70,11 @@ export class Game {
     this.training = o.training || null;   // entraînement avec robot lanceur
     this.train = { ok: 0, total: 0, streak: 0, best: 0 };
     this.errSide = [[0, 0], [0, 0]];      // erreurs [coup droit, revers] par joueur (l'IA s'en sert)
-    this.pred = [null, null];   // prévision du point de contact (pour la jauge et l'aide au placement)
+    this.pred = this.ctrl.map(() => null);   // prévision du point de contact (pour la jauge et l'aide au placement)
     this.stats = [0, 1].map(() => ({ points: 0, winners: 0, errors: 0, aces: 0, smashes: 0, supers: 0, superWins: 0, hits: 0, maxSpeed: 0 }));
     this.run = { p: -1, n: 0 };   // série de points consécutifs
     this.longest = 0;
-    this.momentum = [0, 0];
+    this.momentum = this.ctrl.map(() => 0);
     this.pressure = null;        // { type: 'set' | 'match', p } : balle de set / de match
     this.deficit = [0, 0];       // plus gros retard dans le set en cours
     this.ach = [];               // succès débloqués pendant le match (joueur local)
@@ -78,9 +83,10 @@ export class Game {
   }
 
   makePlayer(i) {
-    const side = i === 0 ? 1 : -1;
+    const side = i % 2 === 0 ? 1 : -1;
+    const x0 = this.doubles ? side * (i < 2 ? 0.55 : -0.55) : 0;
     return {
-      i, side, x: 0, z: side * 2.1, vx: 0, vz: 0, netX: 0, netZ: side * 2.1,
+      i, side, x: x0, z: side * 2.1, vx: 0, vz: 0, netX: x0, netZ: side * 2.1,
       charging: false, chargeType: null, chargeT: 0,
       releaseType: null, releaseT: -99, releasePower: 0,
       aimX: 0, aimY: 0, sideSpin: 0,
@@ -89,15 +95,37 @@ export class Game {
   }
 
   local(i) { return this.ctrl[i] !== 'remote'; }
+  team(i) { return i % 2; }
+  partner(i) { return this.doubles ? (i + 2) % 4 : i; }
+  // ordre des frappes : serveur, relanceur, partenaire du serveur, partenaire du relanceur
+  computeOrder(s) {
+    const r = this.receiverOf(s);
+    return this.doubles ? [s, r, (s + 2) % 4, (r + 2) % 4] : [s, r];
+  }
+  nextHitter() {
+    if (!this.rally) return -1;
+    const k = this.order.indexOf(this.rally.hitter);
+    return this.order[(k + 1) % this.order.length];
+  }
+  receiverOf(s) {
+    if (!this.doubles) return 1 - s;
+    // ordre tournant : A1→B1, B1→A2, A2→B2, B2→A1
+    const T = this.firstTeam();
+    const cyc = [T, 1 - T, T + 2, (1 - T) + 2];
+    return cyc[(cyc.indexOf(s) + 1) % 4];
+  }
+  firstTeam() { const m = this.match; return (m.firstServer + m.setIdx) % 2; }
   power(pl) { return clamp(pl.chargeT / MAX_CHARGE, 0.15, 1); }
 
   server() {
     if (this.forcedServer !== undefined) return this.forcedServer;
     const m = this.match;
-    const first = (m.firstServer + m.setIdx) % 2;
+    const first = this.firstTeam();
     const tot = m.score[0] + m.score[1];
     const k = tot < 20 ? Math.floor(tot / 2) : tot - 10;
-    return (first + k) % 2;
+    if (!this.doubles) return (first + k) % 2;
+    const cyc = [first, 1 - first, first + 2, (1 - first) + 2];
+    return cyc[k % 4];
   }
 
   handPos(i) {
@@ -108,7 +136,7 @@ export class Game {
   // ------------------------------------------------------------------ boucle
   update(dt, localInput) {
     if (this.paused) return;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < this.n; i++) {
       if (this.ctrl[i] === 'human') this.inputs[i] = localInput;
       else if (this.ctrl[i] === 'ai' && this.ai[i]) this.inputs[i] = this.ai[i].update(dt);
     }
@@ -127,7 +155,7 @@ export class Game {
     this.predT -= dt;
     if (this.predT <= 0) { this.predT = 0.05; this.refreshPredictions(); }
 
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < this.n; i++) {
       const pl = this.players[i];
       if (this.local(i)) { this.movePlayer(i, dt); this.handleButtons(i, dt); }
       else {
@@ -152,8 +180,11 @@ export class Game {
       this.sendT -= dt;
       if (this.sendT <= 0) {
         this.sendT = 1 / 30;
-        const pl = this.players[this.me];
-        this.net.send({ t: 'pos', i: this.me, x: +pl.x.toFixed(3), z: +pl.z.toFixed(3), c: pl.charging, ct: pl.chargeType });
+        for (let i = 0; i < this.n; i++) {
+          if (!this.local(i)) continue;
+          const pl = this.players[i];
+          this.net.send({ t: 'pos', i, x: +pl.x.toFixed(3), z: +pl.z.toFixed(3), c: pl.charging, ct: pl.chargeType });
+        }
       }
     }
   }
@@ -167,17 +198,17 @@ export class Game {
       if (e.type === 'table') { sfx.table(e.speed); this.fx.push({ type: 'bounce', x: e.x, z: e.z }); }
       else if (e.type === 'net') sfx.net();
       else if (e.type === 'floor' && e.speed > 0.8) sfx.floor();
-      if (this.state === 'rally' && this.rally && this.local(1 - this.rally.hitter)) this.rallyEvent(e);
+      if (this.state === 'rally' && this.rally && this.local(this.nextHitter())) this.rallyEvent(e);
     }
     if (this.state === 'rally' && this.rally) {
       this.rally.t += DT;
-      const r = 1 - this.rally.hitter;
+      const r = this.nextHitter();
       if (this.local(r) && this.ctrl[r] !== 'robot') {
         if (this.rally.phase === 'inPlay') {
           if (this.rally.pending) this.checkPending(r);
           else this.checkContact(r, prevZ);
         }
-        if (this.rally.t > 7) { if (globalThis.__dbg) console.log('TEMPS', JSON.stringify(this.ball), JSON.stringify(this.rally)); this.endPoint(this.rally.hitter, 'Temps'); }
+        if (this.rally.t > 7) { if (globalThis.__dbg) console.log('TEMPS', JSON.stringify(this.ball), JSON.stringify(this.rally)); this.endPoint(this.team(this.rally.hitter), 'Temps'); }
       }
     }
     if (this.state === 'toss') {
@@ -196,7 +227,7 @@ export class Game {
   // ------------------------------------------------------------------ prévision
   refreshPredictions() {
     if (this.state === 'rally' && this.rally && this.rally.pending) return; // jauge figée pendant un coup en retard
-    for (let i = 0; i < 2; i++) this.pred[i] = null;
+    for (let i = 0; i < this.n; i++) this.pred[i] = null;
     if (this.state === 'toss') {
       const s = this.server();
       const b = this.ball;
@@ -205,15 +236,16 @@ export class Game {
       return;
     }
     if (this.state !== 'rally' || !this.rally) return;
-    const p = 1 - this.rally.hitter;
+    const p = this.nextHitter();
     if (this.rally.contactTried) return;
+    const pt = this.team(p);
     const pl = this.players[p], s = pl.side;
     const zc = pl.z - s * PLANE_OFF;
     let bounced = this.rally.phase === 'inPlay', bad = false;
     const res = predict(this.ball, 2.5, (b, t, ev) => {
       for (const e of ev) {
         if (e.type === 'floor') { bad = true; return true; }
-        if (e.type === 'table' && e.side === p) { if (bounced) { bad = true; return true; } bounced = true; }
+        if (e.type === 'table' && e.side === pt) { if (bounced) { bad = true; return true; } bounced = true; }
       }
       if (!bounced) return false;
       const ahead = s * (zc - b.p.z);
@@ -230,7 +262,7 @@ export class Game {
     let idealZ = pl.z;
     let b2 = this.rally.phase === 'inPlay';
     const best = predict(this.ball, 2.5, (b, t, ev) => {
-      for (const e of ev) if (e.type === 'table' && e.side === p) b2 = true;
+      for (const e of ev) if (e.type === 'table' && e.side === pt) b2 = true;
       if (!b2) return false;
       return (b.v.y < 0 && b.p.y < 0.95) || s * b.p.z > 1.9;
     });
@@ -247,10 +279,18 @@ export class Game {
     let wx = inp.mx * pl.side * speed, wz = -inp.my * pl.side * speed;
     // aide au placement (joueur humain) : attire doucement vers la bonne position de frappe
     const pr = this.pred[i];
+    // en double : quand ce n'est pas à toi de frapper, tu te décales pour laisser ton partenaire
+    if (this.ctrl[i] === 'human' && this.doubles && !serving && this.state === 'rally' && this.nextHitter() !== i && Math.hypot(inp.mx, inp.my) < 0.25) {
+      const w = this.waitSpot(i);
+      wx += clamp((w.x - pl.x) * 4, -1, 1) * MOVE_SPEED * 0.6;
+      wz += clamp((w.z - pl.z) * 4, -1, 1) * MOVE_SPEED * 0.6;
+    }
     if (this.ctrl[i] === 'human' && pr && pr.idealX !== undefined && !serving) {
       const stick = Math.hypot(inp.mx, inp.my);
       const A = [[0, 0], [0.35, 0.12], [0.75, 0.3]][this.assist] || [0.35, 0.12];
-      const pull = stick < 0.25 ? A[0] : A[1];
+      let pull = stick < 0.25 ? A[0] : A[1];
+      // quand le cercle de timing est là, le stick sert à viser : le placement se fait tout seul
+      if (this.assist > 0 && pr.t - this.simTime < RING_T + 0.1) { wx = 0; wz = 0; pull = this.assist === 2 ? 0.85 : 0.6; }
       const dx = pr.idealX - pl.x, dzz = pr.idealZ - pl.z;
       wx += clamp(dx * 6, -1, 1) * MOVE_SPEED * pull;
       wz += clamp(dzz * 6, -1, 1) * MOVE_SPEED * pull * 0.7;
@@ -260,10 +300,21 @@ export class Game {
     pl.x += pl.vx * dt; pl.z += pl.vz * dt;
     pl.x = clamp(pl.x, -2.7, 2.7);
     let d = clamp(pl.z * pl.side, 1.5, 4.2);
-    if (serving) { d = clamp(d, 1.55, 1.65); pl.x = clamp(pl.x, -0.85, 0.85); }
+    if (serving) {
+      d = clamp(d, 1.55, 1.65);
+      // en double, on sert depuis sa moitié droite
+      pl.x = this.doubles ? pl.side * clamp(pl.x * pl.side, 0.15, 0.8) : clamp(pl.x, -0.85, 0.85);
+    }
     pl.z = d * pl.side;
     if (pl.charging || serving || this.ctrl[i] === 'human') { pl.aimX = inp.aimX; pl.aimY = inp.aimY; }
     pl.sideSpin = (inp.btn.sideR ? 1 : 0) - (inp.btn.sideL ? 1 : 0);
+  }
+
+  // place d'attente en double : en retrait, du côté opposé au partenaire
+  waitSpot(i) {
+    const pl = this.players[i], mate = this.players[this.partner(i)];
+    const x = clamp(-mate.x * 0.8 + (mate.x === 0 ? pl.side * 0.6 : 0), -1.6, 1.6);
+    return { x: Math.abs(x - mate.x) < 0.7 ? mate.x + (x >= mate.x ? 0.7 : -0.7) : x, z: pl.side * 2.7 };
   }
 
   handleButtons(i, dt) {
@@ -305,7 +356,7 @@ export class Game {
       pl.charging = false;
       return;
     }
-    if (this.state !== 'rally' || !this.rally || this.rally.hitter === i || pl.pressType) return;
+    if (this.state !== 'rally' || !this.rally || this.nextHitter() !== i || pl.pressType) return;
     const pr = this.pred[i];
     if (this.rally.pending) { pl.pressType = t; pl.pressT = this.simTime; pl.pressErr = null; return; }
     if (!pr || pr.serve) return;
@@ -328,12 +379,13 @@ export class Game {
 
   // statistiques après chaque frappe
   onHitStats(p, type, smash, sup, v) {
-    const st = this.stats[p];
+    const tm = this.team(p);
+    const st = this.stats[tm];
     st.hits++;
     const kmh = Math.hypot(v.x, v.y, v.z) * 3.6;
     st.maxSpeed = Math.max(st.maxSpeed, kmh);
     if (sup) st.supers++;
-    this.lastShot[p] = { type, smash, sup };
+    this.lastShot[tm] = { type, smash, sup, p };
     if (!sup) this.momentum[p] = Math.min(1, this.momentum[p] + (smash ? 0.12 : 0.07));
     if (p === this.me && kmh > 70) this.addAch('speed70');
   }
@@ -406,7 +458,7 @@ export class Game {
     this.ball.v = shot.v; this.ball.w = shot.w;
     this.beginRally(i, true);
     this.superBall = false;
-    this.lastShot[i] = { type, serve: true };
+    this.lastShot[this.team(i)] = { type, serve: true, p: i };
     this.startSwing(i, true, type);
     sfx.paddle(power * 0.6);
     this.hooks.feedback && this.hooks.feedback(i, label, q, SERVE_LABEL[type]);
@@ -415,6 +467,7 @@ export class Game {
   }
 
   beginRally(hitter, serve) {
+    if (serve || !this.order.includes(hitter)) this.order = this.computeOrder(hitter);
     this.state = 'rally';
     this.rally = { hitter, serve, phase: serve ? 'awaitOwn' : 'awaitOpp', netTouch: false, contactTried: false, id: ++this.hitId, t: 0 };
     this.lastHit = { p: hitter, time: this.simTime };
@@ -509,14 +562,14 @@ export class Game {
     this.fx.push({ type: 'hit', x: b.x, y: b.y, z: b.z, power, smash: shot.smash || sup, sup, p });
     this.superBall = sup;
     this.hooks.feedback && this.hooks.feedback(p, shot.smash ? 'SMASH !' : label, q, SHOT_LABEL[type]);
-    this.hooks.hit && this.hooks.hit(p, { type, power, aimX: pl.aimX, aimY: pl.aimY, serve: false });
+    this.hooks.hit && this.hooks.hit(p, { type, power, aimX: pl.aimX, aimY: pl.aimY, serve: false, sup });
     this.sendHit(p, type, false, shot.smash ? 'SMASH !' : label, q, sup);
   }
 
   missed(p, dx) {
     const pl = this.players[p];
     pl.pressType = null; pl.swingAt = 0;
-    this.errSide[p][dx >= 0 ? 0 : 1]++;
+    this.errSide[this.team(p)][dx >= 0 ? 0 : 1]++;
     this.lastPress = { i: p, grade: -1, t: this.simTime };
     this.hooks.feedback && this.hooks.feedback(p, 'RATÉ', 0);
   }
@@ -561,6 +614,8 @@ export class Game {
     else if (type === 'lob') depth = 1.05 + ay * 0.15;
     else depth = 0.92 + ay * 0.3 - (type === 'coupe' ? 0.08 : 0);
     if (target) { tx = target.x; depth = -s * target.z; }
+    // service en double : en diagonale, vers la moitié droite du relanceur
+    if (serve && this.doubles) tx = -s * clamp(0.38 + ax * 0.2 * -1, 0.15, 0.62);
 
     let speed, top, side = 0, smash = false, variant = null, eMul = 1, kMul = 1;
     // balle adverse : vitesse et effet (pour les coups « de contexte »)
@@ -568,11 +623,11 @@ export class Game {
     const ia0 = topAxis(b.v.x / hv0, b.v.z / hv0);
     const inTop = b.w.x * ia0.x + b.w.z * ia0.z;
     const inSpeed = Math.hypot(b.v.x, b.v.y, b.v.z);
-    const overTable = Math.abs(b.p.z) < 1.3;
+    const overTable = Math.abs(b.p.z) < 1.45;
     if (!serve && !target) {
       if (type === 'top' && overTable && b.p.y < 1.05) variant = 'flip';
-      else if (type === 'plat' && inSpeed > 6.5 && inTop > 40 && b.p.y < 1.15) variant = 'contre';
-      else if (type === 'coupe' && inSpeed > 6.5 && inTop > 40) variant = 'bloc';
+      else if (type === 'plat' && inSpeed > 5.2 && inTop > 30 && b.p.y < 1.15) variant = 'contre';
+      else if (type === 'coupe' && inSpeed > 5.2 && inTop > 30) variant = 'bloc';
     }
     if (serve) {
       if (type === 'top') { speed = 3.2 + 1.6 * power; top = 70 + 100 * power; }
@@ -629,12 +684,15 @@ export class Game {
 
   // ------------------------------------------------------------------ règles
   rallyEvent(e) {
-    const r = this.rally, h = r.hitter, rc = 1 - h;
+    const r = this.rally, h = this.team(r.hitter), rc = 1 - h;
+    const hs = h === 0 ? 1 : -1;
     if (e.type === 'net') { r.netTouch = true; return; }
     if (e.type === 'table') {
       if (r.phase === 'awaitOwn') {
-        if (e.side === h) r.phase = 'awaitOpp'; else this.endPoint(rc, 'Faute de service');
+        // en double, le service part de la moitié droite du serveur
+        if (e.side === h && (!this.doubles || e.x * hs >= -0.01)) r.phase = 'awaitOpp'; else this.endPoint(rc, 'Faute de service');
       } else if (r.phase === 'awaitOpp') {
+        if (r.serve && this.doubles && e.side === rc && e.x * -hs < -0.01) { this.endPoint(rc, 'Faute de service'); return; }
         if (e.side === rc) {
           if (r.serve && r.netTouch) { this.doLet(); return; }
           r.phase = 'inPlay';
@@ -690,7 +748,7 @@ export class Game {
   }
 
   pointStats(w, reason, before, setWon, prevPressure) {
-    const l = 1 - w, me = this.me;
+    const l = 1 - w, me = this.myTeam;
     const st = this.stats;
     st[w].points++;
     const winnerShot = reason === 'Point gagnant' || reason === 'Ace !' || reason === 'Double rebond';
@@ -706,13 +764,13 @@ export class Game {
         if (ls.type === 'lob' && !ls.serve) this.addAch('lob');
         if (ls.sup) this.addAch('super');
       }
-      const lp = this.players[l];
+      const lp = this.players[this.rally && this.team(this.nextHitter()) === l ? this.nextHitter() : l];
       this.errSide[l][(this.ball.p.x - lp.x) * lp.side >= 0 ? 0 : 1]++;
-    } else if (reason !== 'Temps') { st[l].errors++; const lp = this.players[l]; this.errSide[l][lp.lastSide || 0]++; }
+    } else if (reason !== 'Temps') { st[l].errors++; const lp = this.players[this.lastHit && this.team(this.lastHit.p) === l ? this.lastHit.p : l]; this.errSide[l][lp.lastSide || 0]++; }
     this.longest = Math.max(this.longest, this.rallyCount + 1);
     if (this.run.p === w) this.run.n++; else this.run = { p: w, n: 1 };
     if (this.rallyCount + 1 >= 20) this.addAch('rally20');
-    this.momentum[w] = Math.min(1, this.momentum[w] + 0.12);
+    for (let i = 0; i < this.n; i++) if (this.team(i) === w) this.momentum[i] = Math.min(1, this.momentum[i] + 0.12);
     // balle de match sauvée
     if (prevPressure && prevPressure.type === 'match' && prevPressure.p !== w && w === me) this.addAch('save_mp');
     // retard max dans le set
@@ -776,7 +834,7 @@ export class Game {
         if (!msg.serve) this.rallyCount++;
         pl.charging = false;
         this.superBall = !!msg.sup;
-        if (msg.serve) this.lastShot[msg.i] = { type: msg.type, serve: true };
+        if (msg.serve) this.lastShot[this.team(msg.i)] = { type: msg.type, serve: true, p: msg.i };
         else {
           this.onHitStats(msg.i, msg.type, !!msg.smash, !!msg.sup, msg.b.v);
           if (msg.sup) this.momentum[msg.i] = 0;

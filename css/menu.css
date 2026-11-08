@@ -233,3 +233,13 @@
 #trainhud b { font-size: 28px; font-weight: 900; font-style: italic; }
 #trainhud small { font-size: 10px; letter-spacing: 3px; color: #a99cc9; font-weight: 900; }
 .training #board, .training #mom { display: none; }
+#host-lobby { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
+#host-lobby .team { padding: 10px 12px; background: rgba(28,22,44,.8); border-left: 4px solid #3d8bff; }
+#host-lobby .team.r { border-left-color: #ff3d6b; }
+#host-lobby .team b { display: block; font-size: 11px; letter-spacing: 3px; color: #a99cc9; margin-bottom: 6px; }
+#host-lobby .team div { font-weight: 800; font-size: 14px; padding: 2px 0; }
+#host-lobby .team div.ai { color: #8c80aa; font-weight: 600; font-style: italic; }
+#board .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pause .mpanel { max-height: 92vh; overflow: auto; }
+#pause-opts .opt { height: 46px; margin-bottom: 6px; }
+#pause-opts .opt .ov { font-size: 15px; }

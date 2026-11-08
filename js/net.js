@@ -1,4 +1,5 @@
-// Connexion en ligne pair-à-pair (WebRTC via PeerJS). L'hôte crée un code, l'invité le saisit.
+// Connexion en ligne pair-à-pair (WebRTC via PeerJS).
+// Simple : 2 joueurs. Double : l'hôte accepte jusqu'à 3 invités et relaie les messages (topologie en étoile).
 const PREFIX = 'aurapingpong-v1-';
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -17,12 +18,18 @@ const ICE = {
 
 export class Net {
   constructor() {
-    this.peer = null; this.conn = null;
+    this.peer = null;
+    this.conns = [];          // hôte : tous les invités ; invité : [hôte]
+    this.isHost = false;
+    this.maxGuests = 1;
     this.rtt = 60;
     this.onMessage = () => {};
     this.onClose = () => {};
+    this.onGuest = () => {};
     this.pingTimer = null;
   }
+
+  get conn() { return this.conns[0] || null; }
 
   static code() {
     let s = '';
@@ -31,12 +38,13 @@ export class Net {
   }
 
   host(onCode, onConnected, onError) {
+    this.isHost = true;
     const code = Net.code();
     this.peer = new window.Peer(PREFIX + code, ICE);
     this.peer.on('open', () => onCode(code));
     this.peer.on('connection', conn => {
-      if (this.conn) { conn.close(); return; }
-      this.setup(conn, onConnected);
+      if (this.conns.length >= this.maxGuests || this.locked) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); }); return; }
+      this.setup(conn, () => onConnected(conn));
     });
     this.peer.on('error', err => {
       if (err.type === 'unavailable-id') { this.destroy(); this.host(onCode, onConnected, onError); return; }
@@ -64,35 +72,40 @@ export class Net {
 
   setup(conn, onConnected) {
     conn.on('open', () => {
-      this.conn = conn;
-      this.pingTimer = setInterval(() => this.send({ t: 'ping', ts: performance.now() }), 1000);
+      this.conns.push(conn);
+      conn.rtt = 60;
+      if (!this.pingTimer) this.pingTimer = setInterval(() => this.send({ t: 'ping', ts: performance.now() }), 1000);
       onConnected();
     });
     conn.on('data', msg => {
       if (!msg || typeof msg !== 'object') return;
-      if (msg.t === 'ping') { this.send({ t: 'pong', ts: msg.ts }); return; }
-      if (msg.t === 'pong') { const r = performance.now() - msg.ts; this.rtt = this.rtt * 0.7 + r * 0.3; return; }
-      this.onMessage(msg);
+      if (msg.t === 'ping') { try { conn.send({ t: 'pong', ts: msg.ts }); } catch (e) {} return; }
+      if (msg.t === 'pong') {
+        conn.rtt = conn.rtt * 0.7 + (performance.now() - msg.ts) * 0.3;
+        this.rtt = this.conns.reduce((a, c) => a + (c.rtt || 60), 0) / this.conns.length;
+        return;
+      }
+      // l'hôte relaie les messages de jeu aux autres invités
+      if (this.isHost && !msg.lobby) for (const c of this.conns) if (c !== conn && c.open) { try { c.send(msg); } catch (e) {} }
+      this.onMessage(msg, conn);
     });
-    conn.on('close', () => { this.onClose(); this.cleanup(); });
+    conn.on('close', () => {
+      this.conns = this.conns.filter(c => c !== conn);
+      this.onClose(conn);
+      if (!this.conns.length) clearInterval(this.pingTimer), (this.pingTimer = null);
+    });
     conn.on('error', () => {});
   }
 
   send(msg) {
-    if (this.conn && this.conn.open) {
-      try { this.conn.send(msg); } catch (e) { /* ignore */ }
-    }
+    for (const c of this.conns) if (c.open) { try { c.send(msg); } catch (e) { /* ignore */ } }
   }
-
-  cleanup() {
-    clearInterval(this.pingTimer);
-    this.conn = null;
-  }
+  sendTo(conn, msg) { if (conn && conn.open) { try { conn.send(msg); } catch (e) {} } }
 
   destroy() {
-    clearInterval(this.pingTimer);
-    try { this.conn && this.conn.close(); } catch (e) {}
+    clearInterval(this.pingTimer); this.pingTimer = null;
+    for (const c of this.conns) { try { c.close(); } catch (e) {} }
     try { this.peer && this.peer.destroy(); } catch (e) {}
-    this.conn = null; this.peer = null;
+    this.conns = []; this.peer = null;
   }
 }

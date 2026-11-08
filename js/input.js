@@ -4,10 +4,10 @@
 // Clavier (touches physiques) : ZQSD ou flèches, J = Lift, K = Frappe, U = Coupé, I = Lob, A/E = latéral, L = super coup.
 
 export const SHOTS = ['top', 'plat', 'coupe', 'lob'];
-const PAD_BTN = { top: 0, plat: 1, coupe: 2, lob: 3, sideL: 4, sideR: 5, super: 7, start: 9 };
+const PAD_BTN = { top: 0, plat: 1, coupe: 2, lob: 3, sideL: 4, sideR: 5, super: 7, cam: 8, start: 9 };
 const KEYS = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
-  top: ['KeyJ', 'Space'], plat: ['KeyK'], coupe: ['KeyU'], lob: ['KeyI'], sideL: ['KeyQ'], sideR: ['KeyE'], super: ['KeyL'],
+  top: ['KeyJ', 'Space'], plat: ['KeyK'], coupe: ['KeyU'], lob: ['KeyI'], sideL: ['KeyQ'], sideR: ['KeyE'], super: ['KeyL'], cam: ['KeyC'],
   start: ['Escape'],
 };
 
@@ -19,6 +19,7 @@ export class Input {
     this.keys = new Set();
     this.prev = {};
     this.padName = null;
+    this.invertY = false;
     addEventListener('keydown', e => {
       if (e.target && e.target.tagName === 'INPUT') return;
       this.keys.add(e.code);
@@ -57,6 +58,7 @@ export class Input {
       if (b[13] && b[13].pressed) my = -1;
       for (const [n, i] of Object.entries(PAD_BTN)) if (b[i] && b[i].pressed) btn[n] = true;
     }
+    if (this.invertY) my = -my;
     const len = Math.hypot(mx, my);
     if (len > 1) { mx /= len; my /= len; }
 

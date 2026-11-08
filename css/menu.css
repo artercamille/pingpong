@@ -212,3 +212,24 @@
 #daily small { font-size: 11px; color: #a99cc9; }
 .menu.hidden #daily { display: none; }
 @media (max-width: 1100px) { #daily { display: none; } }
+
+/* ---------- cercle de timing ---------- */
+#ring { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity .1s; }
+#ring.show { opacity: 1; }
+#ring .tgt, #ring .app { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
+#ring .tgt { width: 34px; height: 34px; border: 3px solid rgba(255,255,255,.95); box-shadow: 0 0 10px rgba(255,255,255,.6); }
+#ring .app { width: 34px; height: 34px; border: 3px solid var(--neon); box-shadow: 0 0 14px var(--neon), inset 0 0 8px var(--neon); }
+#ring.g3 .tgt { background: rgba(61,255,138,.55); border-color: #3dff8a; box-shadow: 0 0 22px #3dff8a; }
+#ring.g2 .tgt { background: rgba(255,225,77,.45); border-color: #ffe14d; box-shadow: 0 0 18px #ffe14d; }
+#ring.g1 .tgt { background: rgba(255,150,40,.4); border-color: #ff9628; }
+#ring.g0 .tgt, #ring.gm .tgt { background: rgba(255,60,80,.4); border-color: #ff3c50; }
+#ring.hit .tgt { animation: ringhit .35s ease-out; }
+#ring.hit .app { opacity: 0; }
+@keyframes ringhit { 0% { transform: translate(-50%, -50%) scale(1); } 40% { transform: translate(-50%, -50%) scale(1.5); } 100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; } }
+
+/* entraînement */
+#trainhud { position: absolute; top: 22px; left: 22px; padding: 12px 18px; background: rgba(11,9,18,.9); border-left: 4px solid var(--neon); display: flex; gap: 22px; }
+#trainhud div { display: flex; flex-direction: column; }
+#trainhud b { font-size: 28px; font-weight: 900; font-style: italic; }
+#trainhud small { font-size: 10px; letter-spacing: 3px; color: #a99cc9; font-weight: 900; }
+.training #board, .training #mom { display: none; }

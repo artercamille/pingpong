@@ -1,13 +1,23 @@
 // Sons du jeu : impacts de balle synthétisés (synthèse modale) + vrais enregistrements de public (CC0),
 // le tout passé dans une réverbération de grande salle.
 let ctx = null, master = null, dry = null, wetSend = null, muffle = null, muted = false;
+let sfxBus = null, crowdBus = null, musicBus = null;
+const vol = { master: 0.8, sfx: 0.8, crowd: 0.8, music: 0.5 };
+export function getCtx() { return ctx; }
+export function getMusicBus() { return musicBus; }
+export function setVolumes(v) {
+  Object.assign(vol, v);
+  if (!ctx) return;
+  master.gain.setTargetAtTime(muted ? 0 : VOLUME * vol.master, ctx.currentTime, 0.1);
+  sfxBus.gain.value = vol.sfx; crowdBus.gain.value = vol.crowd; musicBus.gain.value = vol.music;
+}
 const buffers = {};
 const SAMPLES = { applause: 'assets/sfx/applause.mp3', cheer: 'assets/sfx/cheer.mp3', ovation: 'assets/sfx/ovation.mp3' };
 const VOLUME = 0.55;
 
 export function setMuted(v) {
   muted = v;
-  if (master) master.gain.setTargetAtTime(v ? 0 : VOLUME, ctx.currentTime, 0.15);
+  if (sfxBus) { sfxBus.gain.setTargetAtTime(v ? 0 : vol.sfx, ctx.currentTime, 0.15); crowdBus.gain.setTargetAtTime(v ? 0 : vol.crowd, ctx.currentTime, 0.15); }
 }
 export function setCrowd() { /* plus de bruit de fond continu */ }
 export function setMuffle(on) {
@@ -32,23 +42,26 @@ export function initAudio() {
   if (ctx) { ctx.resume(); return; }
   try {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = muted ? 0 : VOLUME;
+    master = ctx.createGain(); master.gain.value = VOLUME * vol.master;
     muffle = ctx.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 20000;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
     master.connect(muffle); muffle.connect(comp); comp.connect(ctx.destination);
-    dry = ctx.createGain(); dry.connect(master);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = muted ? 0 : vol.sfx; sfxBus.connect(master);
+    crowdBus = ctx.createGain(); crowdBus.gain.value = muted ? 0 : vol.crowd; crowdBus.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = vol.music; musicBus.connect(master);
+    dry = sfxBus;
     const verb = ctx.createConvolver(); verb.buffer = hallIR();
     wetSend = ctx.createGain(); wetSend.gain.value = 0.22;
-    wetSend.connect(verb); verb.connect(master);
+    wetSend.connect(verb); verb.connect(sfxBus);
     for (const [k, url] of Object.entries(SAMPLES)) {
       fetch(url).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { buffers[k] = buf; }).catch(() => {});
     }
   } catch (e) { ctx = null; }
 }
 
-function out(node, wet = 1) {
-  node.connect(dry);
+function out(node, wet = 1, bus = null) {
+  node.connect(bus || dry);
   if (wet) { const g = ctx.createGain(); g.gain.value = wet; node.connect(g); g.connect(wetSend); }
 }
 
@@ -97,7 +110,7 @@ function sample(name, vol = 1, rate = 1, offset = 0) {
   if (!ctx || muted || !buffers[name]) return;
   const s = ctx.createBufferSource(); s.buffer = buffers[name]; s.playbackRate.value = rate;
   const g = ctx.createGain(); g.gain.value = vol;
-  s.connect(g); out(g, 0.35);
+  s.connect(g); g.connect(crowdBus);
   s.start(ctx.currentTime, offset);
 }
 
@@ -107,7 +120,7 @@ function tone(freq, dur, vol, type = 'sine') {
   const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+  o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + dur + 0.02);
 }
 
 const rnd = (a, b) => a + Math.random() * (b - a);

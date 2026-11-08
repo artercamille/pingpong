@@ -34,6 +34,8 @@
     <div class="vsf"></div>
   </div>
   <div id="streak"></div>
+  <div id="ring"><div class="tgt"></div><div class="app"></div></div>
+  <div id="trainhud" class="hidden"></div>
   <div id="tuto" class="hidden">
     <div class="tstep"></div>
     <div class="ttitle"></div>
@@ -66,6 +68,10 @@
         <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></i>
         <span><b>En ligne</b><small>Défie un pote, chacun sur son PC</small></span>
       </button>
+      <button class="mbtn" data-go="scr-train">
+        <i><svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M9 8V5h6v3"/></svg></i>
+        <span><b>Entraînement</b><small>Robot lanceur de balles</small></span>
+      </button>
       <button class="mbtn" id="btn-tuto">
         <i><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg></i>
         <span><b>Tutoriel</b><small>Apprends les bases en 2 minutes</small></span>
@@ -73,6 +79,10 @@
       <button class="mbtn" data-go="scr-locker">
         <i><svg viewBox="0 0 24 24"><path d="M7 3h10l1 4H6z"/><path d="M5 7h14v14H5z"/><path d="M12 11v6"/></svg></i>
         <span><b>Vestiaire</b><small>Raquettes, traînées et salles</small></span>
+      </button>
+      <button class="mbtn" data-go="scr-options">
+        <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></i>
+        <span><b>Options</b><small>Son, caméra, aide</small></span>
       </button>
       <button class="mbtn" data-go="scr-ctrl">
         <i><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 014 4v1a4 4 0 01-7 2.6L14 15h-4l-1 .6A4 4 0 012 13v-1a4 4 0 014-4z"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r=".6"/><circle cx="18" cy="13.5" r=".6"/></svg></i>
@@ -135,6 +145,28 @@
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
 
+    <section class="screen hidden" id="scr-train">
+      <h2>Entraînement</h2>
+      <div class="opt" id="tr-type" data-values="Lift|Coupé|Frappe|Mixte" data-v="top|coupe|plat|mix" data-i="0"><span class="ol">Balles</span><span class="ov"></span></div>
+      <div class="opt" id="tr-zone" data-values="Coup droit|Revers|Aléatoire" data-v="fh|bh|rand" data-i="2"><span class="ol">Zone</span><span class="ov"></span></div>
+      <div class="opt" id="tr-speed" data-values="Lent|Normal|Rapide" data-v="0|1|2" data-i="1"><span class="ol">Vitesse</span><span class="ov"></span></div>
+      <button class="mbtn accent" id="tr-go"><span><b>Commencer</b></span></button>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden" id="scr-options">
+      <h2>Options</h2>
+      <div class="opt set" data-key="master" data-values="0|1|2|3|4|5|6|7|8|9|10"><span class="ol">Volume général</span><span class="ov"></span></div>
+      <div class="opt set" data-key="sfx" data-values="0|1|2|3|4|5|6|7|8|9|10"><span class="ol">Effets</span><span class="ov"></span></div>
+      <div class="opt set" data-key="crowd" data-values="0|1|2|3|4|5|6|7|8|9|10"><span class="ol">Public</span><span class="ov"></span></div>
+      <div class="opt set" data-key="music" data-values="0|1|2|3|4|5|6|7|8|9|10"><span class="ol">Musique</span><span class="ov"></span></div>
+      <div class="opt set" data-key="voice" data-values="Non|Oui"><span class="ol">Voix de l'arbitre</span><span class="ov"></span></div>
+      <div class="opt set" data-key="camera" data-values="Raquette|TV|Haute"><span class="ol">Caméra</span><span class="ov"></span></div>
+      <div class="opt set" data-key="assist" data-values="Aucune|Légère|Forte"><span class="ol">Aide au placement</span><span class="ov"></span></div>
+      <div class="opt set" data-key="invert" data-values="Non|Oui"><span class="ol">Inverser haut/bas</span><span class="ov"></span></div>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+
     <section class="screen hidden" id="scr-locker">
       <h2>Vestiaire</h2>
       <div class="opt cos" id="cos-paddle" data-kind="paddle"><span class="ol">Raquette</span><span class="ov"></span></div>
@@ -147,15 +179,17 @@
     <section class="screen hidden wide" id="scr-ctrl">
       <h2>Commandes</h2>
       <div class="ctrlgrid">
-        <div class="cg"><span class="kb pad a">A</span><span><b>Lift</b><small>Coup de base, la balle plonge grâce à l'effet</small></span><span class="kb key">J</span></div>
-        <div class="cg"><span class="kb pad b">B</span><span><b>Frappe</b><small>Rapide et à plat, smash sur balle haute</small></span><span class="kb key">K</span></div>
-        <div class="cg"><span class="kb pad x">X</span><span><b>Coupé</b><small>Balle lente qui freine et tombe</small></span><span class="kb key">U</span></div>
+        <div class="cg"><span class="kb pad">◎</span><span><b>Timing</b><small>Un cercle se referme sur la balle : appuie pile quand il touche le cercle blanc</small></span><span class="kb key">—</span></div>
+        <div class="cg"><span class="kb pad a">A</span><span><b>Lift</b><small>Coup de base qui plonge. Sur balle courte : flip</small></span><span class="kb key">J</span></div>
+        <div class="cg"><span class="kb pad b">B</span><span><b>Frappe</b><small>Rapide et à plat, smash sur balle haute. Sur gros lift : contre</small></span><span class="kb key">K</span></div>
+        <div class="cg"><span class="kb pad x">X</span><span><b>Coupé</b><small>Balle lente qui freine. Sur gros lift : bloc</small></span><span class="kb key">U</span></div>
         <div class="cg"><span class="kb pad y">Y</span><span><b>Lob</b><small>Balle haute pour te défendre</small></span><span class="kb key">I</span></div>
         <div class="cg"><span class="kb pad">L</span><span><b>Viser</b><small>Stick gauche pendant que tu maintiens un coup</small></span><span class="kb key">ZQSD</span></div>
         <div class="cg"><span class="kb pad">LB RB</span><span><b>Effet latéral</b><small>La balle tourne à gauche ou à droite</small></span><span class="kb key">A E</span></div>
+        <div class="cg"><span class="kb pad">⧉</span><span><b>Caméra</b><small>Change de vue : raquette, TV, haute</small></span><span class="kb key">C</span></div>
         <div class="cg"><span class="kb pad">RT</span><span><b>Super coup</b><small>Quand la jauge SUPER est pleine : ton prochain coup part comme une fusée</small></span><span class="kb key">L</span></div>
       </div>
-      <p class="status">Maintiens le bouton plus longtemps pour frapper plus fort. Plus c'est fort, plus c'est risqué.</p>
+      <p class="status">La couleur de l'anneau sur la balle montre l'effet : rouge = lift, bleu = coupé, vert = latéral.</p>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
   </div>

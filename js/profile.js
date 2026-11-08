@@ -75,10 +75,16 @@ function fresh() {
     cos: { paddle: 'rouge', trail: 'blanc', arena: 'finale' },
     best: { rally: 0, speed: 0 },
     daily: null,
+    settings: { master: 8, sfx: 8, crowd: 8, music: 5, voice: 1, camera: 0, assist: 1, invert: 0 },
   };
 }
 export const profile = (() => {
-  try { return Object.assign(fresh(), JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return fresh(); }
+  try {
+    const f = fresh(), saved = JSON.parse(localStorage.getItem(KEY)) || {};
+    const p = Object.assign(f, saved);
+    p.settings = Object.assign(fresh().settings, saved.settings || {});
+    return p;
+  } catch (e) { return fresh(); }
 })();
 export function save() { try { localStorage.setItem(KEY, JSON.stringify(profile)); } catch (e) {} }
 

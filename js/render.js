@@ -5,7 +5,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { TABLE, NET, BALL_R } from './physics.js';
+import { TABLE, NET, BALL_R, topAxis } from './physics.js';
 import { IDEAL_REL } from './game.js';
 
 const NEON = 0xd23cff;          // violet néon
@@ -143,6 +143,135 @@ class PaddleRig {
   }
 }
 
+// ------------------------------------------------------------------ bonhomme néon
+const UP = new THREE.Vector3(0, 1, 0);
+class StickFigure {
+  constructor(scene, color) {
+    this.g = new THREE.Group();
+    // tube néon : cœur lumineux + halo additif
+    this.mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+    this.jointMat = this.mat;
+    this.halo = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    this.setColor(color);
+    const seg = new THREE.CylinderGeometry(0.019, 0.019, 1, 10, 1, false);
+    seg.translate(0, 0.5, 0);
+    const segH = new THREE.CylinderGeometry(0.048, 0.048, 1, 12, 1, true);
+    segH.translate(0, 0.5, 0);
+    this.segs = {};
+    for (const k of ['spine', 'shoulders', 'hips', 'uaL', 'faL', 'uaR', 'faR', 'thL', 'shL', 'thR', 'shR', 'neck']) {
+      const m = new THREE.Mesh(seg, this.mat); m.castShadow = true;
+      m.add(new THREE.Mesh(segH, this.halo));
+      this.g.add(m); this.segs[k] = m;
+    }
+    const jg = new THREE.SphereGeometry(0.03, 12, 10);
+    const jh = new THREE.SphereGeometry(0.06, 12, 10);
+    this.joints = {};
+    for (const k of ['shL', 'shR', 'elL', 'elR', 'haL', 'haR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR', 'pelvis', 'neck']) {
+      const m = new THREE.Mesh(jg, this.jointMat); m.castShadow = true;
+      m.add(new THREE.Mesh(jh, this.halo));
+      this.g.add(m); this.joints[k] = m;
+    }
+    // tête : anneau lumineux + disque sombre
+    this.head = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.02, 12, 48), this.mat);
+    ring.add(new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.05, 12, 48), this.halo));
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.11, 32), new THREE.MeshBasicMaterial({ color: 0x07060c }));
+    disc.position.z = -0.004;
+    ring.castShadow = true;
+    this.head.add(ring, disc);
+    this.g.add(this.head);
+    scene.add(this.g);
+    this.walk = 0; this.lx = null; this.mood = 0; this.moodT = 0; this.jump = 0;
+    this.v = {}; for (const k of ['pelvis', 'neck', 'headC', 'shL', 'shR', 'haL', 'haR', 'elL', 'elR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR']) this.v[k] = new THREE.Vector3();
+  }
+  setColor(c) {
+    const col = new THREE.Color(c);
+    this.mat.color.copy(col).lerp(new THREE.Color(0xffffff), 0.22).multiplyScalar(1.5);
+    this.halo.color.copy(col);
+  }
+  celebrate(win) { this.mood = win ? 1 : -1; this.moodT = 1.6; }
+
+  place(m, a, b) {
+    const d = b.clone().sub(a); const L = d.length();
+    m.position.copy(a); m.scale.set(1, Math.max(L, 0.001), 1);
+    m.quaternion.setFromUnitVectors(UP, d.normalize());
+  }
+  ik(a, target, l1, l2, pole, outElbow, outHand) {
+    const d = target.clone().sub(a); let L = d.length();
+    const maxL = (l1 + l2) * 0.999; if (L > maxL) { d.setLength(maxL); L = maxL; }
+    const T = a.clone().add(d);
+    const x = (l1 * l1 - l2 * l2 + L * L) / (2 * L), h = Math.sqrt(Math.max(0, l1 * l1 - x * x));
+    const dir = d.normalize();
+    const p = pole.clone().addScaledVector(dir, -pole.dot(dir)).normalize();
+    outElbow.copy(a).addScaledVector(dir, x).addScaledVector(p, h);
+    outHand.copy(T);
+  }
+
+  update(dt, pl, game, i, paddleObj, camera) {
+    const s = pl.side, V0 = this.v;
+    const f = new THREE.Vector3(0, 0, -s), r = new THREE.Vector3(s, 0, 0);
+    const root = new THREE.Vector3(pl.x, 0, pl.z);
+    // déplacement → pas
+    if (this.lx === null) this.lx = pl.x;
+    const moved = Math.abs(pl.x - this.lx) + 0;
+    this.lx = pl.x;
+    this.walk += moved * 9;
+    const stepping = Math.min(1, moved / Math.max(dt, 1e-3) / 2.5);
+    this.moodT = Math.max(0, this.moodT - dt); if (this.moodT <= 0) this.mood = 0;
+    const celebrating = this.mood === 1, sad = this.mood === -1;
+    const hop = celebrating ? Math.abs(Math.sin(this.moodT * 9)) * 0.12 : 0;
+    const crouch = sad ? 0.02 : celebrating ? -0.02 : 0.11;
+    V0.pelvis.copy(root).setY(0.95 - crouch + hop).addScaledVector(f, 0.02);
+    const lean = sad ? 0.18 : celebrating ? -0.02 : 0.12;
+    V0.neck.copy(V0.pelvis).add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(f, lean);
+    V0.headC.copy(V0.neck).add(new THREE.Vector3(0, 0.17, 0)).addScaledVector(f, sad ? 0.1 : 0.03);
+    if (sad) V0.headC.y -= 0.06;
+    const shY = V0.neck.clone().add(new THREE.Vector3(0, -0.04, 0));
+    V0.shL.copy(shY).addScaledVector(r, -0.19); V0.shR.copy(shY).addScaledVector(r, 0.19);
+    V0.hiL.copy(V0.pelvis).addScaledVector(r, -0.11); V0.hiR.copy(V0.pelvis).addScaledVector(r, 0.11);
+    // pieds : écartés, petit pas quand il se déplace
+    const ph = this.walk;
+    const fL = root.clone().addScaledVector(r, -0.34).addScaledVector(f, 0.1);
+    const fR = root.clone().addScaledVector(r, 0.34).addScaledVector(f, -0.06);
+    fL.y = Math.max(0, Math.sin(ph)) * 0.09 * stepping + hop * 0.6; fR.y = Math.max(0, -Math.sin(ph)) * 0.09 * stepping + hop * 0.6;
+    fL.x += Math.sin(ph) * 0.06 * stepping; fR.x -= Math.sin(ph) * 0.06 * stepping;
+    const kneePole = f.clone().multiplyScalar(1).add(new THREE.Vector3(0, 0.1, 0));
+    this.ik(V0.hiL, fL.clone().setY(fL.y + 0.04), 0.47, 0.47, kneePole, V0.knL, V0.ftL);
+    this.ik(V0.hiR, fR.clone().setY(fR.y + 0.04), 0.47, 0.47, kneePole, V0.knR, V0.ftR);
+    // bras droit : tient la raquette
+    let handR, handL;
+    if (celebrating) {
+      handR = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, 0.3);
+      handL = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, -0.3);
+    } else if (sad) {
+      handR = V0.pelvis.clone().addScaledVector(r, 0.25).add(new THREE.Vector3(0, -0.15, 0));
+      handL = V0.pelvis.clone().addScaledVector(r, -0.25).add(new THREE.Vector3(0, -0.15, 0));
+    } else {
+      handR = paddleObj.position.clone().addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(paddleObj.quaternion), -0.04);
+      const tossing = (game.state === 'serve' || game.state === 'toss') && game.server && game.server() === i;
+      handL = tossing && game.state === 'serve' ? new THREE.Vector3(game.ball.p.x, game.ball.p.y - 0.03, game.ball.p.z)
+        : V0.pelvis.clone().add(new THREE.Vector3(0, 0.12, 0)).addScaledVector(r, -0.28).addScaledVector(f, 0.28);
+      if (tossing && game.state === 'toss') handL = V0.neck.clone().add(new THREE.Vector3(0, 0.1, 0)).addScaledVector(r, -0.2).addScaledVector(f, 0.3);
+    }
+    const elbowPole = new THREE.Vector3(0, -1, 0).addScaledVector(f, -0.4);
+    this.ik(V0.shR, handR, 0.3, 0.29, elbowPole.clone().addScaledVector(r, 0.6), V0.elR, V0.haR);
+    this.ik(V0.shL, handL, 0.3, 0.29, elbowPole.clone().addScaledVector(r, -0.6), V0.elL, V0.haL);
+
+    const S = this.segs, J = this.joints;
+    this.place(S.spine, V0.pelvis, V0.neck);
+    this.place(S.neck, V0.neck, V0.headC.clone().addScaledVector(new THREE.Vector3(0, 1, 0), -0.11));
+    this.place(S.shoulders, V0.shL, V0.shR);
+    this.place(S.hips, V0.hiL, V0.hiR);
+    this.place(S.uaL, V0.shL, V0.elL); this.place(S.faL, V0.elL, V0.haL);
+    this.place(S.uaR, V0.shR, V0.elR); this.place(S.faR, V0.elR, V0.haR);
+    this.place(S.thL, V0.hiL, V0.knL); this.place(S.shL, V0.knL, V0.ftL);
+    this.place(S.thR, V0.hiR, V0.knR); this.place(S.shR, V0.knR, V0.ftR);
+    for (const k of Object.keys(J)) J[k].position.copy(V0[{ shL: 'shL', shR: 'shR', elL: 'elL', elR: 'elR', haL: 'haL', haR: 'haR', hiL: 'hiL', hiR: 'hiR', knL: 'knL', knR: 'knR', ftL: 'ftL', ftR: 'ftR', pelvis: 'pelvis', neck: 'neck' }[k]]);
+    this.head.position.copy(V0.headC);
+    this.head.lookAt(camera.position);
+  }
+}
+
 // ------------------------------------------------------------------ particules
 class Particles {
   constructor(scene, n, additive) {
@@ -224,6 +353,9 @@ export class Renderer {
     this.buildScreens();
     this.buildBall();
     this.paddles = [new PaddleRig(this.scene, 0xd0102e), new PaddleRig(this.scene, 0xd0102e)];
+    this.figures = [new StickFigure(this.scene, 0x3d8bff), new StickFigure(this.scene, 0xff3d6b)];
+    this.robot = this.buildRobot();
+    this.camMode = 'raquette';
     this.sparks = new Particles(this.scene, 500, true);
     this.confettiP = new Particles(this.scene, 900, false);
     this.flash = 0; this.intro = 0;
@@ -543,6 +675,10 @@ export class Renderer {
       new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.25, roughness: 0.35 }));
     this.ballMesh.castShadow = true;
     this.scene.add(this.ballMesh);
+    // anneau coloré qui tourne avec la balle : on voit l'effet (rouge = lift, bleu = coupé, vert = latéral)
+    this.spinBand = new THREE.Mesh(new THREE.TorusGeometry(BALL_R * 1.17, BALL_R * 0.28, 8, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    this.ballMesh.add(this.spinBand);
+    this.spinQ = new THREE.Quaternion();
     const glowTex = canvasTex(64, 64, (g, w, h) => {
       const grd = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
       grd.addColorStop(0, 'rgba(255,255,255,0.7)'); grd.addColorStop(0.3, 'rgba(220,200,255,0.25)'); grd.addColorStop(1, 'rgba(200,160,255,0)');
@@ -583,6 +719,7 @@ export class Renderer {
     this.ballMesh.position.set(b.x, b.y, b.z);
     this.glow.position.copy(this.ballMesh.position);
     this.ballMesh.visible = this.glow.visible = game.state !== 'between';
+    this.updateSpin(game, dt);
     const lh = game.lastHit ? game.lastHit.p : 0;
     const tc = game.superBall ? [1.0, 0.42, 0.08] : this.trailColors[lh];
     if (tc === 'rainbow') this.trailU.uRainbow.value = 1;
@@ -612,6 +749,15 @@ export class Renderer {
     });
 
     game.players.forEach((pl, i) => this.paddles[i].update(dt, pl, game, i));
+    const robotMode = game.ctrl && game.ctrl[1] === 'robot';
+    this.robot.visible = robotMode;
+    game.players.forEach((pl, i) => {
+      const fig = this.figures[i];
+      const hideMe = i === game.me && this.camMode === 'raquette' && !this.orbit && !this.replayCam;
+      fig.g.visible = !hideMe && !(robotMode && i === 1);
+      this.paddles[i].obj.visible = !(robotMode && i === 1);
+      if (fig.g.visible) fig.update(dt, pl, game, i, this.paddles[i].obj, this.camera);
+    });
     // balle en feu (super coup)
     if (game.superBall && game.state === 'rally' && Math.random() < 0.9) {
       const p = game.ball.p;
@@ -656,6 +802,40 @@ export class Renderer {
     this.trail.geometry.attributes.position.needsUpdate = true;
   }
 
+  updateSpin(game, dt) {
+    const w = game.ball.w, v = game.ball.v;
+    if (!w) return;
+    const wl = Math.hypot(w.x, w.y, w.z);
+    const hv = Math.hypot(v.x, v.z) || 1;
+    const ia = topAxis(v.x / hv, v.z / hv);
+    const top = w.x * ia.x + w.z * ia.z;
+    const col = Math.abs(w.y) > 60 && Math.abs(w.y) > Math.abs(top) ? 0x3dff8a : top > 40 ? 0xff4d4d : top < -40 ? 0x3da5ff : 0xffffff;
+    this.spinBand.material.color.setHex(col);
+    if (wl > 1) {
+      // l'anneau contient l'axe de rotation : en tournant autour, il « roule » visiblement
+      const axis = new THREE.Vector3(w.x / wl, w.y / wl, w.z / wl);
+      if (!this.lastAxis || axis.dot(this.lastAxis) < 0.95) {
+        const perp = Math.abs(axis.y) < 0.9 ? new THREE.Vector3().crossVectors(axis, UP).normalize() : new THREE.Vector3(1, 0, 0);
+        this.ballMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), perp);
+        this.lastAxis = axis.clone();
+      }
+      this.spinQ.setFromAxisAngle(axis, Math.min(0.45, wl * dt * 0.08));
+      this.ballMesh.quaternion.premultiply(this.spinQ);
+    }
+  }
+
+  buildRobot() {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.4), new THREE.MeshStandardMaterial({ color: 0x15131d, roughness: 0.4, metalness: 0.6 }));
+    body.position.y = 1.0; body.castShadow = true; g.add(body);
+    const eye = new THREE.Mesh(new THREE.CircleGeometry(0.09, 32), this.mats.neon); eye.position.set(0, 1.02, 0.201); g.add(eye);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 10), body.material); pole.position.y = 0.375; g.add(pole);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.06, 24), body.material); base.position.y = 0.03; g.add(base);
+    g.position.set(0, 0, -1.75); g.visible = false;
+    this.scene.add(g);
+    return g;
+  }
+
   neonRGB() { const c = this.mats.neon.emissive; return [Math.min(1, c.r + 0.3), Math.min(1, c.g + 0.3), Math.min(1, c.b + 0.3)]; }
   burst(x, y, z, n, color, speed, life, size) {
     for (let k = 0; k < n; k++) {
@@ -682,7 +862,8 @@ export class Renderer {
   updateAim(game) {
     const me = game.players[game.me];
     const serve = (game.state === 'serve' || game.state === 'toss') && game.server() === game.me;
-    const show = (me.charging && !serve) || serve;
+    const incoming = game.state === 'rally' && game.rally && game.rally.hitter !== game.me && game.pred && game.pred[game.me];
+    const show = (me.charging && !serve) || serve || !!incoming;
     this.aimRing.visible = show;
     if (!show) return;
     const s = me.side;
@@ -735,9 +916,17 @@ export class Renderer {
       this.camera.lookAt(0, 0.8, 0);
       return;
     }
-    // vue à la première personne, juste derrière la raquette
     const me = game.players[game.me];
     const s = me.side;
+    if (this.camMode === 'tv' || this.camMode === 'haute') {
+      const tv = this.camMode === 'tv';
+      const target = tv ? V(me.x * 0.25, 4.4, s * (Math.abs(me.z) + 3.4)) : V(me.x * 0.15, 6.4, s * 5.4);
+      const look = tv ? V(game.ball.p.x * 0.15, 0.45, -s * 0.7) : V(0, 0.4, -s * 0.2);
+      this.camPos.lerp(target, Math.min(1, dt * 4)); this.camLook.lerp(look, Math.min(1, dt * 4));
+      this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
+      return;
+    }
+    // vue à la première personne, juste derrière la raquette
     const target = V(me.x * 0.6, this.pressure ? 1.8 : 1.95, s * (Math.abs(me.z) + (this.pressure ? 1.25 : 1.7)));
     const look = V(me.x * 0.25 + game.ball.p.x * 0.08, 0.68, -s * 0.9);
     const k = Math.min(1, dt * 6);
@@ -750,6 +939,11 @@ export class Renderer {
       this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.08;
     }
     this.camera.lookAt(this.camLook);
+  }
+
+  worldToScreen(p) {
+    const v = new THREE.Vector3(p.x, p.y, p.z).project(this.camera);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
   }
 
   // position écran de la raquette d'un joueur (pour la jauge)

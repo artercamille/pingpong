@@ -1,10 +1,12 @@
 // Point d'entrée : menus, boucle de jeu, HUD, lobby en ligne.
 import { Renderer } from './render.js';
-import { Game, SHOT_LABEL, MAX_CHARGE, IDEAL_REL, TIMING } from './game.js';
-import { AI } from './ai.js';
+import { Game, SHOT_LABEL, MAX_CHARGE, IDEAL_REL, TIMING, RING_T, gradePress } from './game.js';
+import { music } from './music.js';
+import { announcer } from './voice.js';
+import { AI, AI_NAMES } from './ai.js';
 import { Input } from './input.js';
 import { Net } from './net.js';
-import { initAudio, sfx, setMuted, setCrowd, setMuffle } from './audio.js';
+import { initAudio, sfx, setMuted, setCrowd, setMuffle, setVolumes } from './audio.js';
 import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMETICS, ACHIEVEMENTS, unlock, recordMatch, isUnlocked, daily, dailyProgress } from './profile.js';
 import { Recorder, Player, recordCanvas } from './replay.js';
 
@@ -132,7 +134,25 @@ document.querySelectorAll('.opt').forEach(o => {
   optRender(o);
   o.addEventListener('click', e => { initAudio(); const r = o.getBoundingClientRect(); optStep(o, e.clientX < r.left + r.width * 0.5 ? -1 : 1); });
 });
-const choice = id => { const o = $('#' + id); return +o.dataset.v.split('|')[+o.dataset.i]; };
+const choice = id => { const o = $('#' + id); const v = o.dataset.v.split('|')[+o.dataset.i]; return isNaN(+v) ? v : +v; };
+
+// ------------------------------------------------------------------ options
+const CAMS = ['raquette', 'tv', 'haute'];
+function applySettings() {
+  const S = profile.settings;
+  setVolumes({ master: S.master / 10, sfx: S.sfx / 10, crowd: S.crowd / 10, music: S.music / 10 });
+  announcer.enabled = !!S.voice;
+  R.camMode = CAMS[S.camera] || 'raquette';
+  input.invertY = !!S.invert;
+  if (game) game.assist = S.assist;
+}
+document.querySelectorAll('.opt.set').forEach(o => {
+  o.dataset.i = profile.settings[o.dataset.key];
+  o.dataset.v = o.dataset.values.split('|').map((_, i) => i).join('|');
+  optRender(o);
+  o.addEventListener('click', () => setTimeout(() => { profile.settings[o.dataset.key] = +o.dataset.i; saveProfile(); applySettings(); }));
+});
+function settingStep(o) { if (o.classList.contains('set')) { profile.settings[o.dataset.key] = +o.dataset.i; saveProfile(); applySettings(); } }
 document.querySelectorAll('.opt.cos').forEach(o => o.addEventListener('click', () => setTimeout(renderLocker)));
 
 // navigation manette / clavier dans les menus
@@ -180,10 +200,10 @@ function navInput(inp, dt) {
   if ((v || h) && navCool <= 0 && !(typing && h)) {
     navCool = 0.2;
     if (v) { focusIdx = (focusIdx + v + items.length) % items.length; refreshFocus(); sfx.ui(); }
-    else if (items[focusIdx].classList.contains('opt')) { optStep(items[focusIdx], h); if (items[focusIdx].classList.contains('cos')) renderLocker(); }
+    else if (items[focusIdx].classList.contains('opt')) { optStep(items[focusIdx], h); if (items[focusIdx].classList.contains('cos')) renderLocker(); settingStep(items[focusIdx]); }
   }
   if (!v && !h) navCool = 0;
-  if (inp.pressed.top && !typing) { initAudio(); const el = items[focusIdx]; if (el.classList.contains('opt')) { optStep(el, 1); if (el.classList.contains('cos')) renderLocker(); } else el.click(); }
+  if (inp.pressed.top && !typing) { initAudio(); const el = items[focusIdx]; if (el.classList.contains('opt')) { optStep(el, 1); if (el.classList.contains('cos')) renderLocker(); settingStep(el); } else el.click(); }
   if (inp.pressed.plat && !typing) navBack();
 }
 addEventListener('keydown', e => {
@@ -229,6 +249,16 @@ function hooks() {
       const pts = document.querySelector(`#board .row[data-p="${w}"] .pts`);
       if (pts) { pts.classList.remove('pop'); void pts.offsetWidth; pts.classList.add('pop'); }
       if (m.over && m.winner === game.me) R.confetti();
+      // réactions des bonshommes
+      const ls2 = game.lastShot[w] || {};
+      const hype = rally + 1 >= 6 || setWon || m.over || ((ls2.smash || ls2.sup) && reason === 'Point gagnant');
+      if (hype) { R.figures[w].celebrate(true); if (setWon || m.over) R.figures[1 - w].celebrate(false); }
+      // voix
+      if (m.over) announcer.say(`Jeu, set et match, ${game.names[m.winner]} !`, true);
+      else if (setWon) announcer.say(`Set, ${game.names[w]}`, true);
+      else if (reason === 'Ace !') announcer.say('Ace !', true);
+      else if (ls2.sup && reason === 'Point gagnant') announcer.say('Incroyable !', true);
+      else if (rally + 1 >= 12) announcer.say('Quel échange !', true);
       // ralenti sur les gros points
       const ls = game.lastShot[w] || {};
       const big = rally + 1 >= 8 || ((ls.smash || ls.sup) && reason === 'Point gagnant') || setWon || m.over || game.ach.includes('save_mp') && !replayDone.save_mp;
@@ -239,7 +269,12 @@ function hooks() {
     ach: id => achToast(id),
     superArmed: i => { if (game && i === game.me) banner('SUPER COUP PRÊT', 'Ton prochain coup va partir comme une fusée', 1.4); },
     serve: s => {
-      if (!game) return;
+      if (!game || tuto || setup.mode === 'training') return;
+      const m = game.match;
+      const a = m.score[s], b = m.score[1 - s];
+      if (game.pressure) announcer.say(`${a}, ${b}. ${game.pressure.type === 'match' ? 'Balle de match' : 'Balle de set'}`);
+      else if (a === b && a >= 10) announcer.say('Égalité');
+      else if (a + b > 0) announcer.say(`${a}, ${b}`);
 
     },
     message: t => banner(t, '', 1.5),
@@ -250,16 +285,35 @@ function hooks() {
 function startAI() {
   const level = choice('ai-level'), bestOf = choice('ai-format');
   setup = { mode: 'ai', level, bestOf };
-  game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [myName(), ['IA Facile', 'IA', 'IA Pro'][level]],
+  const ai = new AI(null, 1, level);
+  const nm = AI_NAMES[Math.floor(Math.random() * AI_NAMES.length)];
+  setup.aiName = nm; setup.aiStyle = ai.style.name;
+  game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [myName(), nm], assist: profile.settings.assist,
     bestOf, firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks() });
-  game.ai[1] = new AI(game, 1, level);
+  ai.g = game; game.ai[1] = ai;
   enterGame();
 }
+
+function startTraining() {
+  const cfg = { type: choice('tr-type'), zone: choice('tr-zone'), speed: choice('tr-speed') };
+  setup = { mode: 'training', level: 0, bestOf: 99 };
+  game = new Game({ mode: 'ai', ctrl: ['human', 'robot'], me: 0, names: [myName(), 'Robot'], bestOf: 99, assist: profile.settings.assist,
+    training: cfg, hooks: { ...hooks(), point: () => {}, train: (ok, T) => renderTrain(ok, T) } });
+  enterGame();
+  document.body.classList.add('training');
+  $('#trainhud').classList.remove('hidden');
+  renderTrain(null, game.train);
+}
+function renderTrain(ok, T) {
+  $('#trainhud').innerHTML = `<div><b>${T.ok} / ${T.total}</b><small>RÉUSSIS</small></div><div><b>${T.streak}</b><small>SÉRIE</small></div><div><b>${T.best}</b><small>RECORD</small></div>`;
+  if (ok && T.streak > 0 && T.streak % 10 === 0) { showStreak(`${T.streak} d'affilée 🔥`); sfx.crowd(2); }
+}
+$('#tr-go').addEventListener('click', () => { initAudio(); sfx.ui(); startTraining(); });
 
 function startOnline(me, bestOf, firstServer, names) {
   setup = { mode: 'online', me, bestOf };
   const ctrl = me === 0 ? ['human', 'remote'] : ['remote', 'human'];
-  game = new Game({ mode: 'online', ctrl, me, names, bestOf, firstServer, net, hooks: hooks() });
+  game = new Game({ mode: 'online', ctrl, me, names, bestOf, firstServer, net, hooks: hooks(), assist: profile.settings.assist });
   net.onMessage = onNetMessage;
   net.onClose = () => {
     banner('Ton pote s\'est déconnecté', 'Retour au menu…', 3);
@@ -272,7 +326,8 @@ function enterGame(oppPaddle, oppTrail) {
   initAudio();
   applyCosmetics(oppPaddle, oppTrail);
   recorder.reset(); bestClip = null; replay = null; postPoint = null; replayDone = {};
-  if (!tuto) { game.stateT = 3.4; R.intro = 3.2; showVS(); } else R.intro = 0;
+  if (!tuto && setup.mode !== 'training') { game.stateT = 3.4; R.intro = 3.2; showVS(); } else { R.intro = 0; game.stateT = 1; }
+  music.stop();
   document.body.classList.remove('replaying'); $('#replay').classList.add('hidden');
   $('#menu').classList.add('hidden');
   $('#end').classList.add('hidden');
@@ -285,6 +340,8 @@ function quitToMenu() {
   game = null; tuto = null;
   $('#tuto').classList.add('hidden'); $('#board').classList.remove('hidden');
   $('#vs').classList.add('hidden'); R.intro = 0;
+  document.body.classList.remove('training'); $('#trainhud').classList.add('hidden'); $('#ring').className = '';
+  timeout = null;
   resetNet();
   $('#hud').classList.add('hidden');
   $('#end').classList.add('hidden');
@@ -292,6 +349,9 @@ function quitToMenu() {
   $('#menu').classList.remove('hidden');
   show('scr-main');
 applyCosmetics();
+applySettings();
+addEventListener('pointerdown', () => { initAudio(); applySettings(); }, { once: true });
+addEventListener('keydown', () => { initAudio(); applySettings(); }, { once: true });
 }
 
 function resetNet() {
@@ -363,6 +423,8 @@ function onNetMessage(msg) {
   }
   if (msg.t === 'quit') { banner('Ton pote a quitté la partie', '', 2.5); setTimeout(() => quitToMenu(), 2200); return; }
   if (replay && !replay.end && (msg.t === 'toss' || msg.t === 'hit')) endReplay();
+  if (msg.t === 'timeout') { timeout = { by: msg.name, pending: true, left: 30 }; banner(`Temps mort : ${msg.name}`, 'Il commence à la fin du point', 1.8); return; }
+  if (msg.t === 'resume') { endTimeout(false); return; }
   game && game.onNet(msg);
 }
 function restartOnline(fs) {
@@ -372,6 +434,7 @@ function restartOnline(fs) {
 
 // ------------------------------------------------------------------ fin / pause
 function showEnd(m) {
+  setTimeout(() => music.start(0.4), 1500);
   const me = game.me, op = 1 - me;
   const win = m.winner === me;
   $('#end-title').textContent = setup.mode === 'ai' ? (win ? 'Victoire !' : 'Défaite…') : (win ? 'Tu as gagné !' : `${game.names[m.winner]} gagne`);
@@ -446,10 +509,40 @@ $('#bestpt').addEventListener('click', async () => {
   });
 });
 $('#tomenu').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(); });
-$('#resume').addEventListener('click', () => togglePause(false));
+$('#resume').addEventListener('click', () => { if (timeout) endTimeout(true); else togglePause(false); });
 $('#quit').addEventListener('click', () => quitToMenu());
+// temps mort en ligne (1 par joueur et par match, 30 s max)
+let timeout = null;
+function requestTimeout() {
+  if (!game || !net) return;
+  if (game.usedTimeout) { banner('Temps mort déjà utilisé', '', 1.5); return; }
+  game.usedTimeout = true;
+  net.send({ t: 'timeout', name: myName() });
+  timeout = { by: myName(), pending: true, left: 30 };
+  banner('Temps mort demandé', 'Il commence à la fin du point', 1.8);
+}
+function updateTimeout(dt) {
+  if (!timeout) return;
+  if (timeout.pending && game.state !== 'rally' && game.state !== 'toss') {
+    timeout.pending = false; game.paused = true;
+    $('#pause h2').textContent = 'Temps mort';
+    $('#pause').classList.remove('hidden'); focusIdx = 0; refreshFocus();
+  }
+  if (!timeout.pending) {
+    timeout.left -= dt;
+    $('#pause h2').textContent = `Temps mort · ${Math.ceil(timeout.left)} s`;
+    if (timeout.left <= 0) endTimeout(true);
+  }
+}
+function endTimeout(send) {
+  if (!timeout) return;
+  timeout = null; game.paused = false;
+  $('#pause').classList.add('hidden'); $('#pause h2').textContent = 'Pause';
+  if (send && net) net.send({ t: 'resume' });
+}
 function togglePause(v) {
-  if (!game || setup.mode !== 'ai') return;
+  if (game && setup.mode === 'online') { if (timeout && !timeout.pending) endTimeout(true); else requestTimeout(); return; }
+  if (!game || (setup.mode !== 'ai' && setup.mode !== 'training')) return;
   game.paused = v ?? !game.paused;
   $('#pause').classList.toggle('hidden', !game.paused);
   focusIdx = 0; refreshFocus();
@@ -478,7 +571,7 @@ function showVS() {
     if (p === me) lp = profile.lp;
     else if (setup.mode === 'online') lp = opp.lp || 0;
     if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
-    else { label = ['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'; box.querySelector('.emb').innerHTML = ''; }
+    else { label = `${['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'} · ${setup.aiStyle || ''}`; box.querySelector('.emb').innerHTML = ''; }
     box.querySelector('.r').innerHTML = label;
   };
   side('l', me); side('r', op);
@@ -515,6 +608,30 @@ function updateHUD(dt) {
     ch.querySelector('.fill').style.width = (Math.max(0.15, p) * 100) + '%';
     ch.querySelector('.lbl').textContent = SHOT_LABEL[me.chargeType] || '';
   } else ch.classList.remove('show');
+}
+
+// ------------------------------------------------------------------ cercle de timing
+let ringFlash = 0, ringLastPress = null;
+function updateRing(dt) {
+  const el = $('#ring');
+  const me = game.me, pl = game.players[me];
+  const lp = game.lastPress;
+  if (lp && lp.i === me && lp !== ringLastPress) {
+    ringLastPress = lp; ringFlash = 0.38;
+    el.className = 'show hit ' + (lp.grade < 0 ? 'gm' : 'g' + lp.grade);
+  }
+  if (ringFlash > 0) { ringFlash -= dt; if (ringFlash <= 0) el.className = ''; return; }
+  const pr = game.pred[me];
+  let active = false, P = null;
+  if (pr && game.state === 'rally' && game.rally && game.rally.hitter !== me && !game.rally.contactTried && !pl.pressType) { active = true; P = { x: pr.x, y: pr.y, z: pr.z }; }
+  if (pr && pr.serve && game.state === 'toss' && game.server() === me) { active = true; P = { x: game.ball.p.x, y: 1.06, z: game.ball.p.z }; }
+  const rem = active ? pr.t - game.simTime : 99;
+  if (!active || rem > RING_T || rem < -0.2) { el.className = ''; return; }
+  const sp = R.worldToScreen(P);
+  el.style.transform = `translate(${sp.x}px, ${sp.y}px)`;
+  const scale = 1 + 2.6 * Math.max(0, rem) / RING_T;
+  el.querySelector('.app').style.width = el.querySelector('.app').style.height = (34 * scale) + 'px';
+  el.className = 'show';
 }
 
 // ------------------------------------------------------------------ ralenti
@@ -558,13 +675,12 @@ function updateAmbience() {
 // ------------------------------------------------------------------ tutoriel
 const TUTO = [
   { title: 'Déplacement', text: () => `Bouge ta raquette avec ${kb('move')}. Pendant les échanges, elle se place aussi toute seule vers la balle.`, need: 1.5, check: 'move' },
-  { title: 'Le lift', text: () => `Quand la balle arrive, appuie sur ${kb('top')}. Ta raquette frappe toute seule au bon moment. Réussis 2 lifts.`, need: 2, check: 'top' },
+  { title: 'Le timing', text: () => `Quand la balle arrive, un cercle se referme sur ta cible. Appuie sur ${kb('top')} (lift) pile quand il touche le cercle blanc. Réussis 2 lifts.`, need: 2, check: 'top' },
   { title: 'La frappe', text: () => `${kb('plat')} : une frappe rapide et à plat. Sur une balle haute, c'est un smash.`, need: 1, check: 'plat' },
   { title: 'Le coupé', text: () => `${kb('coupe')} : une balle lente avec effet arrière, qui freine sur la table.`, need: 1, check: 'coupe' },
   { title: 'Le lob', text: () => `${kb('lob')} : une balle haute et lente pour te défendre.`, need: 1, check: 'lob' },
-  { title: 'Viser', text: () => `Maintiens un coup et pousse ${kb('move')} à gauche ou à droite. Le cercle jaune montre où ira la balle.`, need: 1, check: 'aim' },
-  { title: 'La puissance', text: () => `Maintiens le bouton longtemps avant que la balle arrive pour frapper plus fort. Attention : plus c'est fort, plus c'est risqué.`, need: 1, check: 'power' },
-  { title: 'Le service', text: () => `À toi de servir : appuie sur un coup (${kb('top')}, ${kb('coupe')}…). Vise avec ${kb('move')}.`, need: 1, check: 'serve' },
+  { title: 'Viser', text: () => `Pendant que la balle arrive, pousse ${kb('move')} à gauche ou à droite. Le cercle jaune sur la table montre où ira ta balle.`, need: 1, check: 'aim' },
+  { title: 'Le service', text: () => `À toi de servir : appuie sur un coup pour lancer la balle, puis rappuie quand le cercle se referme. Vise avec ${kb('move')}.`, need: 1, check: 'serve' },
 ];
 function startTuto() {
   setup = { mode: 'ai', level: 3, bestOf: 99 };
@@ -609,7 +725,8 @@ function tutoHit(p, h) {
   if (!tuto || p !== game.me || tuto.step >= TUTO.length) return;
   const c = TUTO[tuto.step].check;
   if (c === 'serve' ? h.serve : h.serve) { if (c === 'serve') tutoAdvance(); return; }
-  if ((c === h.type) || (c === 'aim' && Math.abs(h.aimX) > 0.45) || (c === 'power' && h.power > 0.75)) tutoAdvance();
+  const base = { flip: 'top', contre: 'plat', bloc: 'coupe' }[h.type] || h.type;
+  if ((c === base) || (c === 'aim' && Math.abs(h.aimX) > 0.45) || (c === 'power' && h.power > 0.75)) tutoAdvance();
 }
 function tutoUpdate(dt) {
   const pl = game.players[game.me];
@@ -647,6 +764,8 @@ function loop(now) {
     if (inp.pressed.start) { if (tuto) quitToMenu(); else togglePause(); }
     if (!game) { requestAnimationFrame(loop); return; }
     if (tuto) tutoUpdate(dt);
+    if (inp.pressed.cam) { profile.settings.camera = (profile.settings.camera + 1) % 3; saveProfile(); applySettings(); banner(`Caméra : ${['Raquette', 'TV', 'Haute'][profile.settings.camera]}`, '', 1); }
+    updateTimeout(dt);
     if (replay) {
       // relecture au ralenti : le match est en pause
       const fake = replay.step(dt);
@@ -667,11 +786,13 @@ function loop(now) {
     recorder.record(game, dt);
     updateMomentum();
     updateAmbience();
+    updateRing(dt);
     game.update(dt, inp);
     if (!window.__noRender) R.update(game, dt);
     updateHUD(dt);
   } else if (ready) {
     setMuted(true); setMuffle(false); R.pressure = false; R.replayCam = false;
+    if (!music.playing && $('#menu') && !$('#menu').classList.contains('hidden')) music.start(1);
     R.orbit = true;
     if (demo.state === 'over') newDemo();
     demo.update(dt, null);
@@ -685,3 +806,6 @@ requestAnimationFrame(loop);
 window.__pp = { profile, get replay() { return replay; }, startReplay, forceReplay: () => startReplay(recorder.clip(4.5), null), get game() { return game; }, get demo() { return demo; }, get tuto() { return tuto; }, tutoUpdate: d => tutoUpdate(d), R, startAI, startTuto, AI };
 show('scr-main');
 applyCosmetics();
+applySettings();
+addEventListener('pointerdown', () => { initAudio(); applySettings(); }, { once: true });
+addEventListener('keydown', () => { initAudio(); applySettings(); }, { once: true });

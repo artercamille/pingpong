@@ -9,12 +9,24 @@ const LEVELS = [
   { name: 'Difficile', noise: 0.035, slip: 0.045, react: 0.1, speed: 1, power: 0.82, aim: 0.95 },
   { name: 'Coach', noise: 0.01, slip: 0, react: 0.1, speed: 1, power: 0.32, aim: 0.25 },
 ];
+// styles de jeu : répartition des coups, puissance, prise de risque
+export const STYLES = {
+  attaquant: { name: 'Attaquant', mix: { top: 0.5, plat: 0.32, coupe: 0.1, lob: 0.08 }, power: 0.12, aim: 1.1, noise: 1.1 },
+  defenseur: { name: 'Défenseur', mix: { top: 0.28, plat: 0.04, coupe: 0.38, lob: 0.3 }, power: -0.15, aim: 0.75, noise: 0.8 },
+  coupeur: { name: 'Coupeur', mix: { top: 0.2, plat: 0.08, coupe: 0.67, lob: 0.05 }, power: -0.08, aim: 0.9, noise: 0.9 },
+  polyvalent: { name: 'Polyvalent', mix: { top: 0.45, plat: 0.15, coupe: 0.3, lob: 0.1 }, power: 0, aim: 0.9, noise: 1 },
+};
+export const AI_NAMES = ['Kenji Arata', 'Viktor Lindqvist', 'Lucas Moreau', 'Mateo Rivas', 'Anya Petrova', 'Hugo Lambert', 'Felix Brandt', 'Jin-ho Park', 'Omar Haddad', 'Leo Santini'];
 const gauss = () => (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 0.577;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export class AI {
   constructor(game, i, level = 1) {
     this.g = game; this.i = i; this.L = LEVELS[level];
+    const keys = Object.keys(STYLES);
+    this.styleId = keys[Math.floor(Math.random() * keys.length)];
+    this.style = STYLES[this.styleId];
+    this.recent = [];
     this.plan = null; this.planId = -1;
     this.hold = null; this.serveT = 0; this.serveRelY = 0.95;
     this.inp = emptyInput();
@@ -78,6 +90,20 @@ export class AI {
     return inp;
   }
 
+  // vise le côté où l'adversaire fait le plus de fautes (l'IA s'adapte)
+  aimWeak() {
+    const g = this.g, op = 1 - this.i, e = g.errSide[op];
+    const tot = e[0] + e[1];
+    const aim = this.L.aim * this.style.aim;
+    if (tot >= 3 && Math.random() < 0.6) {
+      const weakBack = e[1] > e[0];
+      // côté revers de l'adversaire = sa gauche ; vu par l'IA (face à lui), c'est sa droite à elle
+      const sgn = weakBack ? 1 : -1;
+      return clamp(sgn * (0.5 + Math.random() * 0.5) * aim, -1, 1);
+    }
+    return clamp((Math.random() * 2 - 1) * aim, -1, 1);
+  }
+
   makePlan() {
     const g = this.g, pl = g.players[this.i], s = pl.side;
     this.planId = g.rally.id; this.plan = null;
@@ -104,21 +130,26 @@ export class AI {
     const hv = Math.hypot(res.ball.v.x, res.ball.v.z) || 1;
     const ia = topAxis(res.ball.v.x / hv, res.ball.v.z / hv);
     const incTop = res.ball.w.x * ia.x + res.ball.w.z * ia.z;
-    let type; const r = Math.random();
-    let power = clamp(this.L.power * (0.7 + Math.random() * 0.5), 0.2, 1);
+    let type;
+    const st = this.style;
+    let power = clamp((this.L.power + st.power) * (0.7 + Math.random() * 0.5), 0.2, 1);
+    const pick = () => { let r = Math.random(), acc = 0; for (const [k, v] of Object.entries(st.mix)) { acc += v; if (r < acc) return k; } return 'top'; };
     if (C.y > 1.2) { type = 'plat'; power = 0.85; }
-    else if (incTop < -60) type = r < 0.5 ? 'coupe' : 'top';
-    else type = r < 0.62 ? 'top' : r < 0.8 ? 'coupe' : r < 0.94 ? 'plat' : 'lob';
+    else if (incTop < -60) type = Math.random() < 0.5 ? 'coupe' : 'top';
+    else type = pick();
+    // changement de rythme : après 3 coups identiques, on varie
+    if (this.recent.length >= 3 && this.recent.slice(-3).every(t => t === type)) type = type === 'coupe' ? 'top' : 'coupe';
+    this.recent.push(type); if (this.recent.length > 6) this.recent.shift();
     if (type === 'plat' && C.y < 0.95) power *= 0.6;
     if (this.L.name === 'Coach') { type = 'top'; power = 0.3; }
-    let tErr = gauss() * this.L.noise;
+    let tErr = gauss() * this.L.noise * st.noise;
     if (Math.random() < this.L.slip) tErr += (Math.random() < 0.5 ? -1 : 1) * (0.12 + Math.random() * 0.15); // grosse erreur
     const tRelease = tC - IDEAL_REL + tErr;
     const tPress = Math.max(g.simTime + this.L.react * 0.5, tRelease - power * MAX_CHARGE);
     this.plan = {
       px: clamp(px, -2.6, 2.6), pz: s * pzd, tRelease, tPress, type, done: false,
       startT: g.simTime + this.L.react,
-      aimX: clamp((Math.random() * 2 - 1) * this.L.aim, -1, 1),
+      aimX: this.aimWeak(),
       aimY: clamp((Math.random() * 2 - 1) * 0.8, -1, 1),
     };
   }

@@ -209,6 +209,24 @@ class StickFigure {
     this.acc.wristL.visible = this.acc.wristR.visible = a === 3;
   }
   celebrate(win) { this.mood = win ? 1 : -1; this.moodT = 1.6; }
+  // logo du sponsor sur la poitrine
+  setBadge(text, color) {
+    if (!this.badge) {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+      this.badgeCanvas = c; this.badgeTex = new THREE.CanvasTexture(c); this.badgeTex.colorSpace = THREE.SRGBColorSpace;
+      this.badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.badgeTex, transparent: true, toneMapped: false, depthWrite: false }));
+      this.badge.scale.set(0.26, 0.1, 1); this.g.add(this.badge);
+    }
+    this.badge.visible = !!text;
+    if (!text) return;
+    const g = this.badgeCanvas.getContext('2d');
+    g.clearRect(0, 0, 256, 96);
+    g.fillStyle = 'rgba(10,8,20,.85)'; g.fillRect(8, 14, 240, 68);
+    g.strokeStyle = color || '#fff'; g.lineWidth = 5; g.strokeRect(8, 14, 240, 68);
+    g.fillStyle = color || '#fff'; g.font = '900 italic 40px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text.toUpperCase().slice(0, 11), 128, 50);
+    this.badgeTex.needsUpdate = true;
+  }
 
   place(m, a, b) {
     const d = b.clone().sub(a); const L = d.length();
@@ -238,7 +256,7 @@ class StickFigure {
     const stepping = Math.min(1, moved / Math.max(dt, 1e-3) / 2.5);
     this.moodT = Math.max(0, this.moodT - dt); if (this.moodT <= 0) this.mood = 0;
     const celebrating = this.mood === 1, sad = this.mood === -1;
-    const hop = celebrating ? Math.abs(Math.sin(this.moodT * 9)) * 0.12 : 0;
+    const hop = celebrating ? Math.abs(Math.sin(this.moodT * 9)) * (this.celebType === 3 ? 0.3 : 0.12) : 0;
     const crouch = sad ? 0.02 : celebrating ? -0.02 : 0.11;
     V0.pelvis.copy(root).setY(0.95 - crouch + hop).addScaledVector(f, 0.02);
     const lean = sad ? 0.18 : celebrating ? -0.02 : 0.12;
@@ -260,8 +278,17 @@ class StickFigure {
     // bras droit : tient la raquette
     let handR, handL;
     if (celebrating) {
-      handR = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, 0.3);
-      handL = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, -0.3);
+      const ct = this.celebType || 0;
+      if (ct === 1) { // poing levé
+        handR = V0.neck.clone().add(new THREE.Vector3(0, 0.55, 0)).addScaledVector(r, 0.12);
+        handL = V0.pelvis.clone().addScaledVector(r, -0.22).addScaledVector(f, 0.05);
+      } else if (ct === 2) { // bras en croix
+        handR = V0.neck.clone().add(new THREE.Vector3(0, 0.05, 0)).addScaledVector(r, 0.62);
+        handL = V0.neck.clone().add(new THREE.Vector3(0, 0.05, 0)).addScaledVector(r, -0.62);
+      } else {
+        handR = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, 0.3);
+        handL = V0.neck.clone().add(new THREE.Vector3(0, 0.5, 0)).addScaledVector(r, -0.3);
+      }
     } else if (sad) {
       handR = V0.pelvis.clone().addScaledVector(r, 0.25).add(new THREE.Vector3(0, -0.15, 0));
       handL = V0.pelvis.clone().addScaledVector(r, -0.25).add(new THREE.Vector3(0, -0.15, 0));
@@ -272,6 +299,7 @@ class StickFigure {
         : V0.pelvis.clone().add(new THREE.Vector3(0, 0.12, 0)).addScaledVector(r, -0.28).addScaledVector(f, 0.28);
       if (tossing && game.state === 'toss') handL = V0.neck.clone().add(new THREE.Vector3(0, 0.1, 0)).addScaledVector(r, -0.2).addScaledVector(f, 0.3);
     }
+    if (this.badge && this.badge.visible) this.badge.position.copy(V0.neck).lerp(V0.pelvis, 0.3).addScaledVector(f, 0.06);
     const elbowPole = new THREE.Vector3(0, -1, 0).addScaledVector(f, -0.4);
     this.ik(V0.shR, handR, 0.3, 0.29, elbowPole.clone().addScaledVector(r, 0.6), V0.elR, V0.haR);
     this.ik(V0.shL, handL, 0.3, 0.29, elbowPole.clone().addScaledVector(r, -0.6), V0.elL, V0.haL);
@@ -634,6 +662,55 @@ export class Renderer {
     this.updateCrowd(0);
   }
 
+  // podium de remise des trophées
+  setPodium(on, color = 0xffc83c, medal = false) {
+    this.podiumPos = V(0, 0, 3.6);
+    if (!this.podiumG) {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: 0x15121f, roughness: 0.4, metalness: 0.5 });
+      this.podiumEdge = new THREE.MeshBasicMaterial({ color, toneMapped: false });
+      [[0, 0.62, '1'], [-0.95, 0.42, '2'], [0.95, 0.28, '3']].forEach(([x, h]) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.9, h, 0.8), mat); b.position.set(x, h / 2, 0); b.castShadow = b.receiveShadow = true; g.add(b);
+        const e = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.025, 0.82), this.podiumEdge); e.position.set(x, h, 0); g.add(e);
+      });
+      // trophée
+      const pts = [[0, 0], [0.07, 0], [0.07, 0.02], [0.025, 0.05], [0.02, 0.13], [0.05, 0.16], [0.09, 0.22], [0.1, 0.3], [0.095, 0.31], [0, 0.31]].map(([x, y]) => new THREE.Vector2(x, y));
+      this.trophyMat = new THREE.MeshStandardMaterial({ color, metalness: 1, roughness: 0.18, emissive: color, emissiveIntensity: 0.25 });
+      this.trophy = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), this.trophyMat);
+      this.medalMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.012, 32), this.trophyMat); this.medalMesh.rotation.x = Math.PI / 2;
+      g.add(this.trophy, this.medalMesh);
+      this.scene.add(g); this.podiumG = g;
+    }
+    this.podiumOn = on;
+    this.podiumG.visible = on;
+    this.podiumG.position.copy(this.podiumPos);
+    this.podiumEdge.color.setHex(color); this.trophyMat.color.setHex(color); this.trophyMat.emissive.setHex(color);
+    this.trophy.visible = on && !medal; this.medalMesh.visible = on && !!medal;
+    if (!on) for (const f of this.figures) f.g.position.y = 0;
+    else { this.figures[0].mood = 1; this.figures[0].moodT = 999; }
+  }
+  updatePodium(dt, game) {
+    const P = this.podiumPos;
+    const spots = [[0, 0.62], [-0.95, 0.42]];
+    for (const p of this.paddles) p.obj.visible = false;
+    this.ballMesh.visible = this.glow.visible = false;
+    for (let i = 0; i < this.figures.length; i++) {
+      const fig = this.figures[i];
+      if (i > 1 || (game.players && i >= game.players.length)) { fig.g.visible = false; continue; }
+      const [x, h] = spots[i];
+      fig.g.visible = true;
+      if (i === 0) { fig.mood = 1; fig.moodT = 999; } else { fig.mood = 0; }
+      fig.g.position.y = 0;
+      fig.update(dt, { x: P.x + x, z: P.z, side: -1, hand: 1 }, { state: 'between', ball: game.ball, server: () => -1 }, i, this.paddles[i].obj, this.camera);
+      fig.g.position.y = h;
+    }
+    const v = this.figures[0].v;
+    const ct = this.figures[0].celebType || 0;
+    const top = ct === 1 ? v.haR.clone() : ct === 2 ? v.headC.clone().add(V(0, 0.3, 0)) : v.haL.clone().add(v.haR).multiplyScalar(0.5);
+    this.trophy.position.set(top.x - P.x, Math.min(top.y, v.headC.y + 0.6) + 0.62 - 0.05, top.z - P.z);
+    this.medalMesh.position.set(v.neck.x - P.x, v.neck.y + 0.62 - 0.18, v.neck.z - P.z - 0.07);
+  }
+
   setCrowdDensity(f) {
     const n = Math.max(1, Math.round(this.crowdItems.length * Math.max(0.05, Math.min(1, f))));
     this.crowd.count = n; this.crowdHeads.count = n;
@@ -803,6 +880,7 @@ export class Renderer {
       this.paddles[i].obj.visible = !(robotMode && i === 1);
       if (fig.g.visible) fig.update(dt, pl, game, i, this.paddles[i].obj, this.camera);
     });
+    if (this.podiumOn) this.updatePodium(dt, game);
     // balle en feu (super coup)
     if (game.superBall && game.state === 'rally' && Math.random() < 0.9) {
       const p = game.ball.p;
@@ -941,6 +1019,13 @@ export class Renderer {
       this.camLook.lerp(V(b.x * 0.5, 0.9, b.z * 0.85), Math.min(1, rdt * 5));
       this.camera.position.copy(this.camPos);
       this.camera.lookAt(this.camLook);
+      return;
+    }
+    if (this.podiumOn) {
+      const a = this.time * 0.25, P = this.podiumPos;
+      const A = 0.5 * Math.sin(this.time * 0.22);
+      this.camera.position.set(P.x + Math.sin(A) * 6.2, 2.3 + Math.sin(this.time * 0.4) * 0.15, P.z + Math.cos(A) * 6.2);
+      this.camera.lookAt(P.x, 1.55, P.z);
       return;
     }
     if (this.intro > 0 && game.players) {

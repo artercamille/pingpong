@@ -60,3 +60,12 @@ Le jeu est ensuite disponible sur `https://artercamille.github.io/pingpong/`.
 
 - Moteur 3D : [Three.js](https://threejs.org) (MIT)
 - Connexion en ligne : [PeerJS](https://peerjs.com) (MIT)
+
+## Mode carrière
+
+- 3 sauvegardes (export/import), création du joueur (pays, main, style, personnalité, âge, difficulté).
+- Circuit WTT réel : Feeder, Contender, Champions, Grand Smash, WTT Finals, Championnats du monde (poules + tableau), Coupe du monde par équipes, Jeux olympiques.
+- Qualifications, wild cards, exhibitions, double et double mixte avec partenaire.
+- Classement mondial, rivaux, coups signature, presse, réseaux sociaux, fans, sponsors, staff, centre d'entraînement, matériel.
+- Entraînement hebdomadaire (robot, cibles, vitesse, régularité, défense, réception, sparring), préparation d'un tournoi, talents, blessures, confiance, âge et déclin.
+- Calendrier, fiches joueurs, vitrine, records, Hall of Fame, jubilé et match d'adieu, podium 3D.

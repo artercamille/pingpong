@@ -148,3 +148,6 @@ h1 span { color: #ffb43c; }
 #walkout .wn { font-size: 54px; font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1; color: #fff; text-shadow: 0 0 24px var(--wc); }
 #walkout .wm { display: block; margin-top: 6px; font-weight: 800; font-size: 15px; color: #ddd5f2; letter-spacing: 1px; }
 @keyframes wkIn { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
+#ceremony.pod { background: linear-gradient(180deg, transparent 45%, rgba(2,1,6,.92)); backdrop-filter: none; align-items: flex-end; padding-bottom: 6vh; }
+#ceremony.pod .cer-tr { display: none; }
+#ceremony.pod .cer-t { font-size: 52px; }

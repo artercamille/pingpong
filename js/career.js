@@ -1,5 +1,5 @@
 // Mode carrière : joueur, circuit mondial (200 joueurs IA), calendrier, tournois, classement.
-import { REAL_PLAYERS } from './players.js';
+import { REAL_PLAYERS, REAL_WOMEN } from './players.js';
 const KEY0 = 'pingpong-career-v2';
 let slot = 1;
 const KEY_OF = n => `${KEY0}-s${n}`;
@@ -80,6 +80,8 @@ export const TIERS = {
   contender: { name: 'WTT Contender', size: 16, need: 120, pts: [400, 280, 140, 70, 35], arena: 'jungle', color: '#3cff8a' },
   star: { name: 'WTT Champions', size: 32, need: 50, pts: [1000, 700, 350, 175, 90, 15], arena: 'inferno', color: '#ff3c3c' },
   slam: { name: 'Grand Smash', size: 32, need: 32, pts: [2000, 1400, 700, 350, 175, 90], arena: 'finale', color: '#d23cff' },
+  finals: { name: 'WTT Finals', size: 16, need: 16, pts: [1500, 1050, 525, 265, 100], arena: 'legende', color: '#ff4dc8' },
+  exhib: { name: 'Exhibition', size: 2, need: 999, pts: [0, 0], arena: 'finale', color: '#6ee7a8' },
   team: { name: 'Coupe du monde par équipes', size: 8, need: 999, pts: [0, 0, 0, 0], arena: 'inferno', color: '#ff9a3c' },
   olympics: { name: 'Jeux olympiques', size: 32, need: 40, pts: [0, 0, 0, 0, 0, 0], arena: 'legende', color: '#ffffff' },
   worlds: { name: 'Championnats du monde', size: 16, need: 16, pts: [1500, 1050, 525, 265, 100], arena: 'legende', color: '#ffc83c' },
@@ -96,6 +98,7 @@ export const VENUES = {
 
 const de = c => /^[AEIOUÉÈ]/.test(c) ? `d'${c}` : `de ${c}`;
 function baseEvents(season, week) {
+  if (week === 21) return [{ id: `s${season}w21fin`, tier: 'finals', name: 'WTT Finals Hong Kong' }, { id: `s${season}w21ch`, tier: 'challenger', name: `WTT Feeder ${FEEDERS[(week * 7 + season) % FEEDERS.length]}` }];
   if (week === WEEKS) return [{ id: `s${season}w${week}worlds`, tier: 'worlds', name: 'Championnats du monde' }];
   if (SLAMS[week]) return [{ id: `s${season}w${week}slam`, tier: 'slam', name: SLAMS[week] }, { id: `s${season}w${week}ch`, tier: 'challenger', name: `WTT Feeder ${FEEDERS[(week * 7 + season) % FEEDERS.length]}` }];
   if (STARS[week]) return [{ id: `s${season}w${week}star`, tier: 'star', name: STARS[week] }, { id: `s${season}w${week}co`, tier: 'contender', name: `WTT Contender ${CONTENDERS[(week * 5 + season) % CONTENDERS.length]}` }];
@@ -105,12 +108,18 @@ function baseEvents(season, week) {
   ];
 }
 
+const EXHIB_CITIES = ['Paris (Accor Arena)', 'Londres', 'Shanghai', 'Tokyo', 'New York', 'Dubaï', 'Stockholm', 'Rio'];
 export const olympicName = s => s === 2 ? 'Jeux olympiques de Los Angeles' : s === 6 ? 'Jeux olympiques de Brisbane' : 'Jeux olympiques';
 export function weekEvents(season, week) {
   if (week === 14) return [{ id: `s${season}w14team`, tier: 'team', kind: 'team', name: 'Coupe du monde par équipes' }, ...baseEvents(season, week).filter(e => e.tier === 'challenger')];
   if (season % 4 === 2 && week === 16) return [{ id: `s${season}w16oly`, tier: 'olympics', kind: 'olympics', name: olympicName(season) }];
   const out = [];
-  for (const e of baseEvents(season, week)) { out.push(e); if (e.tier !== 'challenger' && e.tier !== 'worlds') out.push({ ...e, id: e.id + 'd', kind: 'double', name: e.name + ' · Double' }); }
+  for (const e of baseEvents(season, week)) {
+    out.push(e);
+    if (e.tier !== 'challenger' && e.tier !== 'worlds' && e.tier !== 'finals') out.push({ ...e, id: e.id + 'd', kind: 'double', name: e.name + ' · Double' });
+    if (e.tier === 'slam' || e.tier === 'star') out.push({ ...e, id: e.id + 'x', kind: 'mixed', name: e.name + ' · Double mixte' });
+  }
+  if (week % 4 === 2 && career && (career.fans || 0) >= 15000) out.push({ id: `s${season}w${week}ex`, tier: 'exhib', kind: 'exhib', name: `Exhibition à ${EXHIB_CITIES[(season * 3 + week) % EXHIB_CITIES.length]}` });
   return out;
 }
 
@@ -142,7 +151,7 @@ export function create(p) {
   seed = (Date.now() & 0xffffffff) >>> 0;
   const stats = {};
   for (const k of STAT_KEYS) stats[k] = clamp(46 + STYLE_BIAS[p.style][k], 30, 70);
-  const me = { id: 'me', name: p.name, country: p.country, hand: p.hand, style: p.style, neon: p.neon, acc: p.acc, stats, pts: [], age: p.age || 17 };
+  const me = { id: 'me', name: p.name, country: p.country, hand: p.hand, style: p.style, neon: p.neon, acc: p.acc, stats, pts: [], age: p.age || 17, perso: p.perso || 'combatif' };
   // circuit réel
   const used = new Set([p.name]);
   const N = REAL_PLAYERS.length;
@@ -173,7 +182,7 @@ export function create(p) {
 
 // ------------------------------------------------------------------ classement
 export function allPlayers() { return [career.me, ...career.pool]; }
-export function getP(id) { const E = career.tour && career.tour.ents; if (E && E[id]) return E[id]; return id === 'me' ? career.me : career.pool.find(p => p.id === id); }
+export function getP(id) { const E = career.tour && career.tour.ents; if (E && E[id]) return E[id]; if (id === 'me') return career.me; return career.pool.find(p => p.id === id) || (career.wpool || []).find(p => p.id === id); }
 export function rating(pl) { return pl.ent ? pl.rating : pl.id === 'me' ? overall(effStats()) : pl.rating; }
 export function rankPoints(pl) {
   const now = absWeek(career.season, career.week);
@@ -191,6 +200,9 @@ export function rankOf(id) { const r = ranking(); const e = r.find(x => x.p.id =
 export function lockReason(ev) {
   const T = TIERS[ev.tier], rk = rankOf('me');
   if (career.injury) return `🩹 Blessé (${career.injury.weeks} sem.)`;
+  if ((career.wc || {})[ev.id]) return null;
+  if (ev.kind === 'exhib') return null;
+  if (ev.kind === 'mixed') return career.mpartner && (career.wpool || []).some(w => w.id === career.mpartner) ? (rk <= 80 ? null : '🔒 Réservé au top 80 mondial') : 'Choisis une partenaire de double mixte (Staff & sponsors)';
   if (ev.kind === 'double') {
     if (!career.partner || !career.pool.some(p => p.id === career.partner)) return 'Choisis un partenaire de double (Staff & sponsors)';
     const need = { contender: 999, star: 90, slam: 60 }[ev.tier] || 999;
@@ -218,7 +230,7 @@ function entrants(ev, withMe) {
   if (ev.tier === 'contender') { lo = 25; hi = 125; }
   if (ev.tier === 'star') { lo = 4; hi = 70; }
   if (ev.tier === 'slam') { lo = 0; hi = 44; }
-  if (ev.tier === 'worlds') { lo = 0; hi = 16; }
+  if (ev.tier === 'worlds' || ev.tier === 'finals') { lo = 0; hi = 16; }
   if (ev.tier === 'olympics') { lo = 0; hi = r.length; }
   let cands = r.slice(lo, hi).map(e => e.p);
   if (ev.tier === 'olympics') {
@@ -226,7 +238,7 @@ function entrants(ev, withMe) {
     cands = cands.filter(p => { cnt[p.country] = (cnt[p.country] || 0) + 1; return cnt[p.country] <= 2; });
   }
   const n = T.size - (withMe ? 1 : 0);
-  const sel = ev.tier === 'worlds' || ev.tier === 'slam' || ev.tier === 'olympics' ? cands.slice(0, n) : cands.sort(() => rnd() - 0.5).slice(0, n);
+  const sel = ev.tier === 'worlds' || ev.tier === 'finals' || ev.tier === 'slam' || ev.tier === 'olympics' ? cands.slice(0, n) : cands.sort(() => rnd() - 0.5).slice(0, n);
   // le rival est souvent dans le même tournoi
   const rival = career.pool.find(p => p.rival);
   if (withMe && rival && !sel.includes(rival) && rnd() < 0.55 && ev.tier !== 'worlds' && ev.tier !== 'olympics') sel[sel.length - 1] = rival;
@@ -279,6 +291,8 @@ function simRound(d) {
     const A = getP(m.a), B = getP(m.b);
     const aw = rnd() < winProb(A, B);
     m.w = aw ? m.a : m.b;
+    if (!A.ent) A.form = ((A.form || '') + (aw ? 'V' : 'D')).slice(-5);
+    if (!B.ent) B.form = ((B.form || '') + (aw ? 'D' : 'V')).slice(-5);
     m.sc = simScore(aw, d.kind === 'team' ? 5 : 3);
   }
   const B = d.bronze;
@@ -300,6 +314,7 @@ export function myMatch() {
   const B = d.bronze;
   if (B && !B.w && (B.a === 'me' || B.b === 'me')) return B;
   if (d.done || d.out) return null;
+  if (d.stage === 'groups') return d.gm.find(m => (m.a === 'me' || m.b === 'me') && !m.w) || null;
   return d.rounds[d.round].find(m => m.a === 'me' || m.b === 'me') || null;
 }
 // adversaire individuel du match à jouer
@@ -310,8 +325,11 @@ export function myOpponent() {
 }
 
 export function enterTournament(ev) {
-  career.tour = ev.kind === 'double' ? makeDoubleDraw(ev) : ev.kind === 'team' ? makeTeamDraw(ev) : makeDraw(ev, true);
-  career.tour.kind = ev.kind || 'single';
+  career.tour = ev.kind === 'double' ? makeDoubleDraw(ev) : ev.kind === 'mixed' ? makeDoubleDraw(ev, true) : ev.kind === 'team' ? makeTeamDraw(ev)
+    : ev.kind === 'exhib' ? makeExhib(ev) : ev.kind === 'qualif' ? makeQualif(ev) : ev.tier === 'worlds' ? makeGroupsDraw(ev) : makeDraw(ev, true);
+  career.tour.kind = career.tour.kind || ev.kind || 'single';
+  if (career.prep && career.prep.ev === ev.id.replace(/[dx]$/, '') && !ev.kind) { career.tour.peak = career.prep.n; career.conf = clamp((career.conf ?? 50) + 4 * career.prep.n, 5, 100); career.prep = null; }
+  if ((career.wc || {})[ev.id]) career.tour.wildcard = true;
   if (ev.kind === 'team') prepTeamRound(career.tour);
   save();
   return career.tour;
@@ -322,7 +340,7 @@ export function reportMatch(won, sets) {
   const d = career.tour, m = myMatch();
   if (!m) return;
   const oppId = m.a === 'me' ? m.b : m.a;
-  const indiv = d.kind === 'team' ? m.opp : d.kind === 'double' ? null : oppId;
+  const indiv = d.kind === 'team' ? m.opp : d.kind === 'double' || d.kind === 'mixed' ? null : oppId;
   let tieWon = won;
   if (d.kind === 'team') { const t = teamTie(d, m, won); tieWon = t.won; m.sc = m.a === 'me' ? t.sc : [t.sc[1], t.sc[0]]; m.mine = sets; }
   else m.sc = m.a === 'me' ? sets : [sets[1], sets[0]];
@@ -341,12 +359,27 @@ export function reportMatch(won, sets) {
   }
   if (d.kind !== 'double') { career.streak = won ? (career.streak || 0) + 1 : 0; checkRecords(); }
   if (d.kind === 'double') career.chem = Math.min(6, (career.chem || 0) + 0.5);
+  if (d.kind === 'mixed') career.mchem = Math.min(6, (career.mchem || 0) + 0.5);
   career.upPoints += Math.max(1, Math.round((won ? 3 : 1) * growthMult()));
   career.weekMatches = (career.weekMatches || 0) + 1;
   spendEnergy(10);
-  const loss = [1, 0.7, 0.45][career.staff ? career.staff.psy : 0];
+  const loss = [1, 0.7, 0.45][career.staff ? career.staff.psy : 0] * (career.me.perso === 'froid' ? 0.7 : 1);
+  if (indiv) { const op = getP(indiv); if (op && !op.ent) op.form = ((op.form || '') + (won ? 'D' : 'V')).slice(-5); }
+  career.me.form = ((career.me.form || '') + (won ? 'V' : 'D')).slice(-5);
+  socialAfter(d, won, indiv);
   career.conf = clamp((career.conf ?? 50) + (won ? (better ? 10 : 5) : (better ? -4 : -10) * loss), 5, 100);
   addFans(won ? 60 * (TW[d.tier] || 1) : 10);
+  if (d.kind === 'qualif') {
+    if (won) { const ev = d.ev; career.tour = makeDraw(ev, true); career.tour.kind = 'single'; career.tour.fromQualif = true; career.news.unshift(`✅ ${career.me.name} sort des qualifications du ${ev.name}.`); }
+    else { d.out = true; d.result = { pts: 0, prize: 0, reached: 'Qualifications' }; career.results.unshift({ season: career.season, week: career.week, name: d.ev.name, tier: d.tier, reached: 'Qualifications', pts: 0 }); }
+    checkMilestones(); save(); return;
+  }
+  if (d.kind === 'exhib') {
+    d.done = true; const fee = d.fee * (won ? 1.5 : 1); career.money += fee; career.earned = (career.earned || 0) + fee; addFans(won ? 6000 : 3000);
+    d.result = { pts: 0, prize: fee, reached: won ? 'Victoire' : 'Défaite' }; career.news.unshift(`🎪 Exhibition : ${career.me.name} ${won ? 'bat' : 's\'incline face à'} ${getP(indiv).name} devant une salle comble.`);
+    save(); return;
+  }
+  if (d.stage === 'groups') { groupProgress(d); pressAfter(d, m, won, indiv); checkMilestones(); save(); return; }
   if (m === d.bronze) { finishTournament(); pressAfter(d, m, won, indiv); checkMilestones(); save(); return; }
   simRound(d);
   if (!tieWon) {
@@ -387,11 +420,12 @@ function finishTournament() {
   d.awarded = true;
   const w = absWeek(career.season, career.week);
   const res = award(d);
-  if (d.kind === 'double') {
-    for (const [id, p] of Object.entries(res)) { const E = d.ents[id]; if (E && p) for (const mid of E.members) { const pl = mid === 'me' ? career.me : career.pool.find(x => x.id === mid); if (pl) (pl.dpts = pl.dpts || []).push({ w, p: Math.round(p * 0.6) }); } }
+  if (d.groups) for (const g of d.groups) for (const id of g) if (res[id] === undefined) res[id] = TIERS[d.tier].pts[4];
+  if (d.kind === 'double' || d.kind === 'mixed') {
+    for (const [id, p] of Object.entries(res)) { const E = d.ents[id]; if (E && p) for (const mid of E.members) { const pl = mid === 'me' ? career.me : career.pool.find(x => x.id === mid); if (pl) (pl.dpts = pl.dpts || []).push({ w, p: Math.round(p * (d.kind === 'mixed' ? 0.4 : 0.6)) }); } }
   } else for (const [id, p] of Object.entries(res)) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
   const mine = res.me || 0;
-  let prize = d.kind === 'double' ? mine * 4 : mine * 10;
+  let prize = d.kind === 'double' || d.kind === 'mixed' ? mine * 4 : mine * 10;
   const finalM = d.rounds[d.rounds.length - 1][0];
   let medal = null;
   if (d.kind === 'olympics') {
@@ -404,7 +438,7 @@ function finishTournament() {
   const champion = final && final.w === 'me';
   d.result = { pts: mine, prize, champion, reached: medal ? `Médaille ${medalTxt(medal)}` : roundReached(d), medal };
   if (champion) {
-    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season, at: absWeek(career.season, career.week), dbl: d.kind === 'double' || undefined });
+    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season, at: absWeek(career.season, career.week), dbl: d.kind === 'double' || d.kind === 'mixed' || undefined });
     career.upPoints += { challenger: 3, contender: 5, star: 8, slam: 15, worlds: 15, team: 8, olympics: 15 }[d.tier] * (d.kind === 'double' ? 0.5 : 1);
     addFans(4000 * (TW[d.tier] || 1) * (d.kind === 'double' ? 0.4 : 1));
     career.perkPts = (career.perkPts || 0) + 1;
@@ -420,6 +454,7 @@ function finishTournament() {
 
 function roundReached(d) {
   const n = d.rounds.length;
+  if (d.groups && !d.rounds.some(r => r.some(x => x.a === 'me' || x.b === 'me'))) return 'Phase de poules';
   for (let r = n - 1; r >= 0; r--) {
     const m = d.rounds[r].find(x => x.a === 'me' || x.b === 'me');
     if (!m) continue;
@@ -456,6 +491,9 @@ export function endWeek() {
   weekEconomy();
   career.tour = null;
   career.week++;
+  rollWildcards();
+  const rv = career.pool.find(p => p.rival);
+  if (rv && rnd() < 0.04) { rv.rating = Math.min(97, rv.rating + 1); career.news.unshift(`🔧 Ton rival ${rv.name} a changé de matériel et travaille avec un nouveau coach.`); }
   trackRank();
   if (career.week > WEEKS) seasonEnd();
   // nettoyage des vieux points
@@ -506,9 +544,10 @@ export function flag(code, w = 24, h = 16) {
 // ================================================================== partie 2 : énergie, entraînement, coach, sponsors, matériel
 export function migrate() {
   if (!career) return;
-  const d = { fans: 1500, staff: { physio: 0, kine: 0, psy: 0, agent: 0 }, partner: null, chem: 0, injury: null, press: null, medals: [], conf: 50, perks: [], perkPts: 1, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0 };
+  const d = { wc: {}, center: { salle: 0, robot: 0, recup: 0 }, prep: null, mpartner: null, feed: [], outfits: [], celeb: 0, tips: {}, fans: 1500, staff: { physio: 0, kine: 0, psy: 0, agent: 0 }, partner: null, chem: 0, injury: null, press: null, medals: [], conf: 50, perks: [], perkPts: 1, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0 };
   for (const k in d) if (career[k] === undefined) career[k] = d[k];
   if (!career.me.prog) career.me.prog = {};
+  if (!career.wpool) career.wpool = REAL_WOMEN.map((r, i) => ({ id: 'w' + i, name: r[0], country: r[1], age: r[2], style: 'attaquant', hand: r[3] || 1, rating: Math.round(90 - i * 0.9), stats: makeStats(Math.round(90 - i * 0.9), 'attaquant'), pts: [], wins: {}, woman: true }));
 }
 const staminaOf = () => effStats().stamina;
 export function spendEnergy(n) {
@@ -544,6 +583,9 @@ export function gearBonus() {
 export function effStats() {
   const b = gearBonus(), st = {};
   const pb = perkBonus();
+  const pk = career.tour && career.tour.peak ? career.tour.peak * 2 : 0;
+  if (pk) for (const k of STAT_KEYS) pb[k] = (pb[k] || 0) + pk;
+  if (career.me.perso === 'combatif') pb.mental = (pb.mental || 0) + 3;
   for (const k of STAT_KEYS) st[k] = Math.min(99, career.me.stats[k] + (b[k] || 0) + (pb[k] || 0) + (k === 'mental' && COACHES[career.coach] ? COACHES[career.coach].mental : 0) + (k === 'mental' && career.staff ? [0, 2, 4][career.staff.psy] : 0));
   return st;
 }
@@ -575,7 +617,9 @@ export function trainExtra(k, quality) {
 export function train(k, quality) {
   if (!canTrain()) return null;
   const v = career.me.stats[k];
-  const gain = (0.6 + 1.6 * quality) * COACHES[career.coach].mult * growthMult() / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
+  quality = Math.min(1, quality + 0.07 * ((career.center || {}).robot || 0));
+  const gain = (0.6 + 1.6 * quality) * COACHES[career.coach].mult * growthMult() * (1 + 0.15 * ((career.center || {}).salle || 0)) / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
+  if (career.prep) career.prep.n = Math.min(3, career.prep.n + 1);
   career.me.prog = career.me.prog || {};
   let pr = (career.me.prog[k] || 0) + gain, up = 0;
   while (pr >= 1 && career.me.stats[k] < 99) { pr -= 1; career.me.stats[k]++; up++; }
@@ -631,7 +675,7 @@ function weekEconomy() {
     if (career.money >= cost) career.money -= cost;
     else { career.news.unshift(`${STAFF[role].levels[lv].name} est parti : plus assez d'argent.`); career.staff[role] = 0; }
   }
-  career.energy = clamp(career.energy + (career.tour ? 18 : 40) + [0, 6, 12][(career.staff || {}).physio || 0], 0, 100);
+  career.energy = clamp(career.energy + (career.tour ? 18 : 40) + [0, 6, 12][(career.staff || {}).physio || 0] + 5 * ((career.center || {}).recup || 0), 0, 100);
   injuryRoll();
 }
 
@@ -694,6 +738,7 @@ export function checkMilestones() {
     if (['top100', 'top50', 'top10', 'no1'].includes(m.id)) career.news.unshift(`📈 ${career.me.name} entre dans le ${m.name.toLowerCase()} mondial !`.replace('dans le numéro 1 mondial mondial', 'à la 1re place mondiale'));
   }
   career.pending = [...(career.pending || []), ...out];
+  unlockOutfit();
   return out;
 }
 export function takePending() { const p = career.pending || []; career.pending = []; save(); return p; }
@@ -872,6 +917,13 @@ function pressAfter(d, m, won, indiv) {
   else if (op && !won && (d.tier === 'slam' || d.tier === 'worlds' || d.tier === 'olympics') && rnd() < 0.7) ctx = { k: 'loss', q: `Défaite face à ${op.name}. Qu'est-ce qui a manqué aujourd'hui ?` };
   else if (op && !won && op.rival) ctx = { k: 'loss', q: `${op.name} prend le dessus. Tu as une revanche à prendre ?` };
   if (!ctx) return;
+  const ALT = {
+    title: ['Un trophée de plus. Qu\'est-ce qui a fait la différence cette semaine ?', 'Comment tu vas fêter ce titre ce soir ?'],
+    rival: ['On sent une vraie tension entre vous deux. Tu peux nous en dire plus ?'],
+    upset: ['Personne ne t\'attendait à ce niveau. Tu te sens prêt pour le top 10 ?'],
+    loss: ['Tu sembles frustré. Il y a eu un tournant dans ce match ?', 'Est-ce que la fatigue a joué aujourd\'hui ?'],
+  }[ctx.k];
+  if (ALT && rnd() < 0.5) ctx.q = pick(ALT).replace('vous deux', `vous deux, toi et ${op ? op.name : 'lui'}`);
   const opN = op ? op.name : 'mes adversaires';
   const A = {
     title: [['Je dois tout à mon équipe, on savoure et on retourne bosser.', { conf: 3, fans: 2500 }], ['Ce n\'est qu\'un début. Je veux la place de n°1.', { conf: 8, fans: 6000 }], ['Les autres peuvent trembler, je suis le patron maintenant.', { conf: 10, fans: 12000, enemy: true }]],
@@ -880,17 +932,20 @@ function pressAfter(d, m, won, indiv) {
     upset: [['J\'ai eu un peu de réussite, il reste un immense joueur.', { conf: 4, fans: 2000 }], ['Ce n\'est pas un exploit, je travaille pour battre ces joueurs-là.', { conf: 8, fans: 4500 }], ['Son niveau est surcoté. La prochaine fois ce sera encore plus rapide.', { conf: 9, fans: 9000, enemy: true }]],
     loss: [['Il a été meilleur, bravo à lui. J\'apprends.', { conf: 4, fans: 800 }], ['Quelques détails. Je reviendrai plus fort.', { conf: 6, fans: 1200 }], ['Il a eu de la chance, c\'est tout.', { conf: 2, fans: 3000, enemy: true }]],
   }[ctx.k];
-  career.press = { q: ctx.q, opp: op ? op.id : null, oppName: op ? op.name : null, answers: A.map(([t, fx], i) => ({ t, fx, tone: ['Humble', 'Confiant', 'Provocateur'][i] })) };
+  career.press = { media: pick(['L\'Équipe', 'Eurosport', 'WTT TV', 'France Télévisions', 'Ping Pong Mag', 'ITTF']), q: ctx.q, opp: op ? op.id : null, oppName: op ? op.name : null, answers: A.map(([t, fx], i) => ({ t, fx, tone: ['Humble', 'Confiant', 'Provocateur'][i] })) };
 }
 export function answerPress(i) {
   const P = career.press; if (!P) return null;
   const a = P.answers[i];
   career.conf = clamp((career.conf ?? 50) + (a.fx.conf || 0), 5, 100);
-  addFans(a.fx.fans || 0);
-  let out = { fans: a.fx.fans, conf: a.fx.conf };
+  const fm = career.me.perso === 'showman' ? 1.5 : 1;
+  addFans((a.fx.fans || 0) * fm);
+  let out = { fans: Math.round((a.fx.fans || 0) * fm), conf: a.fx.conf };
   if (a.fx.enemy && P.opp) {
     const op = career.pool.find(p => p.id === P.opp);
-    if (op && !op.rival && !op.prodige && !op.enemy) { op.enemy = true; career.news.unshift(`🔥 Polémique : la déclaration de ${career.me.name} sur ${op.name} fait le tour des réseaux. Une rivalité est née.`); out.enemy = op.name; }
+    if (op && !op.rival && !op.prodige && !op.enemy) {
+      const en = career.pool.filter(p => p.enemy); if (en.length >= 2) delete en[0].enemy;
+      op.enemy = true; career.news.unshift(`🔥 Polémique : la déclaration de ${career.me.name} sur ${op.name} fait le tour des réseaux. Une rivalité est née.`); out.enemy = op.name; }
   }
   career.press = null; save();
   return out;
@@ -909,20 +964,26 @@ export function dRankOf(id) {
   const list = allPlayers().map(p => ({ id: p.id, pts: dRankPoints(p) })).sort((a, b) => b.pts - a.pts);
   return list.findIndex(e => e.id === id) + 1;
 }
-const short = p => p.name.split(' ').slice(-1)[0];
+const FAMILY_FIRST = ['CN', 'KR', 'TW', 'HK'];
+export const lastName = p => { const w = p.name.split(' '); return w.length > 1 && FAMILY_FIRST.includes(p.country) && !p.young ? w[0] : w[w.length - 1]; };
+const short = lastName;
 function makePairEnt(id, a, b, bonus = 0) {
   const ra = a.id === 'me' ? overall(effStats()) : a.rating, rb = b.rating;
   const sa = a.id === 'me' ? effStats() : a.stats, st = {};
   for (const k of STAT_KEYS) st[k] = Math.round((sa[k] + b.stats[k]) / 2);
   return { id, ent: true, pair: true, name: `${short(a)} / ${short(b)}`, country: a.country, country2: b.country, rating: (ra + rb) / 2 + bonus, style: 'polyvalent', hand: 1, stats: st, members: [a.id, b.id], pts: [] };
 }
-function makeDoubleDraw(ev) {
-  const partner = career.pool.find(p => p.id === career.partner);
-  const pool = entrants({ ...ev, tier: ev.tier }, false).filter(p => p.id !== partner.id).slice(0, 14);
+function makeDoubleDraw(ev, mixed) {
+  const partner = mixed ? career.wpool.find(p => p.id === career.mpartner) : career.pool.find(p => p.id === career.partner);
+  const pool = entrants({ ...ev, tier: ev.tier }, false).filter(p => p.id !== partner.id).slice(0, mixed ? 7 : 14);
   pool.sort((a, b) => a.country.localeCompare(b.country) || b.rating - a.rating);
-  const ents = { me: makePairEnt('me', career.me, partner, career.chem || 0) };
+  const ents = { me: makePairEnt('me', career.me, partner, mixed ? (career.mchem || 0) : (career.chem || 0)) };
   const list = [ents.me];
-  for (let i = 0; i + 1 < pool.length; i += 2) { const e = makePairEnt(`d:${pool[i].id}+${pool[i + 1].id}`, pool[i], pool[i + 1], 2); ents[e.id] = e; list.push(e); }
+  if (mixed) {
+    const W = career.wpool.filter(w => w.id !== partner.id).slice(0, 14).sort(() => rnd() - 0.5);
+    for (let i = 0; i < pool.length; i++) { const w = W.find(x => x.country === pool[i].country && !x.used) || W.find(x => !x.used); w.used = true; const e = makePairEnt(`d:${pool[i].id}+${w.id}`, pool[i], w, 2); ents[e.id] = e; list.push(e); }
+    W.forEach(w => delete w.used);
+  } else for (let i = 0; i + 1 < pool.length; i += 2) { const e = makePairEnt(`d:${pool[i].id}+${pool[i + 1].id}`, pool[i], pool[i + 1], 2); ents[e.id] = e; list.push(e); }
   list.sort((a, b) => b.rating - a.rating);
   const order = seedOrder(8), slots = order.map(s => list[s - 1]);
   const first = []; for (let i = 0; i < 8; i += 2) first.push({ a: slots[i].id, b: slots[i + 1].id, w: null, sc: null });
@@ -995,10 +1056,10 @@ function ageMe(rev) {
 // ---------- records
 const BASE_RECORDS = {
   youngNo1: { name: 'Plus jeune n°1 mondial', holder: 'Sora Matsushima', value: 19, unit: 'ans', low: true },
-  weeksNo1: { name: 'Semaines au n°1 (ère moderne du jeu)', holder: '—', value: 0, unit: 'sem.' },
-  streak: { name: 'Plus longue série de victoires', holder: '—', value: 0, unit: 'matchs' },
-  seasonTitles: { name: 'Titres en une saison', holder: '—', value: 0, unit: 'titres' },
-  slams: { name: 'Grand Smash remportés', holder: '—', value: 0, unit: 'titres' },
+  weeksNo1: { name: 'Semaines au n°1 sur le circuit WTT', holder: 'Record du circuit', value: 30, unit: 'sem.' },
+  streak: { name: 'Plus longue série de victoires', holder: 'Record du circuit', value: 25, unit: 'matchs' },
+  seasonTitles: { name: 'Titres en une saison', holder: 'Record du circuit', value: 8, unit: 'titres' },
+  slams: { name: 'Grand Smash remportés', holder: 'Record du circuit', value: 4, unit: 'titres' },
   worlds: { name: 'Titres de champion du monde', holder: 'Ma Long', value: 3, unit: 'titres' },
 };
 export function records() {
@@ -1030,4 +1091,145 @@ export function retire() {
   career.retired = { season: career.season, age: career.me.age, legacy: legacy(), bestRank: career.bestRank || rankOf('me') };
   career.news.unshift(`👋 ${career.me.name} annonce sa retraite à ${career.me.age} ans.`);
   save();
+}
+
+
+// ================================================================== carrière complète : qualifs, wild cards, poules, exhibitions, mixte, centre, prépa, vestiaire, réseaux
+export function qualifOpen(ev) {
+  if (ev.kind || !['contender', 'star', 'slam'].includes(ev.tier) || career.injury) return false;
+  const rk = rankOf('me'), need = TIERS[ev.tier].need;
+  return rk > need && rk <= Math.round(need * 1.6 + 20);
+}
+function makeQualif(ev) {
+  const need = TIERS[ev.tier].need, r = ranking().filter(e => e.p.id !== 'me');
+  const c = r.slice(need, need + 20).map(e => e.p);
+  const opp = c[Math.floor(rnd() * c.length)] || r[need].p;
+  return { ev: { ...ev, kind: undefined }, tier: ev.tier, kind: 'qualif', size: 2, rounds: [[{ a: 'me', b: opp.id, w: null, sc: null }]], round: 0, done: false, out: false };
+}
+export function enterQualif(ev) { career.tour = makeQualif(ev); save(); return career.tour; }
+
+function rollWildcards() {
+  career.wc = {};
+  const evs = weekEvents(career.season, career.week).filter(e => !e.kind && e.tier !== 'challenger' && e.tier !== 'worlds' && e.tier !== 'finals');
+  for (const ev of evs) {
+    if (rankOf('me') <= TIERS[ev.tier].need) continue;
+    const ch = 0.06 + Math.min(0.2, (career.fans || 0) / 500000) + (career.sponsor ? 0.04 : 0);
+    if (rnd() < ch) { career.wc[ev.id] = true; career.news.unshift(`🎟️ ${career.me.name} reçoit une wild card pour le ${ev.name} !`); break; }
+  }
+}
+
+function makeExhib(ev) {
+  const top = ranking().filter(e => e.p.id !== 'me').slice(0, 20).map(e => e.p);
+  const opp = top[Math.floor(rnd() * top.length)];
+  const fee = Math.round(3000 + Math.min(40000, (career.fans || 0) * 0.08));
+  return { ev, tier: 'exhib', kind: 'exhib', size: 2, rounds: [[{ a: 'me', b: opp.id, w: null, sc: null }]], round: 0, done: false, out: false, fee };
+}
+
+// ---------- Mondiaux : phase de poules puis tableau final
+function makeGroupsDraw(ev) {
+  const ps = entrants(ev, true).sort((a, b) => rating(b) - rating(a)).slice(0, 16);
+  const groups = [[], [], [], []];
+  ps.forEach((p, i) => { const r = Math.floor(i / 4), k = r % 2 ? 3 - (i % 4) : i % 4; groups[k].push(p.id); });
+  const gm = [];
+  groups.forEach((g, gi) => { for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) gm.push({ a: g[i], b: g[j], w: null, sc: null, g: gi }); });
+  gm.sort((x, y) => (x.a === 'me' || x.b === 'me' ? 0 : 1) - (y.a === 'me' || y.b === 'me' ? 0 : 1));
+  return { ev, tier: 'worlds', kind: 'single', stage: 'groups', groups, gm, size: 8, rounds: [], round: 0, done: false, out: false };
+}
+export function groupTable(d, gi) {
+  const T = {};
+  for (const id of d.groups[gi]) T[id] = { id, w: 0, l: 0, sd: 0 };
+  for (const m of d.gm) if (m.g === gi && m.w) {
+    const L = m.w === m.a ? m.b : m.a; T[m.w].w++; T[L].l++;
+    const sw = m.sc ? Math.max(...m.sc) - Math.min(...m.sc) : 1; T[m.w].sd += sw; T[L].sd -= sw;
+  }
+  return Object.values(T).sort((a, b) => b.w - a.w || b.sd - a.sd || rating(getP(b.id)) - rating(getP(a.id)));
+}
+function groupProgress(d) {
+  if (d.gm.some(m => (m.a === 'me' || m.b === 'me') && !m.w)) return;
+  for (const m of d.gm) if (!m.w) { const A = getP(m.a), B = getP(m.b), aw = rnd() < winProb(A, B); m.w = aw ? m.a : m.b; m.sc = simScore(aw, 3); }
+  const top = d.groups.map((g, gi) => groupTable(d, gi).slice(0, 2).map(e => e.id));
+  const pairs = [[top[0][0], top[1][1]], [top[2][0], top[3][1]], [top[1][0], top[0][1]], [top[3][0], top[2][1]]];
+  d.rounds = [pairs.map(([a, b]) => ({ a, b, w: null, sc: null }))]; d.round = 0; d.stage = 'ko';
+  const qualified = top.flat().includes('me');
+  career.news.unshift(qualified ? `✅ ${career.me.name} sort de sa poule aux Championnats du monde.` : `❌ ${career.me.name} est éliminé en phase de poules des Championnats du monde.`);
+  if (!qualified) { d.out = true; simRound(d); while (!d.done) { nextRound(d); if (!d.done) simRound(d); } finishTournament(); }
+  else simRound(d);
+}
+
+// ---------- double mixte
+export function mixedOffers() {
+  const c = career.wpool.slice().sort((a, b) => (b.country === career.me.country) - (a.country === career.me.country) || b.rating - a.rating);
+  const rk = rankOf('me'), lvl = Math.max(0, Math.min(c.length - 5, Math.floor(rk / 6)));
+  const same = c.filter(w => w.country === career.me.country).slice(0, 2);
+  const others = career.wpool.slice(lvl, lvl + 5).filter(w => !same.includes(w));
+  return [...same, ...others].slice(0, 5);
+}
+export function setMixedPartner(id) { if (career.mpartner !== id) { career.mpartner = id; career.mchem = 0; save(); } }
+
+// ---------- centre d'entraînement
+export const CENTER = {
+  salle: { name: 'Salle d\'entraînement', desc: '+15 % de progression par niveau', costs: [0, 8000, 30000, 90000] },
+  robot: { name: 'Robot pro', desc: 'Exercices plus efficaces', costs: [0, 6000, 25000, 70000] },
+  recup: { name: 'Espace récupération', desc: '+5 de forme par semaine et par niveau', costs: [0, 5000, 20000, 60000] },
+};
+export function buyCenter(k) {
+  career.center = career.center || { salle: 0, robot: 0, recup: 0 };
+  const lv = career.center[k] || 0, cost = CENTER[k].costs[lv + 1];
+  if (!cost || career.money < cost) return false;
+  career.money -= cost; career.center[k] = lv + 1; save(); return true;
+}
+
+// ---------- préparation d'un gros tournoi
+export function bigTargets() {
+  const out = [];
+  for (let w = career.week + 1; w <= Math.min(WEEKS, career.week + 6); w++) {
+    const e = weekEvents(career.season, w).find(x => !x.kind && ['slam', 'worlds', 'finals', 'star'].includes(x.tier));
+    if (e) out.push({ ...e, week: w });
+  }
+  return out;
+}
+export function setPrep(evId) { career.prep = evId ? { ev: evId, n: 0 } : null; save(); }
+
+// ---------- sparring
+export function sparringDone(k, ratio, won) {
+  const r = train(k, Math.min(1, ratio * 1.1));
+  career.conf = clamp((career.conf ?? 50) + (won ? 3 : 0), 5, 100);
+  save();
+  return r;
+}
+
+// ---------- vestiaire de carrière
+export const OUTFITS = [
+  { id: 'blanc', name: 'Néon blanc', color: 0xf2f0ff, cond: 'Entrer dans le top 50', test: () => (career.bestRank || 999) <= 50 },
+  { id: 'feu', name: 'Rouge feu', color: 0xff4a1c, cond: 'Gagner un WTT Contender', test: () => career.titles.some(t => t.tier === 'contender' && !t.dbl) },
+  { id: 'emeraude', name: 'Émeraude', color: 0x1cff9a, cond: 'Gagner un WTT Champions', test: () => career.titles.some(t => t.tier === 'star' && !t.dbl) },
+  { id: 'or', name: 'Or champion', color: 0xffc83c, cond: 'Gagner un Grand Smash', test: () => career.titles.some(t => t.tier === 'slam' && !t.dbl) },
+  { id: 'platine', name: 'Platine n°1', color: 0xd8e6ff, cond: 'Devenir n°1 mondial', test: () => career.bestRank === 1 },
+  { id: 'arc', name: 'Prisme olympique', color: 0x9a6bff, cond: 'Gagner une médaille olympique', test: () => (career.medals || []).length > 0 },
+];
+export const CELEBS = [{ name: 'Les deux bras', cond: null }, { name: 'Poing levé', cond: null }, { name: 'Les bras en croix', cond: 'Gagner 3 titres' }, { name: 'Le saut du champion', cond: 'Gagner un Grand Smash' }];
+export const celebUnlocked = i => i < 2 || (i === 2 ? career.titles.length >= 3 : career.titles.some(t => t.tier === 'slam'));
+function unlockOutfit() {
+  career.outfits = career.outfits || [];
+  for (const o of OUTFITS) if (!career.outfits.includes(o.id) && o.test()) { career.outfits.push(o.id); career.pending = [...(career.pending || []), { name: 'Tenue débloquée', desc: o.name }]; }
+}
+export function setOutfit(id) { career.me.outfit = id; save(); }
+export function setCeleb(i) { career.celeb = i; save(); }
+export function outfitColor() { const o = OUTFITS.find(x => x.id === career.me.outfit); return o ? o.color : null; }
+
+// ---------- réseaux sociaux
+const HANDLES = ['@pingfan_93', '@topspin_addict', '@coupdroit_lourd', '@TTLegends', '@la_raquette_dor', '@spinmaster', '@pongcity', '@tabletennis_daily', '@ping_ultras', '@team_revers'];
+const MEDIA = [['WTT', '@WTTGlobal'], ['ITTF', '@ittfworld'], ["L'Équipe", '@lequipe'], ['Eurosport', '@eurosport_fr'], ['Ping Pong Mag', '@pingpongmag']];
+function post(who, handle, text, likes, media) {
+  career.feed = career.feed || [];
+  career.feed.unshift({ who, handle, text, likes: Math.round(likes), media: !!media, s: career.season, w: career.week });
+  career.feed = career.feed.slice(0, 40);
+}
+function socialAfter(d, won, indiv) {
+  const me = career.me.name, op = indiv ? getP(indiv) : null, f = career.fans || 1000;
+  const fan = () => pick(HANDLES);
+  if (won && op && rankOf(op.id) <= 20) { const M = pick(MEDIA); post(M[0], M[1], `${me} s'offre ${op.name} (${rankOf(op.id)}e mondial) au ${d.ev.name} ! 🔥`, f * 0.08, true); }
+  if (won) post('Fan', fan(), pick([`${me} est en feu 🔥🔥`, `Ce coup droit de ${me}... irréel`, `Allez ${me} !! On y croit`, `${me} au sommet bientôt, je l'avais dit`]), f * 0.02);
+  else post('Fan', fan(), pick([`Dur ce soir pour ${me}, on reste derrière toi 💪`, `${me} reviendra plus fort`, `Pas grave ${me}, la saison est longue`]), f * 0.01);
+  if (op && (op.rival || op.enemy)) post('Fan', fan(), `Le choc ${me} vs ${op.name}, c'est la meilleure rivalité du circuit ⚔️`, f * 0.05);
 }

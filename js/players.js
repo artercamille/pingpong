@@ -39,3 +39,14 @@ export const REAL_PLAYERS = [
   ['Yuta Tanaka', 'JP', 26, 'a', 1], ['Jonathan Groth', 'DK', 33, 'a', 1], ['Tomáš Polanský', 'CZ', 37, 'a', 1], ['Jiří Martinko', 'CZ', 27, 'a', 1],
   ['Finn Luu', 'AU', 27, 'a', 1], ['Nicholas Lum', 'AU', 26, 'a', 1], ['Wang Yang', 'SK', 37, 'd', 1],
 ].filter((p, i, a) => a.findIndex(q => q[0] === p[0]) === i);
+
+// Circuit féminin (pour le double mixte) : [nom, pays, âge, main]
+export const REAL_WOMEN = [
+  ['Sun Yingsha', 'CN', 25, 1], ['Wang Manyu', 'CN', 27, 1], ['Wang Yidi', 'CN', 29, 1], ['Kuai Man', 'CN', 22, 1], ['Chen Xingtong', 'CN', 29, 1],
+  ['Miwa Harimoto', 'JP', 18, 1], ['Hina Hayata', 'JP', 26, -1], ['Satsuki Odo', 'JP', 22, 1], ['Shin Yubin', 'KR', 22, 1], ['Mima Ito', 'JP', 26, 1],
+  ['Wang Xiaotong', 'CN', 27, 1], ['Honoka Hashimoto', 'JP', 28, 1], ['Cheng I-Ching', 'TW', 34, 1], ['Bernadette Szőcs', 'RO', 31, 1], ['Bruna Takahashi', 'BR', 26, 1],
+  ['Sofia Polcanova', 'AT', 32, -1], ['Adriana Díaz', 'PR', 26, 1], ['Nina Mittelham', 'DE', 29, 1], ['Prithika Pavade', 'FR', 22, -1], ['Jia Nan Yuan', 'FR', 41, 1],
+  ['Joo Cheonhui', 'KR', 24, 1], ['Kim Nayeong', 'KR', 21, 1], ['Manika Batra', 'IN', 31, 1], ['Sreeja Akula', 'IN', 28, 1], ['Hana Goda', 'EG', 21, 1],
+  ['Doo Hoi Kem', 'HK', 29, 1], ['Zhu Chengzhu', 'HK', 29, 1], ['Lily Zhang', 'US', 30, 1], ['Amy Wang', 'US', 23, 1], ['Natalia Bajor', 'PL', 26, 1],
+  ['Annett Kaufmann', 'DE', 20, -1], ['Elizabeta Samara', 'RO', 37, 1], ['Charlotte Lutz', 'FR', 23, 1], ['Zeng Jian', 'SG', 29, 1], ['Han Ying', 'DE', 43, 1],
+];

@@ -159,6 +159,11 @@
     <section class="screen hidden xwide" id="scr-slots">
       <h2>Carrière · choisis une sauvegarde</h2>
       <div id="slots"></div>
+      <div class="crow">
+        <button class="mbtn small" id="sv-export"><span><b>Exporter les sauvegardes</b><small>Fichier à garder en sécurité</small></span></button>
+        <button class="mbtn small" id="sv-import"><span><b>Importer une sauvegarde</b><small>Depuis un fichier exporté</small></span></button>
+      </div>
+      <input type="file" id="sv-file" accept=".json,application/json" style="display:none">
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
 
@@ -177,6 +182,7 @@
           <div class="opt" id="car-hand" data-values="Droitier|Gaucher" data-v="1|-1" data-i="0"><span class="ol">Main forte</span><span class="ov"></span></div>
           <div class="opt" id="car-style" data-values="Attaquant|Défenseur|Coupeur|Polyvalent" data-v="attaquant|defenseur|coupeur|polyvalent" data-i="0"><span class="ol">Style</span><span class="ov"></span></div>
           <div class="opt" id="car-neon" data-values="Bleu|Cyan|Vert|Violet|Rose|Or" data-v="0|1|2|3|4|5" data-i="0"><span class="ol">Couleur néon</span><span class="ov"></span></div>
+          <div class="opt" id="car-perso" data-values="Combatif|Showman|Froid" data-v="combatif|showman|froid" data-i="0"><span class="ol">Personnalité</span><span class="ov"></span></div>
           <div class="opt" id="car-acc" data-values="Aucun|Bandeau|Casquette|Bracelets" data-v="0|1|2|3" data-i="0"><span class="ol">Accessoire</span><span class="ov"></span></div>
           <div class="opt" id="car-age" data-values="16 ans|17 ans|18 ans|19 ans|20 ans" data-v="16|17|18|19|20" data-i="1"><span class="ol">Âge de départ</span><span class="ov"></span></div>
           <div class="opt" id="car-diff" data-values="Rookie|Pro|Légende" data-v="0|1|2" data-i="1"><span class="ol">Difficulté</span><span class="ov"></span></div>
@@ -204,7 +210,10 @@
             <button class="mbtn small" data-go="scr-perks"><span><b>Talents <em id="perk-badge" style="color:#ffc83c;font-style:normal"></em></b></span></button>
             <button class="mbtn small" data-go="scr-ctrain"><span><b>Entraînement</b></span></button>
             <button class="mbtn small" data-go="scr-team"><span><b>Staff & sponsors</b></span></button>
-            <button class="mbtn small" data-go="scr-shop"><span><b>Matériel</b></span></button>
+            <button class="mbtn small" data-go="scr-shop"><span><b>Matériel & centre</b></span></button>
+            <button class="mbtn small" data-go="scr-cal"><span><b>Calendrier</b></span></button>
+            <button class="mbtn small" data-go="scr-social"><span><b>Réseaux</b></span></button>
+            <button class="mbtn small" data-go="scr-clocker"><span><b>Vestiaire</b></span></button>
             <button class="mbtn small" data-go="scr-rank"><span><b>Classement</b></span></button>
             <button class="mbtn small" data-go="scr-palmares"><span><b>Vitrine</b></span></button>
             <button class="mbtn small" data-go="scr-hof"><span><b>Hall of Fame</b></span></button>
@@ -230,7 +239,8 @@
       <h2>Séance d'entraînement de la semaine</h2>
       <div class="cgrid">
         <div>
-          <div class="opt" id="ct-mode" data-values="Robot lanceur|Cibles|Vitesse" data-v="robot|cible|vitesse" data-i="0"><span class="ol">Exercice</span><span class="ov"></span></div>
+          <div class="opt" id="ct-prep" data-values="Aucun" data-v="" data-i="0"><span class="ol">Préparer</span><span class="ov"></span></div>
+          <div class="opt" id="ct-mode" data-values="Robot lanceur|Cibles|Vitesse|Régularité|Défense|Réception|Sparring" data-v="robot|cible|vitesse|regularite|defense|reception|sparring" data-i="0"><span class="ol">Exercice</span><span class="ov"></span></div>
           <div class="opt" id="ct-stat" data-values="Coup droit|Revers|Service|Effet|Vitesse|Endurance|Mental" data-v="fh|bh|serve|spin|speed|stamina|mental" data-i="0"><span class="ol">Travailler</span><span class="ov"></span></div>
           <button class="mbtn accent" id="ct-robot"><span><b>Lancer l'exercice</b><small>20 balles · plus tu en réussis, plus tu progresses</small></span></button>
           <button class="mbtn" id="ct-quick"><span><b>Séance rapide</b><small>Simulée, gain moyen</small></span></button>
@@ -246,6 +256,32 @@
       <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
     </section>
 
+    <section class="screen hidden xwide" id="scr-cal">
+      <h2 id="cal-title">Calendrier de la saison</h2>
+      <div id="cal"></div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-social">
+      <h2>Réseaux sociaux <span id="soc-fans"></span></h2>
+      <div id="social"></div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-clocker">
+      <h2>Tenues néon</h2>
+      <div id="outfits" class="shoprow"></div>
+      <h2>Célébration de victoire</h2>
+      <div id="celebs" class="shoprow"></div>
+      <div class="infobox" id="cl-sponsor"></div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-pcard">
+      <div id="pcard-box"></div>
+      <button class="mbtn ghost" data-go="scr-rank"><span><b>Retour au classement</b></span></button>
+    </section>
+
     <section class="screen hidden xwide" id="scr-team">
       <div class="cmoney"></div>
       <div class="cgrid">
@@ -259,6 +295,8 @@
 
     <section class="screen hidden xwide" id="scr-shop">
       <div class="cmoney"></div>
+      <h2>Centre d'entraînement</h2>
+      <div id="center"></div>
       <h2>Matériel</h2>
       <div id="shop"></div>
       <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>

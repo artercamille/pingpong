@@ -5,23 +5,23 @@ export const WEEKS = 24;
 
 // ------------------------------------------------------------------ pays (noms fictifs)
 export const COUNTRIES = {
-  FR: { name: 'France', flag: ['v', '#1f4bd6', '#ffffff', '#e33340'], first: ['Lucas', 'Hugo', 'Théo', 'Nathan', 'Enzo', 'Jules', 'Léa', 'Chloé', 'Manon', 'Inès'], last: ['Moreau', 'Lambert', 'Girard', 'Roux', 'Fontaine', 'Mercier', 'Lefèvre', 'Garnier', 'Chevalier', 'Morel'] },
-  DE: { name: 'Allemagne', flag: ['h', '#111111', '#dd1f1f', '#f4c400'], first: ['Felix', 'Jonas', 'Lukas', 'Paul', 'Leon', 'Emma', 'Mia', 'Lena', 'Nils', 'Timo'], last: ['Brandt', 'Weber', 'Krüger', 'Hoffmann', 'Schäfer', 'Vogel', 'Keller', 'Wolff', 'Becker', 'Richter'] },
+  FR: { name: 'France', flag: ['v', '#1f4bd6', '#ffffff', '#e33340'], first: ['Lucas', 'Hugo', 'Théo', 'Nathan', 'Enzo', 'Jules', 'Louis', 'Adam', 'Raphaël', 'Gabin'], last: ['Moreau', 'Lambert', 'Girard', 'Roux', 'Fontaine', 'Mercier', 'Lefèvre', 'Garnier', 'Chevalier', 'Morel'] },
+  DE: { name: 'Allemagne', flag: ['h', '#111111', '#dd1f1f', '#f4c400'], first: ['Felix', 'Jonas', 'Lukas', 'Paul', 'Leon', 'Moritz', 'Finn', 'Elias', 'Nils', 'Timo'], last: ['Brandt', 'Weber', 'Krüger', 'Hoffmann', 'Schäfer', 'Vogel', 'Keller', 'Wolff', 'Becker', 'Richter'] },
   CN: { name: 'Chine', flag: ['cn'], first: ['Wei', 'Hao', 'Jun', 'Lei', 'Ming', 'Yan', 'Xin', 'Bo', 'Tao', 'Lin'], last: ['Zhang', 'Liu', 'Chen', 'Wang', 'Huang', 'Zhao', 'Sun', 'Xu', 'Ma', 'Fan'] },
-  JP: { name: 'Japon', flag: ['jp'], first: ['Kenji', 'Haruto', 'Ren', 'Sota', 'Yuto', 'Aoi', 'Hina', 'Riku', 'Kaito', 'Mio'], last: ['Arata', 'Tanaka', 'Sato', 'Ito', 'Mori', 'Harimoto', 'Kato', 'Ono', 'Ishida', 'Nakamura'] },
-  KR: { name: 'Corée du Sud', flag: ['kr'], first: ['Jin-ho', 'Min-jun', 'Seo-yeon', 'Ji-woo', 'Hyun', 'Dong-hyun', 'Ye-jin', 'Tae-yang', 'Su-min', 'Woo-jin'], last: ['Park', 'Kim', 'Lee', 'Choi', 'Jung', 'Kang', 'Yoon', 'Jang', 'Lim', 'Han'] },
-  SE: { name: 'Suède', flag: ['nordic', '#2a62c9', '#f7d117'], first: ['Viktor', 'Oskar', 'Elias', 'Axel', 'Linnea', 'Elsa', 'Anton', 'Hugo', 'Maja', 'Erik'], last: ['Lindqvist', 'Karlsson', 'Nilsson', 'Berg', 'Holm', 'Sjöberg', 'Ek', 'Lund', 'Falk', 'Ström'] },
-  BR: { name: 'Brésil', flag: ['br'], first: ['Mateus', 'Gabriel', 'Rafael', 'Thiago', 'Bruno', 'Ana', 'Beatriz', 'Caio', 'Diego', 'Luana'], last: ['Silva', 'Santos', 'Costa', 'Oliveira', 'Rocha', 'Almeida', 'Lima', 'Souza', 'Ferreira', 'Barros'] },
-  US: { name: 'États-Unis', flag: ['us'], first: ['Jake', 'Ryan', 'Tyler', 'Mason', 'Logan', 'Ava', 'Madison', 'Cole', 'Evan', 'Zoe'], last: ['Miller', 'Carter', 'Brooks', 'Hayes', 'Reed', 'Parker', 'Bennett', 'Foster', 'Cooper', 'Wright'] },
-  GB: { name: 'Royaume-Uni', flag: ['gb'], first: ['Oliver', 'Harry', 'George', 'Jack', 'Alfie', 'Amelia', 'Isla', 'Freddie', 'Archie', 'Poppy'], last: ['Walker', 'Hughes', 'Clarke', 'Turner', 'Wood', 'Evans', 'Hall', 'Hill', 'Green', 'Ward'] },
-  ES: { name: 'Espagne', flag: ['h3', '#c60b1e', '#ffc400', '#c60b1e'], first: ['Mateo', 'Álvaro', 'Pablo', 'Javier', 'Sergio', 'Lucía', 'Carmen', 'Adrián', 'Marcos', 'Irene'], last: ['García', 'Rivas', 'Navarro', 'Romero', 'Torres', 'Ruiz', 'Gil', 'Serrano', 'Molina', 'Ortega'] },
-  IT: { name: 'Italie', flag: ['v', '#159447', '#ffffff', '#d4242b'], first: ['Leo', 'Marco', 'Luca', 'Andrea', 'Matteo', 'Giulia', 'Sofia', 'Davide', 'Simone', 'Chiara'], last: ['Santini', 'Rossi', 'Bianchi', 'Ricci', 'Greco', 'Conti', 'Gallo', 'Marino', 'Bruno', 'Costa'] },
-  PT: { name: 'Portugal', flag: ['v2', '#046a38', '#da291c'], first: ['João', 'Tiago', 'Diogo', 'Rui', 'Nuno', 'Inês', 'Rita', 'Duarte', 'Afonso', 'Marta'], last: ['Freitas', 'Monteiro', 'Pinto', 'Cardoso', 'Teixeira', 'Matos', 'Correia', 'Nunes', 'Faria', 'Lopes'] },
-  EG: { name: 'Égypte', flag: ['h', '#ce1126', '#ffffff', '#111111'], first: ['Omar', 'Youssef', 'Karim', 'Ahmed', 'Mostafa', 'Nour', 'Salma', 'Hassan', 'Tarek', 'Laila'], last: ['Haddad', 'Assar', 'Saleh', 'Mansour', 'Fathy', 'Nabil', 'Zaki', 'Rashed', 'Kamel', 'Farouk'] },
-  NG: { name: 'Nigéria', flag: ['v', '#008751', '#ffffff', '#008751'], first: ['Quadri', 'Emeka', 'Tunde', 'Chidi', 'Seun', 'Ada', 'Funke', 'Kunle', 'Obi', 'Ngozi'], last: ['Aruna', 'Okafor', 'Adeyemi', 'Eze', 'Bello', 'Okonkwo', 'Afolabi', 'Nwosu', 'Balogun', 'Ojo'] },
-  IN: { name: 'Inde', flag: ['h', '#ff9933', '#ffffff', '#138808'], first: ['Arjun', 'Rohan', 'Vikram', 'Aditya', 'Sathiyan', 'Manika', 'Priya', 'Kabir', 'Dev', 'Anika'], last: ['Sharma', 'Kamal', 'Gnanasekaran', 'Patel', 'Rao', 'Iyer', 'Mehta', 'Nair', 'Reddy', 'Kapoor'] },
-  MX: { name: 'Mexique', flag: ['v', '#006847', '#ffffff', '#ce1126'], first: ['Diego', 'Santiago', 'Emiliano', 'Iker', 'Marcos', 'Valeria', 'Ximena', 'Rodrigo', 'Andrés', 'Paola'], last: ['Hernández', 'Ramírez', 'Cruz', 'Flores', 'Vargas', 'Castillo', 'Mendoza', 'Ríos', 'Salinas', 'Aguilar'] },
-  PL: { name: 'Pologne', flag: ['h2', '#ffffff', '#dc143c'], first: ['Jakub', 'Kacper', 'Szymon', 'Filip', 'Mateusz', 'Zuzanna', 'Julia', 'Bartek', 'Kamil', 'Ola'], last: ['Nowak', 'Kowalski', 'Wójcik', 'Zieliński', 'Mazur', 'Krawczyk', 'Dudek', 'Wróbel', 'Pawlak', 'Sikora'] },
+  JP: { name: 'Japon', flag: ['jp'], first: ['Kenji', 'Haruto', 'Ren', 'Sota', 'Yuto', 'Daiki', 'Kenta', 'Riku', 'Kaito', 'Shota'], last: ['Arata', 'Tanaka', 'Sato', 'Ito', 'Mori', 'Harimoto', 'Kato', 'Ono', 'Ishida', 'Nakamura'] },
+  KR: { name: 'Corée du Sud', flag: ['kr'], first: ['Jin-ho', 'Min-jun', 'Sang-woo', 'Ji-woo', 'Hyun', 'Dong-hyun', 'Joon-ho', 'Tae-yang', 'Hyun-woo', 'Woo-jin'], last: ['Park', 'Kim', 'Lee', 'Choi', 'Jung', 'Kang', 'Yoon', 'Jang', 'Lim', 'Han'] },
+  SE: { name: 'Suède', flag: ['nordic', '#2a62c9', '#f7d117'], first: ['Viktor', 'Oskar', 'Elias', 'Axel', 'Lucas', 'Filip', 'Anton', 'Hugo', 'Gustav', 'Erik'], last: ['Lindqvist', 'Karlsson', 'Nilsson', 'Berg', 'Holm', 'Sjöberg', 'Ek', 'Lund', 'Falk', 'Ström'] },
+  BR: { name: 'Brésil', flag: ['br'], first: ['Mateus', 'Gabriel', 'Rafael', 'Thiago', 'Bruno', 'Pedro', 'Lucas', 'Caio', 'Diego', 'Felipe'], last: ['Silva', 'Santos', 'Costa', 'Oliveira', 'Rocha', 'Almeida', 'Lima', 'Souza', 'Ferreira', 'Barros'] },
+  US: { name: 'États-Unis', flag: ['us'], first: ['Jake', 'Ryan', 'Tyler', 'Mason', 'Logan', 'Nathan', 'Owen', 'Cole', 'Evan', 'Dylan'], last: ['Miller', 'Carter', 'Brooks', 'Hayes', 'Reed', 'Parker', 'Bennett', 'Foster', 'Cooper', 'Wright'] },
+  GB: { name: 'Royaume-Uni', flag: ['gb'], first: ['Oliver', 'Harry', 'George', 'Jack', 'Alfie', 'Charlie', 'Oscar', 'Freddie', 'Archie', 'Henry'], last: ['Walker', 'Hughes', 'Clarke', 'Turner', 'Wood', 'Evans', 'Hall', 'Hill', 'Green', 'Ward'] },
+  ES: { name: 'Espagne', flag: ['h3', '#c60b1e', '#ffc400', '#c60b1e'], first: ['Mateo', 'Álvaro', 'Pablo', 'Javier', 'Sergio', 'Hugo', 'Daniel', 'Adrián', 'Marcos', 'Rubén'], last: ['García', 'Rivas', 'Navarro', 'Romero', 'Torres', 'Ruiz', 'Gil', 'Serrano', 'Molina', 'Ortega'] },
+  IT: { name: 'Italie', flag: ['v', '#159447', '#ffffff', '#d4242b'], first: ['Leo', 'Marco', 'Luca', 'Andrea', 'Matteo', 'Lorenzo', 'Tommaso', 'Davide', 'Simone', 'Riccardo'], last: ['Santini', 'Rossi', 'Bianchi', 'Ricci', 'Greco', 'Conti', 'Gallo', 'Marino', 'Bruno', 'Costa'] },
+  PT: { name: 'Portugal', flag: ['v2', '#046a38', '#da291c'], first: ['João', 'Tiago', 'Diogo', 'Rui', 'Nuno', 'Martim', 'Gonçalo', 'Duarte', 'Afonso', 'Rodrigo'], last: ['Freitas', 'Monteiro', 'Pinto', 'Cardoso', 'Teixeira', 'Matos', 'Correia', 'Nunes', 'Faria', 'Lopes'] },
+  EG: { name: 'Égypte', flag: ['h', '#ce1126', '#ffffff', '#111111'], first: ['Omar', 'Youssef', 'Karim', 'Ahmed', 'Mostafa', 'Ali', 'Mahmoud', 'Hassan', 'Tarek', 'Amr'], last: ['Haddad', 'Assar', 'Saleh', 'Mansour', 'Fathy', 'Nabil', 'Zaki', 'Rashed', 'Kamel', 'Farouk'] },
+  NG: { name: 'Nigéria', flag: ['v', '#008751', '#ffffff', '#008751'], first: ['Quadri', 'Emeka', 'Tunde', 'Chidi', 'Seun', 'Femi', 'Tobi', 'Kunle', 'Obi', 'Segun'], last: ['Aruna', 'Okafor', 'Adeyemi', 'Eze', 'Bello', 'Okonkwo', 'Afolabi', 'Nwosu', 'Balogun', 'Ojo'] },
+  IN: { name: 'Inde', flag: ['h', '#ff9933', '#ffffff', '#138808'], first: ['Arjun', 'Rohan', 'Vikram', 'Aditya', 'Sathiyan', 'Rahul', 'Karan', 'Kabir', 'Dev', 'Ishaan'], last: ['Sharma', 'Kamal', 'Gnanasekaran', 'Patel', 'Rao', 'Iyer', 'Mehta', 'Nair', 'Reddy', 'Kapoor'] },
+  MX: { name: 'Mexique', flag: ['v', '#006847', '#ffffff', '#ce1126'], first: ['Diego', 'Santiago', 'Emiliano', 'Iker', 'Marcos', 'Emilio', 'Sebastián', 'Rodrigo', 'Andrés', 'Alejandro'], last: ['Hernández', 'Ramírez', 'Cruz', 'Flores', 'Vargas', 'Castillo', 'Mendoza', 'Ríos', 'Salinas', 'Aguilar'] },
+  PL: { name: 'Pologne', flag: ['h2', '#ffffff', '#dc143c'], first: ['Jakub', 'Kacper', 'Szymon', 'Filip', 'Mateusz', 'Piotr', 'Michał', 'Bartek', 'Kamil', 'Wojtek'], last: ['Nowak', 'Kowalski', 'Wójcik', 'Zieliński', 'Mazur', 'Krawczyk', 'Dudek', 'Wróbel', 'Pawlak', 'Sikora'] },
   TW: { name: 'Taipei chinois', flag: ['tpe'] },
   HK: { name: 'Hong Kong', flag: ['hk'] },
   SI: { name: 'Slovénie', flag: ['h', '#ffffff', '#0057b8', '#ed1c24'] },
@@ -41,7 +41,7 @@ export const COUNTRIES = {
   CL: { name: 'Chili', flag: ['h2', '#ffffff', '#d52b1e'] },
   CZ: { name: 'Tchéquie', flag: ['h2', '#ffffff', '#d7141a'] },
   AU: { name: 'Australie', flag: ['h2', '#012169', '#012169'] },
-  BE: { name: 'Belgique', flag: ['v', '#111111', '#fdda24', '#ef3340'], first: ['Arthur', 'Louis', 'Victor', 'Noah', 'Cédric', 'Elise', 'Lotte', 'Bram', 'Senne', 'Margaux'], last: ['Peeters', 'Janssens', 'Maes', 'Dubois', 'Lemaire', 'Claes', 'Wouters', 'Goossens', 'Lambrecht', 'Willems'] },
+  BE: { name: 'Belgique', flag: ['v', '#111111', '#fdda24', '#ef3340'], first: ['Arthur', 'Louis', 'Victor', 'Noah', 'Cédric', 'Thomas', 'Wout', 'Bram', 'Senne', 'Maxime'], last: ['Peeters', 'Janssens', 'Maes', 'Dubois', 'Lemaire', 'Claes', 'Wouters', 'Goossens', 'Lambrecht', 'Willems'] },
 };
 export const STYLE_IDS = ['attaquant', 'defenseur', 'coupeur', 'polyvalent'];
 export const STYLE_NAMES = { attaquant: 'Attaquant', defenseur: 'Défenseur', coupeur: 'Coupeur', polyvalent: 'Polyvalent' };
@@ -72,6 +72,8 @@ export const TIERS = {
   contender: { name: 'WTT Contender', size: 16, need: 120, pts: [400, 280, 140, 70, 35], arena: 'jungle', color: '#3cff8a' },
   star: { name: 'WTT Champions', size: 32, need: 50, pts: [1000, 700, 350, 175, 90, 15], arena: 'inferno', color: '#ff3c3c' },
   slam: { name: 'Grand Smash', size: 32, need: 32, pts: [2000, 1400, 700, 350, 175, 90], arena: 'finale', color: '#d23cff' },
+  team: { name: 'Coupe du monde par équipes', size: 8, need: 999, pts: [0, 0, 0, 0], arena: 'inferno', color: '#ff9a3c' },
+  olympics: { name: 'Jeux olympiques', size: 32, need: 40, pts: [0, 0, 0, 0, 0, 0], arena: 'legende', color: '#ffffff' },
   worlds: { name: 'Championnats du monde', size: 16, need: 16, pts: [1500, 1050, 525, 265, 100], arena: 'legende', color: '#ffc83c' },
 };
 const FEEDERS = ['Düsseldorf', 'Varaždin', 'Olomouc', 'Otočec', 'Havířov', 'Vila Nova de Gaia', 'Biella', 'Cappadocia', 'Doha', 'Beyrouth', 'Panagyurishte', 'Lille'];
@@ -85,7 +87,7 @@ export const VENUES = {
 };
 
 const de = c => /^[AEIOUÉÈ]/.test(c) ? `d'${c}` : `de ${c}`;
-export function weekEvents(season, week) {
+function baseEvents(season, week) {
   if (week === WEEKS) return [{ id: `s${season}w${week}worlds`, tier: 'worlds', name: 'Championnats du monde' }];
   if (SLAMS[week]) return [{ id: `s${season}w${week}slam`, tier: 'slam', name: SLAMS[week] }, { id: `s${season}w${week}ch`, tier: 'challenger', name: `WTT Feeder ${FEEDERS[(week * 7 + season) % FEEDERS.length]}` }];
   if (STARS[week]) return [{ id: `s${season}w${week}star`, tier: 'star', name: STARS[week] }, { id: `s${season}w${week}co`, tier: 'contender', name: `WTT Contender ${CONTENDERS[(week * 5 + season) % CONTENDERS.length]}` }];
@@ -93,6 +95,15 @@ export function weekEvents(season, week) {
     { id: `s${season}w${week}ch`, tier: 'challenger', name: `WTT Feeder ${FEEDERS[(week * 7 + season) % FEEDERS.length]}` },
     { id: `s${season}w${week}co`, tier: 'contender', name: `WTT Contender ${CONTENDERS[(week * 5 + season + 3) % CONTENDERS.length]}` },
   ];
+}
+
+export const olympicName = s => s === 2 ? 'Jeux olympiques de Los Angeles' : s === 6 ? 'Jeux olympiques de Brisbane' : 'Jeux olympiques';
+export function weekEvents(season, week) {
+  if (week === 14) return [{ id: `s${season}w14team`, tier: 'team', kind: 'team', name: 'Coupe du monde par équipes' }, ...baseEvents(season, week).filter(e => e.tier === 'challenger')];
+  if (season % 4 === 2 && week === 16) return [{ id: `s${season}w16oly`, tier: 'olympics', kind: 'olympics', name: olympicName(season) }];
+  const out = [];
+  for (const e of baseEvents(season, week)) { out.push(e); if (e.tier !== 'challenger' && e.tier !== 'worlds') out.push({ ...e, id: e.id + 'd', kind: 'double', name: e.name + ' · Double' }); }
+  return out;
 }
 
 // ------------------------------------------------------------------ outils
@@ -154,8 +165,8 @@ export function create(p) {
 
 // ------------------------------------------------------------------ classement
 export function allPlayers() { return [career.me, ...career.pool]; }
-export function getP(id) { return id === 'me' ? career.me : career.pool.find(p => p.id === id); }
-export function rating(pl) { return pl.id === 'me' ? overall(effStats()) : pl.rating; }
+export function getP(id) { const E = career.tour && career.tour.ents; if (E && E[id]) return E[id]; return id === 'me' ? career.me : career.pool.find(p => p.id === id); }
+export function rating(pl) { return pl.ent ? pl.rating : pl.id === 'me' ? overall(effStats()) : pl.rating; }
 export function rankPoints(pl) {
   const now = absWeek(career.season, career.week);
   return pl.pts.reduce((a, e) => a + (e.w > now - WEEKS ? e.p : 0), 0);
@@ -169,10 +180,18 @@ export function ranking() {
 export function rankOf(id) { const r = ranking(); const e = r.find(x => x.p.id === id); return e ? e.rank : 999; }
 
 // ------------------------------------------------------------------ tournois
-export function eligible(ev) {
-  const T = TIERS[ev.tier];
-  return rankOf('me') <= T.need;
+export function lockReason(ev) {
+  const T = TIERS[ev.tier], rk = rankOf('me');
+  if (career.injury) return `🩹 Blessé (${career.injury.weeks} sem.)`;
+  if (ev.kind === 'double') {
+    if (!career.partner || !career.pool.some(p => p.id === career.partner)) return 'Choisis un partenaire de double (Staff & sponsors)';
+    const need = { contender: 999, star: 90, slam: 60 }[ev.tier] || 999;
+    return rk <= need ? null : `🔒 Réservé au top ${need} mondial`;
+  }
+  if (ev.kind === 'team') return null;
+  return rk <= T.need ? null : `🔒 Réservé au top ${T.need} mondial`;
 }
+export function eligible(ev) { return !lockReason(ev); }
 
 function seedOrder(n) {
   let o = [1];
@@ -192,12 +211,17 @@ function entrants(ev, withMe) {
   if (ev.tier === 'star') { lo = 4; hi = 70; }
   if (ev.tier === 'slam') { lo = 0; hi = 44; }
   if (ev.tier === 'worlds') { lo = 0; hi = 16; }
+  if (ev.tier === 'olympics') { lo = 0; hi = r.length; }
   let cands = r.slice(lo, hi).map(e => e.p);
+  if (ev.tier === 'olympics') {
+    const cnt = {}; if (withMe) cnt[career.me.country] = 1;
+    cands = cands.filter(p => { cnt[p.country] = (cnt[p.country] || 0) + 1; return cnt[p.country] <= 2; });
+  }
   const n = T.size - (withMe ? 1 : 0);
-  const sel = ev.tier === 'worlds' || ev.tier === 'slam' ? cands.slice(0, n) : cands.sort(() => rnd() - 0.5).slice(0, n);
+  const sel = ev.tier === 'worlds' || ev.tier === 'slam' || ev.tier === 'olympics' ? cands.slice(0, n) : cands.sort(() => rnd() - 0.5).slice(0, n);
   // le rival est souvent dans le même tournoi
   const rival = career.pool.find(p => p.rival);
-  if (withMe && rival && !sel.includes(rival) && rnd() < 0.55 && ev.tier !== 'worlds') sel[sel.length - 1] = rival;
+  if (withMe && rival && !sel.includes(rival) && rnd() < 0.55 && ev.tier !== 'worlds' && ev.tier !== 'olympics') sel[sel.length - 1] = rival;
   if (withMe) sel.push(career.me);
   return sel;
 }
@@ -222,6 +246,8 @@ export const ROUND_NAMES = n => n === 1 ? 'Finale' : n === 2 ? 'Demi-finales' : 
 export function setsFor(tier, matchesInRound) {
   const L = career.length; // 0 rapide, 1 normal, 2 long
   if (L === 0) return 1;
+  if (tier === 'olympics') tier = 'slam';
+  if (tier === 'team') return 3;
   const final = matchesInRound === 1, late = matchesInRound <= 4;
   if (L === 1) return (tier === 'slam' || tier === 'worlds') && final ? 5 : 3;
   return late && (tier === 'slam' || tier === 'worlds' || tier === 'star') ? 5 : 3;
@@ -245,13 +271,16 @@ function simRound(d) {
     const A = getP(m.a), B = getP(m.b);
     const aw = rnd() < winProb(A, B);
     m.w = aw ? m.a : m.b;
-    m.sc = simScore(aw, 3);
+    m.sc = simScore(aw, d.kind === 'team' ? 5 : 3);
   }
+  const B = d.bronze;
+  if (B && !B.w && B.a !== 'me' && B.b !== 'me') { const aw = rnd() < winProb(getP(B.a), getP(B.b)); B.w = aw ? B.a : B.b; B.sc = simScore(aw, 3); }
 }
 
 function nextRound(d) {
   const R = d.rounds[d.round];
   if (R.length === 1) { d.done = true; return; }
+  if (R.length === 2 && d.kind === 'olympics') d.bronze = { a: R[0].w === R[0].a ? R[0].b : R[0].a, b: R[1].w === R[1].a ? R[1].b : R[1].a, w: null, sc: null };
   const nx = [];
   for (let i = 0; i < R.length; i += 2) nx.push({ a: R[i].w, b: R[i + 1].w, w: null, sc: null });
   d.rounds.push(nx); d.round++;
@@ -259,12 +288,23 @@ function nextRound(d) {
 
 export function myMatch() {
   const d = career.tour;
-  if (!d || d.done || d.out) return null;
+  if (!d) return null;
+  const B = d.bronze;
+  if (B && !B.w && (B.a === 'me' || B.b === 'me')) return B;
+  if (d.done || d.out) return null;
   return d.rounds[d.round].find(m => m.a === 'me' || m.b === 'me') || null;
+}
+// adversaire individuel du match à jouer
+export function myOpponent() {
+  const d = career.tour, m = myMatch(); if (!m) return null;
+  if (d.kind === 'team') return getP(m.opp);
+  return getP(m.a === 'me' ? m.b : m.a);
 }
 
 export function enterTournament(ev) {
-  career.tour = makeDraw(ev, true);
+  career.tour = ev.kind === 'double' ? makeDoubleDraw(ev) : ev.kind === 'team' ? makeTeamDraw(ev) : makeDraw(ev, true);
+  career.tour.kind = ev.kind || 'single';
+  if (ev.kind === 'team') prepTeamRound(career.tour);
   save();
   return career.tour;
 }
@@ -274,30 +314,43 @@ export function reportMatch(won, sets) {
   const d = career.tour, m = myMatch();
   if (!m) return;
   const oppId = m.a === 'me' ? m.b : m.a;
-  m.w = won ? 'me' : oppId;
-  m.sc = m.a === 'me' ? sets : [sets[1], sets[0]];
-  const h = career.h2h[oppId] || { w: 0, l: 0 };
-  won ? h.w++ : h.l++;
-  career.h2h[oppId] = h;
-  const S = sst(), oR = rankOf(oppId);
+  const indiv = d.kind === 'team' ? m.opp : d.kind === 'double' ? null : oppId;
+  let tieWon = won;
+  if (d.kind === 'team') { const t = teamTie(d, m, won); tieWon = t.won; m.sc = m.a === 'me' ? t.sc : [t.sc[1], t.sc[0]]; m.mine = sets; }
+  else m.sc = m.a === 'me' ? sets : [sets[1], sets[0]];
+  m.w = tieWon ? 'me' : oppId;
+  const S = sst();
   won ? S.wins++ : S.losses++;
-  if (won && (!S.best || oR < S.best.rank)) S.best = { name: getP(oppId).name, rank: oR };
-  if (won && getP(oppId).sig) career.bossWins = (career.bossWins || 0) + 1;
-  if (won && getP(oppId).rival) career.rivalWins = (career.rivalWins || 0) + 1;
+  let better = false;
+  if (indiv) {
+    const op = getP(indiv), h = career.h2h[indiv] || { w: 0, l: 0 };
+    won ? h.w++ : h.l++;
+    career.h2h[indiv] = h;
+    const oR = rankOf(indiv); better = oR < rankOf('me');
+    if (won && (!S.best || oR < S.best.rank)) S.best = { name: op.name, rank: oR };
+    if (won && op.sig) career.bossWins = (career.bossWins || 0) + 1;
+    if (won && op.rival) career.rivalWins = (career.rivalWins || 0) + 1;
+  }
+  if (d.kind === 'double') career.chem = Math.min(6, (career.chem || 0) + 0.5);
   career.upPoints += won ? 3 : 1;
+  career.weekMatches = (career.weekMatches || 0) + 1;
   spendEnergy(10);
-  const better = rankOf(oppId) < rankOf('me');
-  career.conf = clamp((career.conf ?? 50) + (won ? (better ? 10 : 5) : (better ? -4 : -10)), 5, 100);
+  const loss = [1, 0.7, 0.45][career.staff ? career.staff.psy : 0];
+  career.conf = clamp((career.conf ?? 50) + (won ? (better ? 10 : 5) : (better ? -4 : -10) * loss), 5, 100);
+  addFans(won ? 60 * (TW[d.tier] || 1) : 10);
+  if (m === d.bronze) { finishTournament(); pressAfter(d, m, won, indiv); checkMilestones(); save(); return; }
   simRound(d);
-  if (!won) {
-    d.out = true;
-    // on termine le tournoi en simulation
-    while (!d.done) { nextRound(d); if (!d.done) simRound(d); }
+  if (!tieWon) {
+    if (d.kind === 'olympics' && d.rounds[d.round].length === 2) { nextRound(d); simRound(d); nextRound(d); }
+    else { d.out = true; while (!d.done) { nextRound(d); if (!d.done) simRound(d); } }
   } else {
     nextRound(d);
     if (!d.done) simRound(d);
   }
-  if (d.done || d.out) finishTournament();
+  if (d.kind === 'team' && !d.done && !d.out) prepTeamRound(d);
+  const bronzeLeft = d.bronze && !d.bronze.w && (d.bronze.a === 'me' || d.bronze.b === 'me');
+  if ((d.done || d.out) && !bronzeLeft) finishTournament();
+  pressAfter(d, m, won, indiv);
   checkMilestones();
   save();
 }
@@ -318,26 +371,39 @@ function award(d) {
   return res;
 }
 
+export const medalTxt = m => m === 'or' ? "d'or" : m === 'argent' ? "d'argent" : 'de bronze';
 function finishTournament() {
   const d = career.tour;
   if (d.awarded) return;
   d.awarded = true;
   const w = absWeek(career.season, career.week);
   const res = award(d);
-  for (const [id, p] of Object.entries(res)) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
+  if (d.kind === 'double') {
+    for (const [id, p] of Object.entries(res)) { const E = d.ents[id]; if (E && p) for (const mid of E.members) { const pl = mid === 'me' ? career.me : career.pool.find(x => x.id === mid); if (pl) (pl.dpts = pl.dpts || []).push({ w, p: Math.round(p * 0.6) }); } }
+  } else for (const [id, p] of Object.entries(res)) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
   const mine = res.me || 0;
-  const prize = mine * 10;
+  let prize = d.kind === 'double' ? mine * 4 : mine * 10;
+  const finalM = d.rounds[d.rounds.length - 1][0];
+  let medal = null;
+  if (d.kind === 'olympics') {
+    medal = finalM.w === 'me' ? 'or' : (finalM.a === 'me' || finalM.b === 'me') ? 'argent' : d.bronze && d.bronze.w === 'me' ? 'bronze' : null;
+    if (medal) { prize = { or: 60000, argent: 30000, bronze: 15000 }[medal]; (career.medals = career.medals || []).push({ medal, name: d.ev.name, season: career.season }); career.news.unshift(`🏅 ${career.me.name} décroche la médaille ${medalTxt(medal)} aux ${d.ev.name} !`); addFans({ or: 60000, argent: 30000, bronze: 18000 }[medal]); }
+  }
+  if (d.kind === 'team' && finalM.w === 'me') prize = 25000;
   if (prize) { career.money += prize; career.earned = (career.earned || 0) + prize; }
   const final = d.rounds[d.rounds.length - 1][0];
   const champion = final && final.w === 'me';
-  d.result = { pts: mine, prize, champion, reached: roundReached(d) };
+  d.result = { pts: mine, prize, champion, reached: medal ? `Médaille ${medalTxt(medal)}` : roundReached(d), medal };
   if (champion) {
-    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season, at: absWeek(career.season, career.week) });
-    career.upPoints += { challenger: 3, contender: 5, star: 8, slam: 15, worlds: 15 }[d.tier];
+    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season, at: absWeek(career.season, career.week), dbl: d.kind === 'double' || undefined });
+    career.upPoints += { challenger: 3, contender: 5, star: 8, slam: 15, worlds: 15, team: 8, olympics: 15 }[d.tier] * (d.kind === 'double' ? 0.5 : 1);
+    addFans(4000 * (TW[d.tier] || 1) * (d.kind === 'double' ? 0.4 : 1));
     career.perkPts = (career.perkPts || 0) + 1;
     career.conf = clamp((career.conf ?? 50) + 15, 5, 100);
-    career.news.unshift(`🏆 ${career.me.name} remporte le ${d.ev.name} !`);
-  } else aiTitle(d);
+    career.news.unshift(d.kind === 'team' ? `🏆 ${COUNTRIES[career.me.country].name} remporte la Coupe du monde par équipes, avec ${career.me.name} !` : d.kind === 'olympics' ? `🥇 ${career.me.name} est champion olympique !` : `🏆 ${career.me.name} remporte le ${d.ev.name} !`);
+  } else if (d.kind === 'single' || !d.kind) aiTitle(d);
+  else if (d.kind === 'team') { const fw = finalM.w && getP(finalM.w); if (fw) career.news.unshift(`🌍 ${fw.name} remporte la Coupe du monde par équipes.`); }
+  else if (d.kind === 'olympics') { const fw = finalM.w && getP(finalM.w); if (fw) career.news.unshift(`🥇 ${fw.name} est champion olympique.`); }
   const S = sst(); S.money += prize; if (champion) S.titles++;
   career.results.unshift({ season: career.season, week: career.week, name: d.ev.name, tier: d.tier, reached: d.result.reached, pts: mine });
   career.news = career.news.slice(0, 12);
@@ -371,7 +437,8 @@ export function endWeek() {
     aiTitle(d);
   }
   const wk = absWeek(career.season, career.week);
-  for (const p of career.pool) { const inc = aiIncome(p); if (inc) p.pts.push({ w: wk, p: inc }); }
+  for (const p of career.pool) { const inc = aiIncome(p); if (inc) { p.pts.push({ w: wk, p: inc }); (p.dpts = p.dpts || []).push({ w: wk, p: Math.round(inc * 0.3) }); } }
+  for (const p of career.pool) if (p.prodige) p.rating = Math.min(97, Math.max(p.rating, overall(career.me.stats) - 3) + 0.3);
   // le rival progresse avec toi
   const rival = career.pool.find(p => p.rival);
   if (rival) rival.rating = Math.min(97, Math.max(rival.rating, overall(career.me.stats) + 2) + 0.15);
@@ -384,7 +451,8 @@ export function endWeek() {
   if (career.week > WEEKS) seasonEnd();
   // nettoyage des vieux points
   const now = absWeek(career.season, career.week);
-  for (const p of allPlayers()) p.pts = p.pts.filter(e => e.w > now - WEEKS - 1);
+  for (const p of allPlayers()) { p.pts = p.pts.filter(e => e.w > now - WEEKS - 1); if (p.dpts) p.dpts = p.dpts.filter(e => e.w > now - WEEKS - 1); }
+  career.weekMatches = 0;
   save();
 }
 
@@ -429,7 +497,7 @@ export function flag(code, w = 24, h = 16) {
 // ================================================================== partie 2 : énergie, entraînement, coach, sponsors, matériel
 export function migrate() {
   if (!career) return;
-  const d = { conf: 50, perks: [], perkPts: 1, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0 };
+  const d = { fans: 1500, staff: { physio: 0, kine: 0, psy: 0, agent: 0 }, partner: null, chem: 0, injury: null, press: null, medals: [], conf: 50, perks: [], perkPts: 1, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0 };
   for (const k in d) if (career[k] === undefined) career[k] = d[k];
   if (!career.me.prog) career.me.prog = {};
 }
@@ -467,7 +535,7 @@ export function gearBonus() {
 export function effStats() {
   const b = gearBonus(), st = {};
   const pb = perkBonus();
-  for (const k of STAT_KEYS) st[k] = Math.min(99, career.me.stats[k] + (b[k] || 0) + (pb[k] || 0) + (k === 'mental' && COACHES[career.coach] ? COACHES[career.coach].mental : 0));
+  for (const k of STAT_KEYS) st[k] = Math.min(99, career.me.stats[k] + (b[k] || 0) + (pb[k] || 0) + (k === 'mental' && COACHES[career.coach] ? COACHES[career.coach].mental : 0) + (k === 'mental' && career.staff ? [0, 2, 4][career.staff.psy] : 0));
   return st;
 }
 export function buyGear(slot, i) {
@@ -540,7 +608,7 @@ function checkSponsorGoal() {
 function weekEconomy() {
   const S = career.sponsor;
   if (S) {
-    career.money += S.weekly; checkSponsorGoal(); S.left--;
+    career.money += Math.round(S.weekly * sponsorMult()); checkSponsorGoal(); S.left--;
     if (S.left <= 0) { career.news.unshift(`Fin du contrat avec ${S.name}.`); career.doneSponsors = [...(career.doneSponsors || []), S.id]; career.sponsor = null; }
   }
   const c = COACHES[career.coach];
@@ -548,7 +616,14 @@ function weekEconomy() {
     if (career.money >= c.cost) career.money -= c.cost;
     else { career.news.unshift(`${c.name} est parti : plus assez d'argent pour le payer.`); career.coach = 0; }
   }
-  career.energy = clamp(career.energy + (career.tour ? 18 : 40), 0, 100);
+  for (const role in STAFF) {
+    const lv = (career.staff || {})[role] || 0, cost = STAFF[role].levels[lv].cost;
+    if (!cost) continue;
+    if (career.money >= cost) career.money -= cost;
+    else { career.news.unshift(`${STAFF[role].levels[lv].name} est parti : plus assez d'argent.`); career.staff[role] = 0; }
+  }
+  career.energy = clamp(career.energy + (career.tour ? 18 : 40) + [0, 6, 12][(career.staff || {}).physio || 0], 0, 100);
+  injuryRoll();
 }
 
 
@@ -557,7 +632,8 @@ function sst() {
   if (!career.sstats || career.sstats.season !== career.season) career.sstats = { season: career.season, money: 0, wins: 0, losses: 0, titles: 0, best: null };
   return career.sstats;
 }
-const TITLE_W = { challenger: 1, contender: 2, star: 4, slam: 10, worlds: 12 };
+const TITLE_W = { challenger: 1, contender: 2, star: 4, slam: 10, worlds: 12, team: 6, olympics: 15 };
+const TW = { challenger: 1, contender: 1.5, star: 2.5, slam: 4, worlds: 4, team: 3, olympics: 5 };
 function aiTitle(d) {
   const final = d.rounds[d.rounds.length - 1][0];
   if (!final || !final.w || final.w === 'me') return;
@@ -594,7 +670,7 @@ export const MILESTONES = [
 export function checkMilestones() {
   career.milestones = career.milestones || {};
   const M = career.milestones, rk = rankOf('me'), T = career.titles;
-  const has = t => T.some(x => x.tier === t);
+  const has = t => T.some(x => x.tier === t && !x.dbl);
   const cond = {
     first_win: Object.values(career.h2h).some(h => h.w > 0), first_title: T.length > 0,
     top100: rk <= 100, top50: rk <= 50, top10: rk <= 10, no1: rk === 1,
@@ -621,7 +697,7 @@ function trackRank() {
   checkMilestones();
 }
 export function legacy() {
-  let L = career.titles.reduce((a, t) => a + (TITLE_W[t.tier] || 0), 0);
+  let L = career.titles.reduce((a, t) => a + (TITLE_W[t.tier] || 0) * (t.dbl ? 0.4 : 1), 0);
   L += (career.weeksNo1 || 0) * 1 + (career.weeksTop10 || 0) * 0.2;
   return Math.round(L);
 }
@@ -645,6 +721,7 @@ function seasonEnd() {
     p.stats = makeStats(Math.round(p.rating), p.style);
     if ((p.age >= 34 && rnd() < 0.45) || p.age >= 37) {
       rev.retired.push(p.name);
+      if (career.partner === p.id) { career.partner = null; career.chem = 0; career.news.unshift(`👋 Ton partenaire de double ${p.name} prend sa retraite. Trouve un nouveau partenaire.`); }
       const big = (p.wins && ((p.wins.slam || 0) + (p.wins.worlds || 0))) || 0;
       if (big > 0 || p.sig) {
         career.legends = career.legends || [];
@@ -663,6 +740,10 @@ function seasonEnd() {
   const free = sigs.filter(s => !career.pool.some(p => p.sig === s && top.includes(p)));
   for (const p of career.pool) if (p.sig && !top.includes(p)) delete p.sig;
   for (const p of top) if (!p.sig && free.length) p.sig = free.shift();
+  if (!career.pool.some(p => p.prodige)) {
+    const y = career.pool.filter(p => p.young && !p.rival).sort((a, b) => b.rating - a.rating)[0];
+    if (y) { y.prodige = true; y.rating = Math.max(y.rating, overall(career.me.stats) - 4); y.stats = makeStats(Math.round(y.rating), y.style); career.news.unshift(`⭐ Un jeune prodige débarque : ${y.name} (${y.age} ans) vise déjà ta place.`); }
+  }
   career.seasons.push(rev);
   career.perkPts = (career.perkPts || 0) + 1;
   career.review = rev;
@@ -717,8 +798,9 @@ export function buyPerk(id) {
 // match simulé (le joueur ne joue pas)
 export function simulateMatch(bestOf) {
   const m = myMatch(); if (!m) return null;
-  const o = getP(m.a === 'me' ? m.b : m.a);
-  const mine = rating(career.me) * formOf() + ((career.conf ?? 50) - 50) / 10;
+  const o = myOpponent();
+  const base = career.tour.kind === 'double' ? getP('me').rating : rating(career.me);
+  const mine = base * formOf() + ((career.conf ?? 50) - 50) / 10;
   const p = 1 / (1 + Math.exp(-(mine - rating(o)) / 5.5));
   const won = rnd() < p;
   const need = Math.floor(bestOf / 2) + 1;
@@ -727,4 +809,151 @@ export function simulateMatch(bestOf) {
   if (won && a < need) a = need; if (!won && b < need) b = need;
   if (won) b = Math.min(b, need - 1); else a = Math.min(a, need - 1);
   return { won, sets: [a, b], o };
+}
+
+
+// ================================================================== partie B : staff, blessures, fans, presse, double, équipes, JO
+export const STAFF = {
+  physio: { name: 'Préparateur physique', desc: 'Moins de blessures, meilleure récupération', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Préparateur physique', cost: 300 }, { name: 'Préparateur de l\'équipe nationale', cost: 1200 }] },
+  kine: { name: 'Kiné', desc: 'Guérison plus rapide des blessures', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Kiné', cost: 250 }, { name: 'Kiné du circuit WTT', cost: 900 }] },
+  psy: { name: 'Préparateur mental', desc: 'Confiance plus stable, +mental', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Préparateur mental', cost: 200 }, { name: 'Psychologue du sport', cost: 800 }] },
+  agent: { name: 'Agent', desc: 'Sponsors mieux payés, plus de fans', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Agent', cost: 400 }, { name: 'Agent star', cost: 1500 }] },
+};
+export function hireStaff(role, lv) { career.staff = career.staff || {}; career.staff[role] = lv; save(); }
+export function sponsorMult() { return (1 + Math.min(1.5, (career.fans || 0) / 150000)) * [1, 1.25, 1.5][(career.staff || {}).agent || 0]; }
+export function addFans(n) { career.fans = Math.round((career.fans || 0) + n * [1, 1.2, 1.4][(career.staff || {}).agent || 0]); }
+export const fansLabel = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' M' : n >= 1000 ? Math.round(n / 1000) + ' k' : String(n);
+
+// ---------- blessures
+const INJ = ['Douleur au poignet', 'Lombalgie', 'Élongation à la cuisse', 'Tendinite à l\'épaule', 'Entorse de la cheville', 'Douleur au coude'];
+function injuryRoll() {
+  if (career.injury) {
+    career.injury.weeks--;
+    if (career.injury.weeks <= 0) { career.news.unshift(`💪 ${career.me.name} est remis de sa blessure.`); career.injury = null; }
+    return;
+  }
+  const e = career.energy;
+  let risk = 0.011 * (career.weekMatches || 0) + (career.trained === absWeek(career.season, career.week) ? 0.008 : 0) + (e < 40 ? (40 - e) * 0.004 : 0);
+  risk *= [1, 0.6, 0.35][(career.staff || {}).physio || 0];
+  if (rnd() < risk) {
+    const weeks = Math.max(1, Math.round((1 + rnd() * 3) * [1, 0.7, 0.5][(career.staff || {}).kine || 0]));
+    career.injury = { weeks, name: pick(INJ) };
+    career.news.unshift(`🩹 ${career.me.name} est blessé (${career.injury.name.toLowerCase()}) : ${weeks} semaine${weeks > 1 ? 's' : ''} d'arrêt.`);
+    career.conf = clamp((career.conf ?? 50) - 8, 5, 100);
+  }
+}
+
+// ---------- rivaux
+export function rivals() {
+  return career.pool.filter(p => p.rival || p.prodige || p.enemy).map(p => ({ p, type: p.rival ? 'Rival' : p.prodige ? 'Jeune prodige' : 'Ennemi juré' }));
+}
+
+// ---------- conférences de presse
+function pressAfter(d, m, won, indiv) {
+  const op = indiv ? getP(indiv) : null;
+  const r = d.result, rk = rankOf('me');
+  let ctx = null;
+  if (r && r.champion) ctx = { k: 'title', q: d.kind === 'olympics' ? 'Champion olympique ! Qu\'est-ce que ça représente pour toi ?' : `Tu remportes le ${d.ev.name}. Tu te sens capable d'aller encore plus haut ?` };
+  else if (r && r.medal) ctx = { k: 'medal', q: `Une médaille ${r.medal === 'argent' ? "d'argent" : 'de bronze'} olympique. Fierté ou frustration ?` };
+  else if (op && won && (op.rival || op.prodige || op.enemy)) ctx = { k: 'rival', q: `Tu bats encore ${op.name}. Cette rivalité, elle te motive ?` };
+  else if (op && won && rankOf(op.id) <= 10 && rankOf(op.id) < rk) ctx = { k: 'upset', q: `Tu sors ${op.name}, ${rankOf(op.id)}e mondial. Exploit ou logique ?` };
+  else if (op && !won && (d.tier === 'slam' || d.tier === 'worlds' || d.tier === 'olympics') && rnd() < 0.7) ctx = { k: 'loss', q: `Défaite face à ${op.name}. Qu'est-ce qui a manqué aujourd'hui ?` };
+  else if (op && !won && op.rival) ctx = { k: 'loss', q: `${op.name} prend le dessus. Tu as une revanche à prendre ?` };
+  if (!ctx) return;
+  const opN = op ? op.name : 'mes adversaires';
+  const A = {
+    title: [['Je dois tout à mon équipe, on savoure et on retourne bosser.', { conf: 3, fans: 2500 }], ['Ce n\'est qu\'un début. Je veux la place de n°1.', { conf: 8, fans: 6000 }], ['Les autres peuvent trembler, je suis le patron maintenant.', { conf: 10, fans: 12000, enemy: true }]],
+    medal: [['Une médaille olympique, c\'est un rêve. Je suis fier.', { conf: 6, fans: 5000 }], ['Je suis venu pour l\'or. Je reviendrai.', { conf: 4, fans: 7000 }], ['L\'arbitrage ne m\'a pas aidé aujourd\'hui.', { conf: 2, fans: 9000 }]],
+    rival: [['Je respecte énormément ' + opN + '. Il me pousse à progresser.', { conf: 4, fans: 1500 }], ['Il le sait : je suis devant lui maintenant.', { conf: 7, fans: 3500 }], ['Franchement ? Il ne me fait plus peur du tout.', { conf: 8, fans: 7000, enemy: true }]],
+    upset: [['J\'ai eu un peu de réussite, il reste un immense joueur.', { conf: 4, fans: 2000 }], ['Ce n\'est pas un exploit, je travaille pour battre ces joueurs-là.', { conf: 8, fans: 4500 }], ['Son niveau est surcoté. La prochaine fois ce sera encore plus rapide.', { conf: 9, fans: 9000, enemy: true }]],
+    loss: [['Il a été meilleur, bravo à lui. J\'apprends.', { conf: 4, fans: 800 }], ['Quelques détails. Je reviendrai plus fort.', { conf: 6, fans: 1200 }], ['Il a eu de la chance, c\'est tout.', { conf: 2, fans: 3000, enemy: true }]],
+  }[ctx.k];
+  career.press = { q: ctx.q, opp: op ? op.id : null, oppName: op ? op.name : null, answers: A.map(([t, fx], i) => ({ t, fx, tone: ['Humble', 'Confiant', 'Provocateur'][i] })) };
+}
+export function answerPress(i) {
+  const P = career.press; if (!P) return null;
+  const a = P.answers[i];
+  career.conf = clamp((career.conf ?? 50) + (a.fx.conf || 0), 5, 100);
+  addFans(a.fx.fans || 0);
+  let out = { fans: a.fx.fans, conf: a.fx.conf };
+  if (a.fx.enemy && P.opp) {
+    const op = career.pool.find(p => p.id === P.opp);
+    if (op && !op.rival && !op.prodige && !op.enemy) { op.enemy = true; career.news.unshift(`🔥 Polémique : la déclaration de ${career.me.name} sur ${op.name} fait le tour des réseaux. Une rivalité est née.`); out.enemy = op.name; }
+  }
+  career.press = null; save();
+  return out;
+}
+
+// ---------- double
+export function partnerOffers() {
+  const r = ranking(), me = rankOf('me');
+  const c = r.filter(e => e.p.id !== 'me' && !e.p.rival && !e.p.enemy && e.rank > 8 && Math.abs(e.rank - me) < 45).map(e => e.p);
+  c.sort((a, b) => (b.country === career.me.country) - (a.country === career.me.country) || b.rating - a.rating);
+  return c.slice(0, 5);
+}
+export function setPartner(id) { if (career.partner !== id) { career.partner = id; career.chem = 0; save(); } }
+export function dRankPoints(pl) { const now = absWeek(career.season, career.week); return (pl.dpts || []).reduce((a, e) => a + (e.w > now - WEEKS ? e.p : 0), 0); }
+export function dRankOf(id) {
+  const list = allPlayers().map(p => ({ id: p.id, pts: dRankPoints(p) })).sort((a, b) => b.pts - a.pts);
+  return list.findIndex(e => e.id === id) + 1;
+}
+const short = p => p.name.split(' ').slice(-1)[0];
+function makePairEnt(id, a, b, bonus = 0) {
+  const ra = a.id === 'me' ? overall(effStats()) : a.rating, rb = b.rating;
+  const sa = a.id === 'me' ? effStats() : a.stats, st = {};
+  for (const k of STAT_KEYS) st[k] = Math.round((sa[k] + b.stats[k]) / 2);
+  return { id, ent: true, pair: true, name: `${short(a)} / ${short(b)}`, country: a.country, country2: b.country, rating: (ra + rb) / 2 + bonus, style: 'polyvalent', hand: 1, stats: st, members: [a.id, b.id], pts: [] };
+}
+function makeDoubleDraw(ev) {
+  const partner = career.pool.find(p => p.id === career.partner);
+  const pool = entrants({ ...ev, tier: ev.tier }, false).filter(p => p.id !== partner.id).slice(0, 14);
+  pool.sort((a, b) => a.country.localeCompare(b.country) || b.rating - a.rating);
+  const ents = { me: makePairEnt('me', career.me, partner, career.chem || 0) };
+  const list = [ents.me];
+  for (let i = 0; i + 1 < pool.length; i += 2) { const e = makePairEnt(`d:${pool[i].id}+${pool[i + 1].id}`, pool[i], pool[i + 1], 2); ents[e.id] = e; list.push(e); }
+  list.sort((a, b) => b.rating - a.rating);
+  const order = seedOrder(8), slots = order.map(s => list[s - 1]);
+  const first = []; for (let i = 0; i < 8; i += 2) first.push({ a: slots[i].id, b: slots[i + 1].id, w: null, sc: null });
+  return { ev, tier: ev.tier, size: 8, rounds: [first], round: 0, done: false, out: false, ents };
+}
+
+// ---------- équipes nationales
+function nationEnt(code, isMe) {
+  const COL = career.pool.filter(p => p.country === code).sort((a, b) => b.rating - a.rating);
+  let members = isMe ? [career.me, ...COL.slice(0, 2)] : COL.slice(0, 3);
+  while (members.length < 3) {
+    const C = COUNTRIES[code], nm = C.first ? `${pick(C.first)} ${pick(C.last)}` : `Joueur ${C.name} ${members.length + 1}`;
+    const fake = { id: `x:${code}${members.length}`, name: nm, country: code, hand: 1, style: 'polyvalent', rating: 50, stats: makeStats(50, 'polyvalent'), pts: [], wins: {}, ghost: true };
+    members.push(fake);
+  }
+  const rs = members.map(p => p.id === 'me' ? overall(effStats()) : p.rating);
+  return { id: isMe ? 'me' : 'n:' + code, ent: true, team: true, name: COUNTRIES[code].name, country: code, rating: rs.reduce((a, b) => a + b, 0) / 3, style: 'polyvalent', hand: 1, stats: members[0].stats, members: members.map(p => p.id), roster: members, pts: [] };
+}
+function makeTeamDraw(ev) {
+  const codes = [...new Set(career.pool.map(p => p.country))].filter(c => c !== career.me.country);
+  const ents = { me: nationEnt(career.me.country, true) };
+  const others = codes.map(c => nationEnt(c, false)).sort((a, b) => b.rating - a.rating).slice(0, 7);
+  for (const e of others) ents[e.id] = e;
+  const list = [ents.me, ...others].sort((a, b) => b.rating - a.rating);
+  const order = seedOrder(8), slots = order.map(s => list[s - 1]);
+  const first = []; for (let i = 0; i < 8; i += 2) first.push({ a: slots[i].id, b: slots[i + 1].id, w: null, sc: null });
+  return { ev, tier: 'team', size: 8, rounds: [first], round: 0, done: false, out: false, ents };
+}
+const memberP = (E, i) => { const id = E.members[i]; return id === 'me' ? career.me : E.roster.find(p => p.id === id); };
+function prepTeamRound(d) {
+  const m = d.rounds[d.round].find(x => x.a === 'me' || x.b === 'me'); if (!m) return;
+  const O = d.ents[m.a === 'me' ? m.b : m.a];
+  m.opp = O.members[0];
+  // le meilleur adversaire doit être trouvable via getP
+  for (const p of O.roster) if (!career.pool.includes(p) && !d.ents[p.id]) d.ents[p.id] = p;
+}
+function teamTie(d, m, won) {
+  const M = d.ents.me, O = d.ents[m.a === 'me' ? m.b : m.a];
+  const rub = [[0, 0], [1, 1], [2, 2], [0, 1], [1, 0]];
+  let a = won ? 1 : 0, b = won ? 0 : 1;
+  for (let k = 1; k < 5 && a < 3 && b < 3; k++) {
+    const p = memberP(M, rub[k][0]), q = memberP(O, rub[k][1]);
+    rnd() < winProb(p, q) ? a++ : b++;
+  }
+  return { won: a > b, sc: [a, b] };
 }

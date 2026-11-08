@@ -52,6 +52,7 @@ function show(id) {
   if (id === 'scr-ctrain') renderCTrain();
   if (id === 'scr-hof') renderHof();
   if (id === 'scr-perks') renderPerks();
+  if (id === 'scr-press') renderPress();
   if (id === 'scr-season') renderSeason();
   if (id === 'scr-team') renderTeam();
   if (id === 'scr-shop') renderShop();
@@ -661,16 +662,17 @@ function showVS() {
     else if (p === me) lp = profile.lp;
     else if (setup.mode === 'online') lp = opp.lp || 0;
     if (setup.mode === 'career') {
-      const pl = p === me ? C.career.me : C.getP(setup.oppId);
+      const pl = p === me ? (setup.kind === 'double' ? C.getP('me') : C.career.me) : C.getP(setup.oppId);
       box.querySelector('.emb').innerHTML = C.flag(pl.country, 84, 56);
-      label = `${C.rankOf(pl.id)}e mondial · ${C.STYLE_NAMES[pl.style]}${pl.rival ? ' · <span style="color:#ff6b7d">RIVAL</span>' : pl.sig ? ' · <span style="color:#ffc83c">BOSS</span>' : ''}`;
+      label = pl.pair ? `Paire · niveau ${Math.round(pl.rating)}` : `${C.rankOf(pl.id)}e mondial · ${C.STYLE_NAMES[pl.style]}${pl.rival ? ' · <span style="color:#ff6b7d">RIVAL</span>' : pl.enemy ? ' · <span style="color:#ff6b7d">ENNEMI JURÉ</span>' : pl.prodige ? ' · <span style="color:#ffc83c">PRODIGE</span>' : pl.sig ? ' · <span style="color:#ffc83c">BOSS</span>' : ''}`;
+      if (setup.kind === 'team') label = `${C.COUNTRIES[pl.country].name} · ` + label;
     } else if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
     else if (game.doubles) { label = 'Équipe ' + (p === 0 ? 'bleue' : 'rouge'); box.querySelector('.emb').innerHTML = ''; }
     else { label = `${['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'} · ${setup.aiStyle || ''}`; box.querySelector('.emb').innerHTML = ''; }
     box.querySelector('.r').innerHTML = label;
   };
   side('l', me); side('r', op);
-  if (setup.mode === 'career') el.querySelector('.vsf').textContent = `${C.career.tour.ev.name.toUpperCase()} · ${C.ROUND_NAMES(C.career.tour.rounds[C.career.tour.round].length).toUpperCase()} · ${game.bestOf === 1 ? '1 SET' : 'AU MEILLEUR DES ' + game.bestOf + ' SETS'}`;
+  if (setup.mode === 'career') el.querySelector('.vsf').textContent = `${C.career.tour.ev.name.toUpperCase()} · ${setup.round.toUpperCase()} · ${game.bestOf === 1 ? '1 SET' : 'AU MEILLEUR DES ' + game.bestOf + ' SETS'}`;
   else el.querySelector('.vsf').textContent = (game.doubles ? 'DOUBLE · ' : setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
   el.classList.remove('hidden');
   el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
@@ -981,6 +983,7 @@ function bindCareerButtons(root) {
 function renderCareer() {
   const c = C.career; if (!c) return;
   if (c.review) { show('scr-season'); return; }
+  if (c.press) { show('scr-press'); return; }
   flushPending();
   const me = c.me, rk = C.rankOf('me');
   $('#car-head').innerHTML = `${C.flag(me.country, 54, 36)}<div><div class="big">${esc(me.name)}</div>
@@ -995,10 +998,12 @@ function renderCareer() {
   if (c.tour) {
     html = `<button class="mbtn accent" data-act="tour"><span><b>Reprendre : ${esc(c.tour.ev.name)}</b><small>${c.tour.done || c.tour.out ? 'Tournoi terminé, voir le tableau' : C.ROUND_NAMES(c.tour.rounds[c.tour.round].length)}</small></span></button>`;
   } else {
+    if (c.injury) html += `<div class="warnbox">🩹 <b>Blessé : ${esc(c.injury.name)}</b>, encore ${c.injury.weeks} semaine${c.injury.weeks > 1 ? 's' : ''} d'arrêt. Un kiné accélère la guérison.</div>`;
     for (const ev of evs) {
-      const T = C.TIERS[ev.tier], ok = C.eligible(ev);
-      html += `<button class="mbtn evcard ${ok ? '' : 'locked'}" data-act="enter" data-ev="${ev.id}"><span><b>${esc(ev.name)}</b>
-        <small>${ok ? `${T.size} joueurs · ${T.pts[0]} pts au vainqueur` : `🔒 Réservé au top ${T.need} mondial`}</small></span>${tierTag(ev.tier)}</button>`;
+      const T = C.TIERS[ev.tier], lock = C.lockReason(ev);
+      const info = ev.kind === 'double' ? `Double · 8 paires · ${Math.round(T.pts[0] * 0.6)} pts double au vainqueur` : ev.kind === 'team' ? `Avec ${C.COUNTRIES[c.me.country].name} · 8 nations · 25 000 € aux champions` : ev.kind === 'olympics' ? 'Médailles d\'or, d\'argent et de bronze · 2 joueurs max par pays' : `${T.size} joueurs · ${T.pts[0]} pts au vainqueur`;
+      html += `<button class="mbtn evcard ${lock ? 'locked' : ''} ${ev.kind === 'olympics' || ev.kind === 'team' ? 'gold' : ''}" data-act="enter" data-ev="${ev.id}"><span><b>${esc(ev.name)}</b>
+        <small>${lock || info}</small></span>${ev.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : tierTag(ev.tier)}</button>`;
     }
     html += `<button class="mbtn ghost" data-act="rest"><span><b>Se reposer</b><small>Passer la semaine</small></span></button>`;
   }
@@ -1020,10 +1025,10 @@ function renderCareer() {
       <button class="mbtn small ${can ? 'accent' : 'locked'}" data-act="up" data-k="${k}" title="Coût : ${cost}"><b>+</b></button></div>`;
   }).join('') + `<div style="font-size:12px;color:#a99cc9;margin-top:4px">Chaque match gagné rapporte 3 points (1 si perdu), un titre jusqu'à 15.</div>`;
   // rival
-  const rv = c.pool.find(p => p.rival);
-  if (rv) { const h = c.h2h[rv.id] || { w: 0, l: 0 };
-    $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TON RIVAL</small><br>
-      <b>${pname(rv)}</b> · ${C.rankOf(rv.id)}e mondial · niveau ${Math.round(rv.rating)}<br>Face-à-face : <b>${h.w} – ${h.l}</b></div>`; }
+  $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TES RIVAUX</small>` + C.rivals().map(({ p, type }) => {
+    const h = c.h2h[p.id] || { w: 0, l: 0 };
+    return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${pname(p)}</b> <small>${type}</small></span><span>${C.rankOf(p.id)}e · <b>${h.w} – ${h.l}</b></span></div>`;
+  }).join('') + '</div>';
   $('#perk-badge').textContent = c.perkPts ? `· ${c.perkPts}` : '';
   bindCareerButtons($('#scr-career'));
   $('#scr-career').querySelectorAll('[data-go2]').forEach(b => b.addEventListener('click', () => { sfx.ui(); show(b.dataset.go2); }));
@@ -1031,7 +1036,19 @@ function renderCareer() {
 }
 
 function scoutCard(o) {
-  const c = C.career, h = c.h2h[o.id] || { w: 0, l: 0 }, sc = C.scout(o);
+  const c = C.career, d = c.tour;
+  if (o.pair) {
+    const [a, b] = o.members.map(id => C.getP(id) && c.pool.find(p => p.id === id));
+    const P = c.pool.find(p => p.id === c.partner);
+    return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">PAIRE ADVERSE</small>
+      <div class="who">${C.flag(o.country, 30, 20)}${esc(o.name)}</div>
+      <div class="row2">NIVEAU DE LA PAIRE ${Math.round(o.rating)}</div>
+      <ul><li>${pname(a)} · ${C.rankOf(a.id)}e mondial</li><li>${pname(b)} · ${C.rankOf(b.id)}e mondial</li>
+      <li>Ta paire : <b>${esc(c.me.name)} / ${esc(P.name)}</b> · niveau ${Math.round(C.getP('me').rating)}</li><li>Complicité : <b>${(c.chem || 0).toFixed(1)} / 6</b></li></ul></div>`;
+  }
+  const h = c.h2h[o.id] || { w: 0, l: 0 }, sc = C.scout(o);
+  let tie = '';
+  if (d && d.kind === 'team') { const m = C.myMatch(), O = C.getP(m.a === 'me' ? m.b : m.a); tie = `<div class="sig" style="color:#ff9a3c;background:rgba(255,154,60,.1)">🌍 ${C.COUNTRIES[c.me.country].name} contre ${esc(O.name)} : tu joues le premier simple, tes coéquipiers jouent la suite. Il faut 3 victoires.</div>`; }
   return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">PROCHAIN ADVERSAIRE</small>
     <div class="who">${C.flag(o.country, 36, 24)}${esc(o.name)}</div>
     <div class="row2">${C.rankOf(o.id)}E MONDIAL · NIVEAU ${Math.round(C.rating(o))} · ${C.STYLE_NAMES[o.style].toUpperCase()} · ${o.hand === 1 ? 'DROITIER' : 'GAUCHER'}</div>
@@ -1039,14 +1056,16 @@ function scoutCard(o) {
     <li>Face-à-face : <b>${h.w} – ${h.l}</b></li><li>Toi : niveau <b>${C.rating(c.me)}</b> · forme <b>${C.formLabel(c.energy).toLowerCase()}</b> (${c.energy} %)</li></ul>
     ${c.coach >= 2 ? `<div class="sig" style="color:#6ee7a8;background:rgba(110,231,168,.1)">🧢 Coach : ${coachTip(o, sc)}</div>` : ''}
     ${o.sig ? `<div class="sig">⚡ BOSS · ${C.SIGNATURES[o.sig].name} : ${C.SIGNATURES[o.sig].desc}</div>` : ''}
-    ${o.rival ? '<div class="rv">⚔ C\'EST TON RIVAL</div>' : ''}</div>`;
+    ${o.rival ? '<div class="rv">⚔ C\'EST TON RIVAL</div>' : o.prodige ? '<div class="rv">⭐ LE JEUNE PRODIGE</div>' : o.enemy ? '<div class="rv">🔥 TON ENNEMI JURÉ</div>' : ''}${tie}</div>`;
 }
 
 function renderTour() {
   const c = C.career, d = c && c.tour;
   if (!d) { show('scr-career'); return; }
+  if (c.press) { show('scr-press'); return; }
   const T = C.TIERS[d.tier];
-  $('#tour-head').innerHTML = `${tierTag(d.tier)}<div><div class="big">${esc(d.ev.name)}</div><div class="meta">${T.size} JOUEURS · SAISON ${c.season} · SEMAINE ${c.week}</div></div>`;
+  const sizeTxt = d.kind === 'double' ? `${d.size} PAIRES` : d.kind === 'team' ? `${d.size} NATIONS` : `${d.size} JOUEURS`;
+  $('#tour-head').innerHTML = `${tierTag(d.tier)}${d.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ''}<div><div class="big">${esc(d.ev.name)}</div><div class="meta">${sizeTxt} · SAISON ${c.season} · SEMAINE ${c.week}</div></div>`;
   $('#tour-head').style.borderLeftColor = T.color;
   // tableau : tous les tours, les suivants vides
   const nR = Math.log2(d.size);
@@ -1056,21 +1075,24 @@ function renderTour() {
     cols += `<div class="bcol"><h4>${C.ROUND_NAMES(d.size >> (r + 1)).toUpperCase()}</h4><div class="bms">` + ms.map(m => {
       const line = (id, k) => { if (!id) return `<div class="l"><span class="n">—</span></div>`; const pl = C.getP(id);
         const cls = (m.w ? (m.w === id ? 'w' : 'l') : '') + (id === 'me' ? ' me' : '');
-        return `<div class="${cls}"><span class="n">${C.flag(pl.country, 14, 10)}${esc(pl.name.split(' ').slice(-1)[0])}${pl.rival ? ' ⚔' : pl.sig ? ' ⚡' : ''}</span><b>${m.sc ? m.sc[k] : ''}</b></div>`; };
+        return `<div class="${cls}"><span class="n">${C.flag(pl.country, 14, 10)}${esc(pl.ent ? pl.name : pl.name.split(' ').slice(-1)[0])}${pl.rival || pl.enemy ? ' ⚔' : pl.sig ? ' ⚡' : ''}</span><b>${m.sc ? m.sc[k] : ''}</b></div>`; };
       return `<div class="bm ${m.a === 'me' || m.b === 'me' ? 'me' : ''}">${line(m.a, 0)}${line(m.b, 1)}</div>`;
     }).join('') + '</div></div>';
   }
+  if (d.bronze) { const B = d.bronze, ln = id => { const pl = C.getP(id); return `<div class="${B.w ? (B.w === id ? 'w' : 'l') : ''}${id === 'me' ? ' me' : ''}"><span class="n">${C.flag(pl.country, 14, 10)}${esc(pl.name.split(' ').slice(-1)[0])}</span><b>${B.sc ? B.sc[id === B.a ? 0 : 1] : ''}</b></div>`; };
+    cols += `<div class="bcol"><h4>🥉 BRONZE</h4><div class="bms"><div class="bm ${B.a === 'me' || B.b === 'me' ? 'me' : ''}">${ln(B.a)}${ln(B.b)}</div></div></div>`; }
   $('#bracket').innerHTML = cols;
   const m = C.myMatch();
   let side = '';
   if (m) {
-    const o = C.getP(m.a === 'me' ? m.b : m.a), sets = C.setsFor(d.tier, d.rounds[d.round].length);
-    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${C.ROUND_NAMES(d.rounds[d.round].length)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}</small></span></button>
+    const o = C.myOpponent(), bronze = m === d.bronze, sets = C.setsFor(d.tier, bronze ? 2 : d.rounds[d.round].length);
+    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${bronze ? 'Match pour le bronze' : C.ROUND_NAMES(d.rounds[d.round].length)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}${d.kind === 'double' ? ' · en double' : ''}</small></span></button>
       <button class="mbtn" data-act="sim"><span><b>Simuler le match</b><small>Résultat calculé selon ton niveau, ta forme et ta confiance</small></span></button>`;
   } else {
     const r = d.result || {};
-    side = r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion !</b>${esc(d.ev.name)}<br>+${r.pts} points au classement · +${eur(r.prize || 0)}</div>`
-      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>+${r.pts || 0} points au classement · +${eur(r.prize || 0)}</div>`;
+    side = r.medal ? `<div class="champ">${medalSVG(r.medal, 90)}<b>Médaille ${C.medalTxt(r.medal)}</b>${esc(d.ev.name)}<br>+${eur(r.prize || 0)}</div>`
+      : r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion${d.kind === 'team' ? 's' : ''} !</b>${esc(d.ev.name)}<br>${d.kind === 'team' || d.kind === 'olympics' ? '' : `+${r.pts} points · `}+${eur(r.prize || 0)}</div>`
+      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>${d.kind === 'team' || d.kind === 'olympics' ? 'Pas de points de classement sur cette épreuve.' : `+${r.pts || 0} points ${d.kind === 'double' ? 'au classement double' : 'au classement'} · +${eur(r.prize || 0)}`}</div>`;
     side += `<button class="mbtn accent" data-act="next"><span><b>Semaine suivante</b><small>Les autres tournois sont simulés</small></span></button>`;
   }
   $('#tour-next').innerHTML = side;
@@ -1087,12 +1109,14 @@ function renderRanking() {
     <span>${C.STYLE_NAMES[e.p.style]}</span><span>niv. ${Math.round(C.rating(e.p))}</span><b>${C.rankPoints(e.p)}</b></div>`;
   let html = r.slice(0, 30).map(row).join('');
   if (meR > 30) html += `<div class="rk-gap">···</div>` + r.slice(Math.max(30, meR - 4), meR + 3).map(row).join('');
+  const dr = C.dRankOf('me');
+  html += `<div class="infobox" style="margin-top:10px">Classement double : <b>${dr}e</b> (${C.dRankPoints(C.career.me)} pts)${C.career.partner ? ` · partenaire ${esc(C.getP(C.career.partner).name)}` : ''}</div>`;
   $('#rank-list').innerHTML = `<div class="rk-row" style="background:none;color:#a99cc9;font-size:11px"><b>#</b><span>JOUEUR</span><span>STYLE</span><span>NIVEAU</span><b>PTS</b></div>` + html;
 }
 
 function renderPalmares() {
   const c = C.career; if (!c) return;
-  const t = (c.titles.length ? `<div class="cab">${c.titles.map(x => `<div title="${esc(x.name)}">${trophySVG(x.tier, 64)}<b>${esc(x.name)}</b><small>Saison ${x.season}</small></div>`).join('')}</div>` : '<div class="infobox">Vitrine vide pour l\'instant. Le premier trophée arrive bientôt.</div>')
+  const t = (c.titles.length || (c.medals || []).length ? `<div class="cab">${(c.medals || []).map(x => `<div>${medalSVG(x.medal, 64)}<b>${esc(x.name)}</b><small>Médaille ${C.medalTxt(x.medal)} · S${x.season}</small></div>`).join('')}${c.titles.filter(x => x.tier !== 'olympics').map(x => `<div title="${esc(x.name)}">${trophySVG(x.tier, x.dbl ? 48 : 64)}<b>${esc(x.name)}</b><small>Saison ${x.season}</small></div>`).join('')}</div>` : '<div class="infobox">Vitrine vide pour l\'instant. Le premier trophée arrive bientôt.</div>')
     + `<h2>Jalons de carrière · ${Object.keys(c.milestones || {}).length} / ${C.MILESTONES.length}</h2><div class="msg">${C.MILESTONES.map(m => { const u = c.milestones && c.milestones[m.id];
       return `<div class="${u ? 'on' : ''}"><b>${u ? '★' : '☆'} ${m.name}</b><small>${m.desc}${u ? ` · S${u.season}` : ''}</small></div>`; }).join('')}</div>`;
   const res = c.results.slice(0, 20).map(x => `<div class="rk-row" style="grid-template-columns:110px 1fr 140px 70px"><span>S${x.season} · sem. ${x.week}</span><span>${esc(x.name)}</span><span>${x.reached}</span><b>+${x.pts}</b></div>`).join('');
@@ -1104,20 +1128,35 @@ const toMods = (st, sig, perks, conf) => ({ fh: st.fh / 100, bh: st.bh / 100, se
 function startCareerMatch() {
   const c = C.career, d = c.tour, m = C.myMatch();
   if (!m) return;
-  const o = C.getP(m.a === 'me' ? m.b : m.a);
-  const bestOf = C.setsFor(d.tier, d.rounds[d.round].length);
-  setup = { mode: 'career', level: 2, bestOf, oppId: o.id, aiName: o.name, aiStyle: C.STYLE_NAMES[o.style] };
-  game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf,
-    firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [toMods(myMatchStats(), null, C.mySigs(), C.confScale()), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
-  game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style, sig: o.sig });
+  const o = C.myOpponent();
+  const bronze = m === d.bronze;
+  const bestOf = C.setsFor(d.tier, bronze ? 2 : d.rounds[d.round].length);
+  const rk = C.ROUND_NAMES(d.rounds[d.round].length);
+  setup = { mode: 'career', level: 2, bestOf, oppId: o.id, aiName: o.name, aiStyle: C.STYLE_NAMES[o.style], kind: d.kind, round: bronze ? 'Match pour le bronze' : rk };
+  const myMods = toMods(myMatchStats(), null, C.mySigs(), C.confScale());
+  if (d.kind === 'double') {
+    const P = C.getP(c.partner) && c.pool.find(p => p.id === c.partner);
+    const [o1, o2] = o.members.map(id => c.pool.find(p => p.id === id));
+    const pn = [c.me.name, o1.name, P.name, o2.name];
+    const first = n => n.split(' ').slice(-1)[0];
+    game = new Game({ mode: 'ai', ctrl: ['human', 'ai', 'ai', 'ai'], me: 0, names: [`${first(pn[0])} / ${first(pn[2])}`, `${first(pn[1])} / ${first(pn[3])}`], playerNames: pn,
+      assist: profile.settings.assist, bestOf, firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(),
+      mods: [myMods, toMods(o1.stats, o1.sig), toMods(P.stats, P.sig), toMods(o2.stats, o2.sig)], hands: [c.me.hand, o1.hand, P.hand, o2.hand] });
+    [[1, o1], [2, P], [3, o2]].forEach(([i, pl]) => { game.ai[i] = new AI(game, i, 2, { rating: pl.rating + (i === 2 ? (c.chem || 0) : 0), style: pl.style, sig: pl.sig }); });
+  } else {
+    game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf,
+      firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [myMods, toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
+    game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style, sig: o.sig });
+  }
   enterGame();
   const venue = C.VENUES[d.ev.name];
   R.setTheme(COSMETICS.arena.find(a => a.id === (venue ? venue.arena : C.TIERS[d.tier].arena)));
-  R.setCrowdDensity({ challenger: 0.22, contender: 0.45, star: 0.75, slam: 1, worlds: 1 }[d.tier] * (d.rounds[d.round].length <= 2 ? 1.25 : 1));
+  const dens = { challenger: 0.22, contender: 0.45, star: 0.75, slam: 1, worlds: 1, team: 0.9, olympics: 1 }[d.tier] * (d.kind === 'double' ? 0.8 : 1);
+  R.setCrowdDensity(dens * (d.rounds[d.round].length <= 2 ? 1.25 : 1));
   R.setEventTitle(d.ev.name);
-  setup.crowdMul = { challenger: 0.45, contender: 0.7, star: 0.95, slam: 1.25, worlds: 1.35 }[d.tier];
-  const isFinal = d.rounds[d.round].length === 1;
-  if (isFinal || d.tier === 'slam' || d.tier === 'worlds') walkout(o, d, isFinal);
+  setup.crowdMul = { challenger: 0.45, contender: 0.7, star: 0.95, slam: 1.25, worlds: 1.35, team: 1.3, olympics: 1.4 }[d.tier];
+  const isFinal = d.rounds[d.round].length === 1 && !bronze;
+  if (d.kind !== 'double' && (isFinal || bronze || d.tier === 'slam' || d.tier === 'worlds' || d.tier === 'olympics' || d.kind === 'team')) walkout(o, d, isFinal, bronze);
   // fatigue en match
   const base = game.players.map(p => p.mods && { ...p.mods });
   let played = 0, warned = false;
@@ -1126,18 +1165,21 @@ function startCareerMatch() {
     ph && ph(...args);
     played++;
     game.players.forEach((p, i) => {
-      const B = base[i]; if (!B) return;
+      const B = base[i]; if (!B || B.stamina === undefined) return;
       const f = Math.max(0, Math.min(0.16, (played - 14 - 30 * B.stamina) * 0.0035));
       for (const k of ['fh', 'bh', 'serve', 'spin', 'speed']) p.mods[k] = B[k] * (1 - f);
       if (i === 0 && f > 0.05 && !warned) { warned = true; setTimeout(() => hint('Tu commences à fatiguer : tes coups perdent en qualité', 3), 1200); }
     });
   };
   R.figures[0].setColor(NEONS[c.me.neon] || NEONS[0]); R.figures[0].setAccessory(c.me.acc || 0);
-  R.figures[1].setColor(o.rival ? 0xff2a40 : o.sig ? 0xffb020 : 0xff3d6b); R.figures[1].setAccessory(o.sig ? 1 : o.rival ? 2 : 0);
+  if (d.kind !== 'double') { R.figures[1].setColor(o.rival || o.enemy ? 0xff2a40 : o.sig ? 0xffb020 : 0xff3d6b); R.figures[1].setAccessory(o.sig ? 1 : o.rival ? 2 : 0); }
 }
 function careerEnd(win, a, b) {
   const c = C.career, d = c.tour, o = C.getP(setup.oppId);
-  const roundName = C.ROUND_NAMES(d.rounds[d.round].length);
+  const m = C.myMatch();
+  const bronze = m === d.bronze;
+  const roundName = bronze ? 'match pour le bronze' : C.ROUND_NAMES(d.rounds[d.round].length).toLowerCase();
+  const oppEnt = d.kind === 'team' ? C.getP(m.a === 'me' ? m.b : m.a) : null;
   const before = C.rankOf('me');
   C.reportMatch(win, [a, b]);
   if (o.rival) c.news.unshift(win ? `⚔ ${c.me.name} bat son rival ${o.name} !` : `⚔ ${o.name} prend le dessus sur ${c.me.name}.`);
@@ -1145,14 +1187,19 @@ function careerEnd(win, a, b) {
   C.save();
   const r = d.result;
   let txt;
-  if (r && r.champion) txt = `🏆 <b>CHAMPION du ${esc(d.ev.name)} !</b> +${r.pts} points au classement, +${eur(r.prize)} de prize money.`;
-  else if (!win) txt = `Éliminé en ${roundName.toLowerCase()} par <b>${esc(o.name)}</b>. +${r ? r.pts : 0} points, +${eur(r ? r.prize : 0)}.`;
-  else txt = `Qualifié ! Prochain tour : <b>${C.ROUND_NAMES(d.rounds[d.round].length).toLowerCase()}</b>.`;
+  const nat = C.COUNTRIES[c.me.country].name;
+  const tieTxt = d.kind === 'team' ? `<br>Rencontre : <b>${nat} ${m.a === 'me' ? m.sc[0] : m.sc[1]} – ${m.a === 'me' ? m.sc[1] : m.sc[0]} ${esc(oppEnt.name)}</b> (${win ? 'tu as gagné ton simple' : 'tu as perdu ton simple'})` : '';
+  const tieWon = m.w === 'me';
+  if (r && r.medal) txt = `🏅 <b>Médaille ${C.medalTxt(r.medal)} aux ${esc(d.ev.name)} !</b> +${eur(r.prize)}.`;
+  else if (r && r.champion) txt = d.kind === 'team' ? `🏆 <b>${nat} championne du monde par équipes !</b> +${eur(r.prize)}.` : `🏆 <b>CHAMPION du ${esc(d.ev.name)} !</b> +${r.pts} points au classement, +${eur(r.prize)} de prize money.`;
+  else if (!tieWon && d.kind === 'olympics' && !bronze && C.myMatch()) txt = `Défaite en demi-finale. <b>Il reste le match pour le bronze !</b>`;
+  else if (!tieWon) txt = d.kind === 'team' ? `${nat} est éliminée en ${roundName}.` : `Éliminé en ${roundName} par <b>${esc(d.kind === 'double' ? o.name : o.name)}</b>. +${r ? r.pts : 0} points, +${eur(r ? r.prize : 0)}.`;
+  else txt = `Qualifié${d.kind === 'team' ? 's' : ''} ! Prochain tour : <b>${C.ROUND_NAMES(d.rounds[d.round].length).toLowerCase()}</b>.`;
   const after = C.rankOf('me');
-  if (r && r.champion) setTimeout(() => ceremony(d), 1400);
+  if (r && (r.champion || r.medal)) setTimeout(() => ceremony(d), 1400);
   setTimeout(flushPending, 2500);
   const mv = after < before ? ` · Classement : <b style="color:#6ee7a8">${before}e → ${after}e</b>` : '';
-  return `<div class="endcareer">${txt}<br><small>+${win ? 3 : 1} point${win ? 's' : ''} de progression${mv}</small></div>`;
+  return `<div class="endcareer">${txt}${tieTxt}<br><small>+${win ? 3 : 1} point${win ? 's' : ''} de progression${mv}</small></div>`;
 }
 
 // ------------------------------------------------------------------ carrière partie 2
@@ -1162,7 +1209,7 @@ function moneyLine() {
   const ccol = cf >= 80 ? '#ff9a3c' : cf >= 60 ? '#6ee7a8' : cf >= 40 ? '#ddd5f2' : '#ff6b7d';
   const col = e >= 75 ? '#6ee7a8' : e >= 50 ? '#ffc83c' : e >= 25 ? '#ff9a3c' : '#ff3d5a';
   return `<div class="mline"><span>💰 <b>${eur(c.money)}</b></span><span>⚡ Forme <span class="ebar"><i style="width:${e}%;background:${col}"></i></span> <b style="color:${col}">${C.formLabel(e)}</b></span><span>${cf >= 80 ? '🔥' : '🧠'} Confiance <b style="color:${ccol}">${C.confLabel(cf)}</b></span>
-    ${c.coach ? `<span>🧢 ${C.COACHES[c.coach].name}</span>` : ''}${c.sponsor ? `<span style="color:${c.sponsor.color}">★ ${esc(c.sponsor.name)}</span>` : ''}</div>`;
+    ${c.coach ? `<span>🧢 ${C.COACHES[c.coach].name}</span>` : ''}${c.sponsor ? `<span style="color:${c.sponsor.color}">★ ${esc(c.sponsor.name)}</span>` : ''}<span>👥 <b>${fansN(c.fans)}</b> fans</span>${c.injury ? `<span style="color:#ff6b7d">🩹 Blessé (${c.injury.weeks} sem.)</span>` : ''}</div>`;
 }
 function renderMoney() { document.querySelectorAll('.cmoney').forEach(el => { el.innerHTML = moneyLine(); }); }
 function myMatchStats() {
@@ -1236,6 +1283,7 @@ function finishCareerTraining(T) {
 function renderTeam() {
   renderMoney();
   const c = C.career;
+  renderStaff();
   $('#team-coach').innerHTML = C.COACHES.map((co, i) => `<button class="mbtn ${i === c.coach ? 'accent' : ''}" data-coach="${i}"><span><b>${co.name}${i === c.coach ? ' ✓' : ''}</b>
     <small>${co.desc}${co.cost ? ' · ' + eur(co.cost) + ' / semaine' : ''}</small></span></button>`).join('');
   const S = c.sponsor;
@@ -1282,11 +1330,12 @@ function flushPending() {
 }
 function ceremony(d) {
   const el = $('#ceremony'), T = C.TIERS[d.tier];
-  el.querySelector('.cer-tr').innerHTML = trophySVG(d.tier, 190);
+  el.querySelector('.cer-tr').innerHTML = d.result && d.result.medal ? medalSVG(d.result.medal, 190) : trophySVG(d.tier, 190);
   el.querySelector('.cer-k').textContent = T.name.toUpperCase() + ' · SAISON ' + C.career.season;
-  el.querySelector('.cer-t').textContent = d.tier === 'worlds' ? 'Champion du monde !' : 'Champion !';
-  el.querySelector('.cer-s').textContent = `${C.career.me.name} remporte le ${d.ev.name}`;
-  el.style.setProperty('--tc', T.color);
+  const md = d.result && d.result.medal;
+  el.querySelector('.cer-t').textContent = md ? `Médaille ${C.medalTxt(md)} !` : d.tier === 'worlds' ? 'Champion du monde !' : d.kind === 'team' ? 'Champions du monde !' : d.kind === 'olympics' ? 'Champion olympique !' : 'Champion !';
+  el.querySelector('.cer-s').textContent = d.kind === 'team' ? `${C.COUNTRIES[C.career.me.country].name} remporte la ${d.ev.name}` : md ? `${C.career.me.name} aux ${d.ev.name}` : `${C.career.me.name} remporte le ${d.ev.name}`;
+  el.style.setProperty('--tc', md ? { or: '#ffc83c', argent: '#d8e0ea', bronze: '#d08a4a' }[md] : T.color);
   el.classList.remove('hidden');
   R.confetti(); setTimeout(() => R.confetti(), 700);
   sfx.crowd(3); announcer.say(d.tier === 'worlds' ? `${C.career.me.name}, champion du monde !` : `${C.career.me.name} remporte le ${d.ev.name} !`, true);
@@ -1332,22 +1381,23 @@ function simCareerMatch() {
   const roundName = C.ROUND_NAMES(d.rounds[d.round].length);
   const r = C.simulateMatch(bestOf);
   if (!r) return;
+  const mm = C.myMatch();
   C.reportMatch(r.won, r.sets);
   if (r.o.rival) c.news.unshift(r.won ? `⚔ ${c.me.name} bat son rival ${r.o.name} !` : `⚔ ${r.o.name} prend le dessus sur ${c.me.name}.`);
   C.save();
   r.won ? sfx.crowd(2) : sfx.ui();
   toast(r.won ? '✅' : '❌', `MATCH SIMULÉ · ${roundName.toUpperCase()}`, `${r.won ? 'Victoire' : 'Défaite'} ${r.sets[0]}–${r.sets[1]}`, `contre ${r.o.name}`);
-  if (d.result && d.result.champion) setTimeout(() => ceremony(d), 500);
-  renderTour();
+  if (d.result && (d.result.champion || d.result.medal)) setTimeout(() => ceremony(d), 500);
+  show('scr-tour');
   setTimeout(flushPending, 1200);
 }
 
-function walkout(o, d, isFinal) {
+function walkout(o, d, isFinal, bronze) {
   const c = C.career;
   game.stateT = 7.6; R.intro = 7.3;
   const el = $('#walkout');
   const lines = [
-    { k: isFinal ? `FINALE · ${d.ev.name.toUpperCase()}` : `${d.ev.name.toUpperCase()} · ${C.ROUND_NAMES(d.rounds[d.round].length).toUpperCase()}`, p: o, col: '#ff3d6b' },
+    { k: bronze ? `MATCH POUR LE BRONZE · ${d.ev.name.toUpperCase()}` : isFinal ? `FINALE · ${d.ev.name.toUpperCase()}` : `${d.ev.name.toUpperCase()} · ${C.ROUND_NAMES(d.rounds[d.round].length).toUpperCase()}`, p: o, col: '#ff3d6b' },
     { k: 'ET FACE À LUI', p: c.me, col: '#3d8bff' },
   ];
   const showLine = (L, t) => setTimeout(() => {
@@ -1377,4 +1427,41 @@ function renderPerks() {
   document.querySelectorAll('#perks [data-perk]').forEach(b => b.addEventListener('click', () => {
     if (C.buyPerk(b.dataset.perk)) { sfx.unlock(); toast('⚡', 'TALENT DÉBLOQUÉ', b.querySelector('b').textContent.replace('✓ ', ''), b.querySelector('small').textContent.split(' · ')[0]); const k = focusIdx; renderPerks(); focusIdx = k; refreshFocus(); }
   }));
+}
+
+
+// ------------------------------------------------------------------ partie B : médailles, presse, staff, rivaux
+function medalSVG(md, size = 64) {
+  const col = { or: '#ffc83c', argent: '#d8e0ea', bronze: '#d08a4a' }[md];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" style="filter:drop-shadow(0 0 8px ${col})">
+    <path d="M20 4h10l6 18h-10zM44 4H34l-6 18h10z" fill="#3d8bff"/><path d="M24 4h4l4 12-3 6zM40 4h-4l-4 12 3 6z" fill="#ff3d6b"/>
+    <circle cx="32" cy="40" r="18" fill="${col}"/><circle cx="32" cy="40" r="13" fill="none" stroke="#0003" stroke-width="2"/>
+    <text x="32" y="46" text-anchor="middle" font-size="15" font-weight="900" fill="#0006" font-family="Arial">${md === 'or' ? '1' : md === 'argent' ? '2' : '3'}</text></svg>`;
+}
+function renderPress() {
+  const c = C.career, P = c && c.press;
+  if (!P) { show(c && c.tour ? 'scr-tour' : 'scr-career'); return; }
+  $('#press-box').innerHTML = `<div class="press"><small class="k">CONFÉRENCE DE PRESSE</small><div class="mics">🎙️ 🎙️ 🎙️</div><div class="q">« ${esc(P.q)} »</div></div>`;
+  $('#press-ans').innerHTML = P.answers.map((a, i) => `<button class="mbtn ${i === 2 ? 'gold' : ''}" data-ans="${i}"><span><b>${a.tone}</b><small>« ${esc(a.t)} »</small></span></button>`).join('');
+  document.querySelectorAll('#press-ans [data-ans]').forEach(b => b.addEventListener('click', () => {
+    const r = C.answerPress(+b.dataset.ans);
+    sfx.crowd(1);
+    toast('🎙️', 'PRESSE', `+${fansN(r.fans)} fans`, r.enemy ? `🔥 ${r.enemy} n'a pas apprécié : nouvel ennemi juré` : `Confiance +${r.conf}`);
+    show(C.career.tour ? 'scr-tour' : 'scr-career');
+  }));
+}
+const fansN = n => C.fansLabel(Math.round(n || 0));
+function renderStaff() {
+  const c = C.career;
+  const rows = Object.entries(C.STAFF).map(([role, S]) => {
+    const lv = (c.staff || {})[role] || 0;
+    return `<div class="staffrow"><div><b>${S.name}</b><small>${S.desc}</small></div>` + S.levels.map((L, i) => `<button class="mbtn small ${i === lv ? 'accent' : ''}" data-staff="${role}" data-lv="${i}"><span><b>${i === 0 ? 'Aucun' : L.name}</b><small>${L.cost ? eur(L.cost) + '/sem.' : 'gratuit'}</small></span></button>`).join('') + '</div>';
+  }).join('');
+  const P = c.partner && c.pool.find(p => p.id === c.partner);
+  const offers = C.partnerOffers();
+  const part = `<h2>Partenaire de double</h2>${P ? `<div class="infobox">Partenaire actuel : <b>${pname(P)}</b> · ${C.rankOf(P.id)}e mondial · complicité ${(c.chem || 0).toFixed(1)} / 6</div>` : '<div class="infobox">Pas de partenaire : tu ne peux pas t\'inscrire aux tableaux de double.</div>'}
+    <div class="shoprow">${offers.map(o => `<button class="mbtn small ${P && P.id === o.id ? 'accent' : ''}" data-partner="${o.id}"><span><b>${C.flag(o.country, 16, 11)}${esc(o.name)}</b><small>${C.rankOf(o.id)}e · niv. ${Math.round(o.rating)}${o.country === c.me.country ? ' · même pays' : ''}</small></span></button>`).join('')}</div>`;
+  $('#staff').innerHTML = rows + part;
+  document.querySelectorAll('#staff [data-staff]').forEach(b => b.addEventListener('click', () => { sfx.ui(); C.hireStaff(b.dataset.staff, +b.dataset.lv); const k = focusIdx; renderTeam(); focusIdx = k; refreshFocus(); }));
+  document.querySelectorAll('#staff [data-partner]').forEach(b => b.addEventListener('click', () => { sfx.unlock(); C.setPartner(b.dataset.partner); const k = focusIdx; renderTeam(); focusIdx = k; refreshFocus(); }));
 }

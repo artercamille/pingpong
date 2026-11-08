@@ -131,3 +131,13 @@ h1 span { color: #ffb43c; }
 #setinfo { order: 3; align-self: flex-start; margin-top: 6px; padding: 3px 10px; border-radius: 4px; background: rgba(138,75,234,.9); color: #fff;
   font-size: 10px; font-weight: 900; letter-spacing: 2px; }
 #banner { top: 12%; font-size: 18px; padding: 10px 22px; background: rgba(12,10,20,.88); border-bottom: 2px solid #8a4bea; border-radius: 6px; }
+#ceremony { position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(20,10,40,.88), rgba(2,1,6,.97)); backdrop-filter: blur(8px); animation: cerIn .6s ease; }
+#ceremony.hidden { display: none; }
+.cer-in { display: flex; flex-direction: column; align-items: center; text-align: center; color: #fff; }
+.cer-tr { animation: cerLift 1.4s cubic-bezier(.2,1.4,.4,1) both; filter: drop-shadow(0 0 40px var(--tc)); }
+.cer-k { letter-spacing: 6px; font-weight: 900; color: var(--tc); margin-top: 10px; font-size: 13px; }
+.cer-t { font-size: 64px; font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1; text-shadow: 0 0 30px var(--tc); animation: cerIn .8s .4s both; }
+.cer-s { font-size: 18px; margin: 8px 0 24px; color: #ddd5f2; }
+#ceremony .mbtn { width: 320px; }
+@keyframes cerIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes cerLift { from { opacity: 0; transform: translateY(80px) scale(.6); } to { opacity: 1; transform: none; } }

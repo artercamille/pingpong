@@ -321,3 +321,22 @@
 .shoprow .mbtn b { font-size: 14px; }
 .shoprow .mbtn small { font-size: 11px; white-space: normal; }
 #shop h2 { margin: 10px 0 6px; }
+.cab { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; padding: 16px; background: linear-gradient(180deg, rgba(40,30,70,.6), rgba(10,8,20,.8)); border-bottom: 3px solid #3a2e5c; }
+.cab div { display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 11px; }
+.cab b { margin-top: 4px; } .cab small { color: #a99cc9; }
+.msg { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin-bottom: 14px; }
+.msg div { padding: 8px 10px; background: rgba(28,22,44,.6); font-size: 12px; opacity: .5; display: flex; flex-direction: column; }
+.msg div.on { opacity: 1; border-left: 3px solid #ffc83c; } .msg div.on b { color: #ffc83c; }
+.msg small { color: #a99cc9; }
+.sreview { padding: 18px 22px; background: rgba(28,22,44,.9); border-left: 4px solid #c84dff; margin-bottom: 14px; }
+.sreview.gold { border-left-color: #ffc83c; background: radial-gradient(circle at 80% 0, rgba(255,200,60,.2), rgba(28,22,44,.9)); }
+.sreview .k { letter-spacing: 4px; color: #a99cc9; font-weight: 900; font-size: 11px; }
+.sreview .big { font-size: 32px; font-weight: 900; font-style: italic; text-transform: uppercase; margin: 4px 0 12px; }
+.sreview .infobox { margin-top: 8px; }
+.svs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 12px 0 4px; }
+.sv { background: rgba(10,8,20,.6); padding: 10px; text-align: center; }
+.sv small { display: block; font-size: 10px; letter-spacing: 1px; color: #a99cc9; font-weight: 800; text-transform: uppercase; }
+.sv b { font-size: 22px; font-weight: 900; font-style: italic; }
+.hofbar { position: relative; height: 26px; background: rgba(255,255,255,.08); margin-bottom: 6px; }
+.hofbar i { display: block; height: 100%; background: linear-gradient(90deg, #7a3fd6, #ffc83c); }
+.hofbar span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; }

@@ -27,6 +27,7 @@
   <div id="charge"><div class="lbl"></div><div class="bar"><div class="fill"></div></div></div>
   <div id="mom"><div class="mlabel">SUPER</div><div class="mbar"><div></div></div><div class="mkey"></div></div>
   <div id="replay" class="hidden"><div class="lb top"></div><div class="lb bot"></div><div class="tag"><i></i>REPLAY</div></div>
+  
   <div id="vs" class="hidden">
     <div class="vsside l"><div class="emb"></div><b class="n"></b><small class="r"></small></div>
     <div class="vsx">VS</div>
@@ -45,7 +46,8 @@
   </div>
 </div>
 
-<div id="toasts"></div>
+<div id="ceremony" class="hidden"><div class="cer-in"><div class="cer-tr"></div><small class="cer-k"></small><b class="cer-t"></b><span class="cer-s"></span><button class="mbtn accent" id="cer-ok"><span><b>Soulever le trophée</b></span></button></div></div>
+  <div id="toasts"></div>
 
 <!-- MENU PRINCIPAL -->
 <div id="menu" class="menu">
@@ -188,7 +190,8 @@
             <button class="mbtn small" data-go="scr-team"><span><b>Coach & sponsors</b></span></button>
             <button class="mbtn small" data-go="scr-shop"><span><b>Matériel</b></span></button>
             <button class="mbtn small" data-go="scr-rank"><span><b>Classement</b></span></button>
-            <button class="mbtn small" data-go="scr-palmares"><span><b>Palmarès</b></span></button>
+            <button class="mbtn small" data-go="scr-palmares"><span><b>Vitrine</b></span></button>
+            <button class="mbtn small" data-go="scr-hof"><span><b>Hall of Fame</b></span></button>
           </div>
           <div id="car-rival"></div>
         </div>
@@ -241,8 +244,18 @@
       <button class="mbtn ghost" data-go="scr-career"><span><b>Retour</b></span></button>
     </section>
 
+    <section class="screen hidden xwide" id="scr-season">
+      <div id="season-box"></div>
+      <button class="mbtn accent" id="season-go"><span><b>Lancer la nouvelle saison</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-hof">
+      <div id="hof"></div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
+    </section>
+
     <section class="screen hidden xwide" id="scr-palmares">
-      <h2>Palmarès</h2>
+      <h2>Vitrine à trophées</h2>
       <div id="palm"></div>
       <button class="mbtn ghost" id="car-reset-btn"><span><b>Recommencer une carrière</b><small>Efface la carrière actuelle</small></span></button>
       <button class="mbtn ghost" data-go="scr-career"><span><b>Retour</b></span></button>

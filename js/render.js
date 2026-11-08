@@ -112,17 +112,20 @@ class PaddleRig {
     const poses = (fore, type) => {
       const dy = type === 'top' ? -0.16 : type === 'coupe' ? 0.14 : type === 'lob' ? -0.22 : 0;
       const tilt = type === 'top' ? 0.55 : type === 'coupe' ? -0.8 : type === 'lob' ? -0.2 : 0.15;
-      if (fore) return { back: V(0.7, cy + dy, 0.05), contact: V(0.42, cy, 0.42), follow: V(-0.05, cy + 0.28 - dy, 0.5), tilt, out: 0.7 };
-      return { back: V(-0.2, cy + dy * 0.6, 0.25), contact: V(0.05, cy, 0.46), follow: V(0.5, cy + 0.24 - dy, 0.48), tilt, out: -0.55 };
+      // coup droit : armé bas et en arrière, contact devant, accompagnement jusqu'au front
+      if (fore) return { back: V(0.72, cy + dy - 0.06, -0.02), contact: V(0.42, cy, 0.42), follow: V(-0.12, cy + 0.36 - dy * 1.4, 0.38), mid: V(0.62, cy - 0.04, 0.26), tilt, out: 0.7 };
+      return { back: V(-0.22, cy + dy * 0.6 - 0.04, 0.18), contact: V(0.05, cy, 0.46), follow: V(0.52, cy + 0.3 - dy, 0.42), mid: V(-0.1, cy - 0.02, 0.36), tilt, out: -0.55 };
     };
     const serving = (game.state === 'serve' || game.state === 'toss') && game.server() === i;
     if (pl.swingT >= 0) {
       const P = poses(pl.swingFore, pl.swingType);
       const t = pl.swingT, tc = IDEAL_REL + 0.02;
       let hand;
-      if (t < tc) hand = P.back.clone().lerp(P.contact, ease(t / tc));
-      else if (t < 0.3) hand = P.contact.clone().lerp(P.follow, ease((t - tc) / (0.3 - tc)));
-      else hand = P.follow.clone().lerp(ready.hand, ease(Math.min(1, (t - 0.3) / 0.12)));
+      // trajectoire courbe (Bézier) : armé → contact en passant sous la balle, puis accompagnement
+      const bez = (a, c, b, u) => a.clone().multiplyScalar((1 - u) * (1 - u)).addScaledVector(c, 2 * u * (1 - u)).addScaledVector(b, u * u);
+      if (t < tc) hand = bez(P.back, P.mid, P.contact, ease(t / tc));
+      else if (t < 0.3) { const u = ease((t - tc) / (0.3 - tc)); hand = bez(P.contact, P.contact.clone().lerp(P.follow, 0.5).add(V(0, 0.08, 0.06)), P.follow, u); }
+      else hand = P.follow.clone().lerp(ready.hand, ease(Math.min(1, (t - 0.3) / 0.16)));
       return { hand, tilt: P.tilt, out: P.out };
     }
     if (pl.charging && !(serving && game.state === 'toss')) {
@@ -134,10 +137,16 @@ class PaddleRig {
       if (game.state === 'serve') return { hand: V(0.38, 0.95, 0.12), tilt: 0.3, out: 0.6 };
       return { hand: V(0.58, 1.02, 0.02), tilt: pl.chargeType === 'coupe' ? -0.8 : 0.4, out: 0.7 };
     }
-    // garde : suit la balle latéralement quand elle arrive
+    // garde puis préparation : le bras s'arme avant l'arrivée de la balle
     if (pr && pr.x !== undefined) {
       const fore = (pr.x - pl.x) * pl.side * (pl.hand || 1) >= -0.15;
-      return { hand: V(fore ? 0.4 : 0.0, THREE.MathUtils.clamp(cy, 0.85, 1.25), 0.42), tilt: 0.25, out: fore ? 0.6 : -0.45 };
+      const guard = { hand: V(fore ? 0.4 : 0.0, THREE.MathUtils.clamp(cy, 0.85, 1.25), 0.42), tilt: 0.25, out: fore ? 0.6 : -0.45 };
+      const rem = pr.t !== undefined ? pr.t - game.simTime : 9;
+      if (rem < 0.55 && rem > 0) {
+        const P = poses(fore, pl.chargeType || 'top'), k = ease(1 - rem / 0.55);
+        return { hand: guard.hand.clone().lerp(P.back, k * 0.9), tilt: lerp(guard.tilt, P.tilt, k), out: lerp(guard.out, P.out, k) };
+      }
+      return guard;
     }
     return ready;
   }
@@ -152,6 +161,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const vv = () => new THREE.Vector3();
 
+const relaxedState = st => st === 'between' || st === 'pointEnd' || st === 'over';
 class StickFigure {
   constructor(scene, color) {
     this.g = new THREE.Group();
@@ -265,13 +275,13 @@ class StickFigure {
     // vitesse lissée
     if (!this.prev) this.prev = root.clone();
     const rawV = root.clone().sub(this.prev).divideScalar(Math.max(dt, 1e-3)); this.prev.copy(root);
-    if (rawV.length() > 12) { rawV.set(0, 0, 0); this.ft = null; }
+    if (rawV.length() > 12) { rawV.set(0, 0, 0); this.ft = null; this.pel = null; }
     this.vel.lerp(rawV, Math.min(1, dt * 10));
     const speed = Math.hypot(this.vel.x, this.vel.z);
     this.moodT = Math.max(0, this.moodT - dt); if (this.moodT <= 0) this.mood = 0;
     const win = this.mood === 1, sad = this.mood === -1;
     const state = game.state;
-    const relaxed = state === 'between' || state === 'pointEnd' || state === 'over';
+    const relaxed = relaxedState(state);
     // split-step quand l'adversaire frappe
     const lh = game.lastHit;
     if (lh && lh.time !== undefined && lh.time !== this.lastHitId) { this.lastHitId = lh.time; if (lh.p !== i && state === 'rally') this.split = 0.22; }
@@ -281,7 +291,11 @@ class StickFigure {
     const sw = pl.swingT >= 0 && pl.swingT !== undefined ? Math.min(1, pl.swingT / 0.42) : -1;
     const fore = pl.swingFore !== false;
     let yawT = 0;
-    if (sw >= 0) { const k = sw < 0.35 ? -sw / 0.35 : -1 + (sw - 0.35) / 0.65 * 2.1; yawT = (fore ? 1 : -1) * k * 0.55; }
+    const prd = game.pred && game.pred[i];
+    const rem = prd && prd.t !== undefined && game.simTime !== undefined ? prd.t - game.simTime : 9;
+    const prepFore = prd && prd.x !== undefined ? (prd.x - pl.x) * s * hd >= -0.15 : true;
+    if (sw >= 0) { const k = sw < 0.3 ? -1 : -1 + (sw - 0.3) / 0.7 * 2.2; yawT = (fore ? 1 : -1) * k * 0.6; }
+    else if (rem > 0 && rem < 0.55 && !relaxedState(state)) yawT = (prepFore ? -1 : 1) * 0.6 * (1 - rem / 0.55);
     else if (this.vel.x * s * hd > 0.4) yawT = 0.15; else if (this.vel.x * s * hd < -0.4) yawT = -0.15;
     this.yaw += (yawT - this.yaw) * Math.min(1, dt * (sw >= 0 ? 22 : 6));
     // posture
@@ -294,7 +308,11 @@ class StickFigure {
     if (sad) { crouch = this.moodType === 0 ? 0.25 : 0.06; forward = this.moodType === 0 ? 0.42 : 0.2; }
     const leanSide = Math.max(-0.12, Math.min(0.12, this.vel.x * 0.05)) * (sw >= 0 ? 0.3 : 1);
     this.lean += (leanSide - this.lean) * Math.min(1, dt * 8);
-    V0.pelvis.copy(root).setY(0.97 - crouch + hop + jump + breath * 0.5);
+    // le bassin suit le corps avec un peu d'inertie et descend à chaque appui
+    if (!this.pel) this.pel = root.clone();
+    this.pel.lerp(root, Math.min(1, dt * 14));
+    const stepBob = (this.stepT[0] > 0 || this.stepT[1] > 0) ? Math.sin((1 - Math.max(this.stepT[0], this.stepT[1]) / (this.stepDur || 0.15)) * Math.PI) * 0.02 : 0;
+    V0.pelvis.copy(this.pel).setY(0.97 - crouch + hop + jump + breath * 0.5 + stepBob);
     V0.pelvis.addScaledVector(f, -0.02);
     // pieds : appuis plantés, pas chassés quand le corps s'éloigne
     const sideV = vv().set(s, 0, 0); // axe latéral monde
@@ -1263,8 +1281,8 @@ export class Renderer {
     const s = me.side;
     if (this.camMode === 'tv' || this.camMode === 'haute') {
       const tv = this.camMode === 'tv';
-      const target = tv ? V(me.x * 0.25, 4.4, s * (Math.abs(me.z) + 3.4)) : V(me.x * 0.15, 6.4, s * 5.4);
-      const look = tv ? V(game.ball.p.x * 0.15, 0.45, -s * 0.7) : V(0, 0.4, -s * 0.2);
+      const target = tv ? V(me.x * 0.25, 4.4, s * (Math.abs(me.z) + 3.4)) : V(me.x * 0.2, 3.5, s * (Math.abs(me.z) + 2.6));
+      const look = tv ? V(game.ball.p.x * 0.15, 0.45, -s * 0.7) : V(me.x * 0.15 + game.ball.p.x * 0.08, 0.55, -s * 0.55);
       this.camPos.lerp(target, Math.min(1, dt * 4)); this.camLook.lerp(look, Math.min(1, dt * 4));
       this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
       return;

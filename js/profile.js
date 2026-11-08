@@ -75,7 +75,7 @@ function fresh() {
     cos: { paddle: 'rouge', trail: 'blanc', arena: 'finale' },
     best: { rally: 0, speed: 0 },
     daily: null,
-    settings: { master: 8, sfx: 8, crowd: 8, music: 5, voice: 1, camera: 0, assist: 1, invert: 0 },
+    settings: { master: 8, sfx: 8, crowd: 8, music: 5, voice: 0, camera: 2, assist: 1, invert: 0, camV2: 1 },
   };
 }
 export const profile = (() => {
@@ -83,6 +83,7 @@ export const profile = (() => {
     const f = fresh(), saved = JSON.parse(localStorage.getItem(KEY)) || {};
     const p = Object.assign(f, saved);
     p.settings = Object.assign(fresh().settings, saved.settings || {});
+    if (!p.settings.camV2) { p.settings.camera = 2; p.settings.camV2 = 1; }
     return p;
   } catch (e) { return fresh(); }
 })();

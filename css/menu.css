@@ -431,3 +431,5 @@
 .scomp .mbtn small { white-space: normal; font-size: 11px; }
 .snot { max-height: 22vh; overflow-y: auto; font-size: 12px; display: grid; gap: 4px; } .snot div { background: rgba(28,22,44,.6); padding: 5px 8px; }
 .strend { display: flex; flex-wrap: wrap; gap: 6px; } .strend span { background: rgba(61,139,255,.15); color: #7fb0ff; font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 10px; }
+#ring.smash .app, #ring.smash .tgt { border-color: #ff9a3c; box-shadow: 0 0 26px #ff9a3c; }
+#ring.smash .rl { color: #ff9a3c; }

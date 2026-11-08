@@ -766,6 +766,7 @@ function updateRing(dt) {
   app.style.width = app.style.height = (64 * scale) + 'px';
   const a = Math.abs(rem) / game.pressScale(me);
   el.className = 'show ' + (a <= 0.05 ? 'now' : a <= 0.11 ? 'near' : '');
+  if (game.state === 'rally' && pr.y > 1.12) { el.classList.add('smash'); if (!ringLbl) { el.querySelector('.rl').textContent = '⚡ SMASH'; el.querySelector('.rl').className = 'rl on'; } }
   const pad = !!input.padName;
 }
 function updateServeHud(human) {

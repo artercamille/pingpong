@@ -114,6 +114,23 @@ export class AI {
     return clamp((Math.random() * 2 - 1) * aim, -1, 1);
   }
 
+  // tactique : prendre le côté ouvert, varier long / court
+  tacticalAim(openSide, outOfPos) {
+    if (this.L.name === 'Coach') return this.aimWeak();
+    const pl = this.g.players[this.i], s = pl.side;
+    // aimX est exprimé du point de vue du frappeur : tx = aimX * 0.7 * side
+    const toOpen = clamp(openSide * s * (0.5 + Math.random() * 0.35), -1, 1) * this.L.aim * this.style.aim;
+    if (outOfPos && Math.random() < 0.75) return clamp(toOpen, -1, 1);
+    if (Math.random() < 0.35) return clamp(toOpen, -1, 1);
+    return this.aimWeak();
+  }
+  tacticalDepth(type) {
+    if (this.L.name === 'Coach') return clamp((Math.random() * 2 - 1) * 0.8, -1, 1);
+    if (type === 'coupe' && Math.random() < 0.45) return -0.85 - Math.random() * 0.15;  // remise courte
+    if ((type === 'top' || type === 'plat') && Math.random() < 0.55) return 0.35 + Math.random() * 0.4; // long, près de la ligne
+    return clamp((Math.random() * 2 - 1) * 0.8, -1, 1);
+  }
+
   makePlan() {
     const g = this.g, pl = g.players[this.i], s = pl.side;
     this.planId = g.rally.id; this.plan = null;
@@ -145,7 +162,12 @@ export class AI {
     const st = this.style;
     let power = clamp((this.L.power + st.power) * (0.7 + Math.random() * 0.5), 0.2, 1);
     const pick = () => { let r = Math.random(), acc = 0; for (const [k, v] of Object.entries(st.mix)) { acc += v; if (r < acc) return k; } return 'top'; };
+    // l'adversaire est-il hors position ? on accélère vers le côté ouvert
+    const opp = g.players[g.nextHitter ? (this.i + 1) % g.n : 1 - this.i] || g.players[1 - this.i];
+    const openSide = opp ? -Math.sign(opp.x || 0.001) : 1;   // côté ouvert, en coordonnées monde
+    const outOfPos = opp && Math.abs(opp.x) > 0.55;
     if (C.y > 1.2) { type = 'plat'; power = 0.85; }
+    else if (outOfPos && Math.random() < 0.5 * this.L.aim) { type = Math.random() < 0.6 ? 'top' : 'plat'; power = Math.max(power, 0.75); }
     else if (incTop < -60) type = Math.random() < 0.5 ? 'coupe' : 'top';
     else type = pick();
     // changement de rythme : après 3 coups identiques, on varie
@@ -164,8 +186,8 @@ export class AI {
     this.plan = {
       px: clamp(px, -2.6, 2.6), pz: s * pzd, tRelease, tPress, type, done: false,
       startT: g.simTime + this.L.react,
-      aimX: this.aimWeak(),
-      aimY: g.coachMode === 'short' && this.L.name === 'Coach' ? -1 : clamp((Math.random() * 2 - 1) * 0.8, -1, 1),
+      aimX: this.tacticalAim(openSide, outOfPos),
+      aimY: g.coachMode === 'short' && this.L.name === 'Coach' ? -1 : this.tacticalDepth(type),
     };
   }
 }

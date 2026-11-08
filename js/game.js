@@ -713,6 +713,8 @@ export class Game {
       eMul *= 1.45 - 0.85 * sideQ;
     }
     if (sup) { speed += 5; top = Math.abs(top) + 120; }
+    // l'échange s'emballe : chaque frappe va un peu plus vite (jusqu'à +22 %)
+    if (!serve && !target) speed *= 1 + Math.min(0.15, (this.rallyCount || 0) * 0.012);
     if (pl.flow >= 2 && !serve) { speed *= 1 + 0.03 * pl.flow; top *= 1 + 0.04 * pl.flow; eMul *= 1 - 0.06 * pl.flow; }
     if (pl.sideSpin && !(serve && type === 'lob')) side += pl.sideSpin * (70 + 60 * power);
     side *= s;

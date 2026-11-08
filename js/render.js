@@ -606,6 +606,7 @@ export class Renderer {
     }
     const people = [], seats = [];
     for (const sp of spots) (Math.random() < 0.72 ? people : seats).push(sp);
+    for (let i = people.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [people[i], people[j]] = [people[j], people[i]]; }
     // public
     const bodyGeo = new THREE.CapsuleGeometry(0.19, 0.32, 3, 8);
     const headGeo = new THREE.SphereGeometry(0.1, 10, 8);
@@ -633,7 +634,27 @@ export class Renderer {
     this.updateCrowd(0);
   }
 
+  setCrowdDensity(f) {
+    const n = Math.max(1, Math.round(this.crowdItems.length * Math.max(0.05, Math.min(1, f))));
+    this.crowd.count = n; this.crowdHeads.count = n;
+  }
+  setEventTitle(t) { this.eventTitle = t || null; this.lastScoreKey = null; this.drawScreen(null); }
+  // cible d'entraînement sur la table
+  setTarget(t) {
+    if (!this.targetMesh) {
+      this.targetMesh = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48), new THREE.MeshBasicMaterial({ color: 0x6ee7a8, transparent: true, opacity: 0.85, toneMapped: false, side: THREE.DoubleSide }));
+      this.targetFill = new THREE.Mesh(new THREE.CircleGeometry(0.8, 48), new THREE.MeshBasicMaterial({ color: 0x6ee7a8, transparent: true, opacity: 0.18, toneMapped: false }));
+      for (const m of [this.targetMesh, this.targetFill]) { m.rotation.x = -Math.PI / 2; this.scene.add(m); }
+    }
+    for (const m of [this.targetMesh, this.targetFill]) {
+      m.visible = !!t;
+      if (t) { m.position.set(t.x, 0.762, t.z); m.scale.setScalar(t.r); }
+    }
+  }
+  flashTarget(ok) { if (this.targetMesh) { this.targetMesh.material.color.setHex(ok ? 0xffffff : 0xff3d5a); this.targetFlash = 0.35; } }
+
   updateCrowd(dt) {
+    if (this.targetFlash > 0) { this.targetFlash -= dt; if (this.targetFlash <= 0) this.targetMesh.material.color.setHex(0x6ee7a8); }
     this.cheer = Math.max(0, this.cheer - dt * 0.4);
     const d = this.dummy, t = this.time, items = this.crowdItems;
     for (let i = 0; i < items.length; i++) {
@@ -670,7 +691,7 @@ export class Renderer {
     g.fillStyle = grd; g.fillRect(0, 0, w, h);
     g.fillStyle = this.themeHex; g.fillRect(0, h - 10, w, 10);
     logo(g, w / 2 + 40, 80, 50, 0, 1);
-    g.fillStyle = '#b9a8e6'; g.font = '700 26px Arial'; g.textAlign = 'center'; g.fillText('WORLD CHAMPIONSHIPS', w / 2, 140);
+    g.fillStyle = '#b9a8e6'; g.font = '700 26px Arial'; g.textAlign = 'center'; g.fillText((this.eventTitle || 'WORLD CHAMPIONSHIPS').toUpperCase(), w / 2, 140);
     if (game) {
       const m = game.match;
       [0, 1].forEach(p => {
@@ -927,7 +948,7 @@ export class Renderer {
       this.intro -= dt;
       const me = game.players[game.me], s = me.side;
       const u = ease(Math.min(1, Math.max(0, 1 - this.intro / 3.2)));
-      const a = (1 - u) * 2.2;
+      const a = (1 - u) * 2.2 + Math.max(0, this.intro - 3.2) * 0.35;
       const Rr = lerp(9, Math.abs(me.z) + 1.7, u);
       this.camPos.set(Math.sin(a) * Rr, lerp(6.5, 1.95, u), s * Math.cos(a) * Rr);
       this.camLook.set(0, lerp(0.6, 0.68, u), lerp(0, -s * 0.9, u));

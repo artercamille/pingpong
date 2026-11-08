@@ -51,6 +51,7 @@ function show(id) {
   if (id === 'scr-career-new') renderCreate();
   if (id === 'scr-ctrain') renderCTrain();
   if (id === 'scr-hof') renderHof();
+  if (id === 'scr-perks') renderPerks();
   if (id === 'scr-season') renderSeason();
   if (id === 'scr-team') renderTeam();
   if (id === 'scr-shop') renderShop();
@@ -334,7 +335,7 @@ function startTraining(cfgIn, career) {
   renderTrain(null, game.train);
 }
 function renderTrain(ok, T) {
-  $('#trainhud').innerHTML = (setup.career ? `<div><b>${C.STAT_NAMES[setup.career]}</b><small>BALLE ${Math.min(20, T.total + 1)} / 20</small></div>` : '') + `<div><b>${T.ok} / ${T.total}</b><small>RÉUSSIS</small></div><div><b>${T.streak}</b><small>SÉRIE</small></div><div><b>${T.best}</b><small>RECORD</small></div>`;
+  $('#trainhud').innerHTML = (setup.career ? `<div><b>${[].concat(setup.career).map(k => C.STAT_NAMES[k]).join(' + ')}</b><small>BALLE ${Math.min(20, T.total + 1)} / 20</small></div>` : '') + `<div><b>${T.ok} / ${T.total}</b><small>RÉUSSIS</small></div><div><b>${T.streak}</b><small>SÉRIE</small></div><div><b>${T.best}</b><small>RECORD</small></div>`;
   if (ok && T.streak > 0 && T.streak % 10 === 0) { showStreak(`${T.streak} d'affilée 🔥`); sfx.crowd(2); }
 }
 $('#tr-go').addEventListener('click', () => { initAudio(); sfx.ui(); startTraining(); });
@@ -359,6 +360,7 @@ function enterGame(oppPaddle, oppTrail) {
   initAudio();
   applyCosmetics(oppPaddle, oppTrail);
   [0x3d8bff, 0xff3d6b, 0x3de8ff, 0xffa23d].forEach((c, i) => { R.figures[i].setColor(c); R.figures[i].setAccessory(0); });
+  R.setCrowdDensity(1); R.setEventTitle(null); R.setTarget(null); $('#walkout').classList.add('hidden');
   recorder.reset(); bestClip = null; replay = null; postPoint = null; replayDone = {};
   if (!tuto && setup.mode !== 'training') { game.stateT = 3.4; R.intro = 3.2; showVS(); } else { R.intro = 0; game.stateT = 1; }
   music.stop();
@@ -763,7 +765,7 @@ function updateAmbience() {
   let lvl = 0.035;
   if (g.state === 'rally') lvl = 0.035 + Math.min(0.13, g.rallyCount * 0.009);
   if (pressure) lvl = 0.012;
-  setCrowd(lvl);
+  setCrowd(lvl * (setup && setup.crowdMul || 1));
 }
 
 // ------------------------------------------------------------------ tutoriel
@@ -971,6 +973,7 @@ function bindCareerButtons(root) {
     if (a === 'rest') { C.endWeek(); show('scr-career'); return; }
     if (a === 'up') { if (C.upgrade(b.dataset.k)) { sfx.unlock(); renderCareer(); const k = navItems().findIndex(x => x.dataset.k === b.dataset.k); if (k >= 0) { focusIdx = k; refreshFocus(); } } return; }
     if (a === 'play') { startCareerMatch(); return; }
+    if (a === 'sim') { simCareerMatch(); return; }
     if (a === 'next') { C.endWeek(); show('scr-career'); return; }
   }));
 }
@@ -1021,6 +1024,7 @@ function renderCareer() {
   if (rv) { const h = c.h2h[rv.id] || { w: 0, l: 0 };
     $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TON RIVAL</small><br>
       <b>${pname(rv)}</b> · ${C.rankOf(rv.id)}e mondial · niveau ${Math.round(rv.rating)}<br>Face-à-face : <b>${h.w} – ${h.l}</b></div>`; }
+  $('#perk-badge').textContent = c.perkPts ? `· ${c.perkPts}` : '';
   bindCareerButtons($('#scr-career'));
   $('#scr-career').querySelectorAll('[data-go2]').forEach(b => b.addEventListener('click', () => { sfx.ui(); show(b.dataset.go2); }));
   refreshFocus();
@@ -1061,7 +1065,8 @@ function renderTour() {
   let side = '';
   if (m) {
     const o = C.getP(m.a === 'me' ? m.b : m.a), sets = C.setsFor(d.tier, d.rounds[d.round].length);
-    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${C.ROUND_NAMES(d.rounds[d.round].length)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}</small></span></button>`;
+    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${C.ROUND_NAMES(d.rounds[d.round].length)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}</small></span></button>
+      <button class="mbtn" data-act="sim"><span><b>Simuler le match</b><small>Résultat calculé selon ton niveau, ta forme et ta confiance</small></span></button>`;
   } else {
     const r = d.result || {};
     side = r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion !</b>${esc(d.ev.name)}<br>+${r.pts} points au classement · +${eur(r.prize || 0)}</div>`
@@ -1095,7 +1100,7 @@ function renderPalmares() {
   confirmReset = false; $('#car-reset-btn small').textContent = 'Efface la carrière actuelle';
 }
 
-const toMods = (st, sig) => ({ fh: st.fh / 100, bh: st.bh / 100, serve: st.serve / 100, spin: st.spin / 100, speed: st.speed / 100, mental: st.mental / 100, sig });
+const toMods = (st, sig, perks, conf) => ({ fh: st.fh / 100, bh: st.bh / 100, serve: st.serve / 100, spin: st.spin / 100, speed: st.speed / 100, mental: st.mental / 100, stamina: st.stamina / 100, sig, perks, conf });
 function startCareerMatch() {
   const c = C.career, d = c.tour, m = C.myMatch();
   if (!m) return;
@@ -1103,11 +1108,30 @@ function startCareerMatch() {
   const bestOf = C.setsFor(d.tier, d.rounds[d.round].length);
   setup = { mode: 'career', level: 2, bestOf, oppId: o.id, aiName: o.name, aiStyle: C.STYLE_NAMES[o.style] };
   game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf,
-    firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [toMods(myMatchStats()), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
+    firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [toMods(myMatchStats(), null, C.mySigs(), C.confScale()), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
   game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style, sig: o.sig });
   enterGame();
-  R.setTheme(COSMETICS.arena.find(a => a.id === C.TIERS[d.tier].arena));
-  if (d.rounds[d.round].length === 1) setTimeout(() => announcer.say(`Finale du ${d.ev.name} !`, true), 600);
+  const venue = C.VENUES[d.ev.name];
+  R.setTheme(COSMETICS.arena.find(a => a.id === (venue ? venue.arena : C.TIERS[d.tier].arena)));
+  R.setCrowdDensity({ challenger: 0.22, contender: 0.45, star: 0.75, slam: 1, worlds: 1 }[d.tier] * (d.rounds[d.round].length <= 2 ? 1.25 : 1));
+  R.setEventTitle(d.ev.name);
+  setup.crowdMul = { challenger: 0.45, contender: 0.7, star: 0.95, slam: 1.25, worlds: 1.35 }[d.tier];
+  const isFinal = d.rounds[d.round].length === 1;
+  if (isFinal || d.tier === 'slam' || d.tier === 'worlds') walkout(o, d, isFinal);
+  // fatigue en match
+  const base = game.players.map(p => p.mods && { ...p.mods });
+  let played = 0, warned = false;
+  const ph = game.hooks.point;
+  game.hooks.point = (...args) => {
+    ph && ph(...args);
+    played++;
+    game.players.forEach((p, i) => {
+      const B = base[i]; if (!B) return;
+      const f = Math.max(0, Math.min(0.16, (played - 14 - 30 * B.stamina) * 0.0035));
+      for (const k of ['fh', 'bh', 'serve', 'spin', 'speed']) p.mods[k] = B[k] * (1 - f);
+      if (i === 0 && f > 0.05 && !warned) { warned = true; setTimeout(() => hint('Tu commences à fatiguer : tes coups perdent en qualité', 3), 1200); }
+    });
+  };
   R.figures[0].setColor(NEONS[c.me.neon] || NEONS[0]); R.figures[0].setAccessory(c.me.acc || 0);
   R.figures[1].setColor(o.rival ? 0xff2a40 : o.sig ? 0xffb020 : 0xff3d6b); R.figures[1].setAccessory(o.sig ? 1 : o.rival ? 2 : 0);
 }
@@ -1134,9 +1158,10 @@ function careerEnd(win, a, b) {
 // ------------------------------------------------------------------ carrière partie 2
 const eur = n => `${Math.round(n || 0).toLocaleString('fr-FR')} €`;
 function moneyLine() {
-  const c = C.career, e = c.energy;
+  const c = C.career, e = c.energy, cf = c.conf ?? 50;
+  const ccol = cf >= 80 ? '#ff9a3c' : cf >= 60 ? '#6ee7a8' : cf >= 40 ? '#ddd5f2' : '#ff6b7d';
   const col = e >= 75 ? '#6ee7a8' : e >= 50 ? '#ffc83c' : e >= 25 ? '#ff9a3c' : '#ff3d5a';
-  return `<div class="mline"><span>💰 <b>${eur(c.money)}</b></span><span>⚡ Forme <span class="ebar"><i style="width:${e}%;background:${col}"></i></span> <b style="color:${col}">${C.formLabel(e)}</b></span>
+  return `<div class="mline"><span>💰 <b>${eur(c.money)}</b></span><span>⚡ Forme <span class="ebar"><i style="width:${e}%;background:${col}"></i></span> <b style="color:${col}">${C.formLabel(e)}</b></span><span>${cf >= 80 ? '🔥' : '🧠'} Confiance <b style="color:${ccol}">${C.confLabel(cf)}</b></span>
     ${c.coach ? `<span>🧢 ${C.COACHES[c.coach].name}</span>` : ''}${c.sponsor ? `<span style="color:${c.sponsor.color}">★ ${esc(c.sponsor.name)}</span>` : ''}</div>`;
 }
 function renderMoney() { document.querySelectorAll('.cmoney').forEach(el => { el.innerHTML = moneyLine(); }); }
@@ -1163,8 +1188,11 @@ function renderCTrain() {
   renderMoney();
   const c = C.career, k = choice('ct-stat'), v = c.me.stats[k], pr = (c.me.prog && c.me.prog[k]) || 0;
   const can = C.canTrain();
+  const mode = choice('ct-mode');
+  $('#ct-stat').style.display = mode === 'robot' ? '' : 'none';
   $('#ct-robot').classList.toggle('locked', !can); $('#ct-quick').classList.toggle('locked', !can);
-  $('#ct-info').innerHTML = `<div class="scard" style="border-left-color:#6ee7a8"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">${C.STAT_NAMES[k].toUpperCase()}</small>
+  const MD = { robot: 'Le robot t\'envoie 20 balles sur la zone travaillée.', cible: 'Une cible apparaît sur la table : vise-la. Travaille <b>coup droit et revers</b>.', vitesse: 'Balles rapides et variées. Travaille <b>vitesse et endurance</b>.' };
+  $('#ct-info').innerHTML = `<div class="infobox" style="margin-bottom:8px">${MD[mode]}</div><div class="scard" style="border-left-color:#6ee7a8"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">${C.STAT_NAMES[k].toUpperCase()}</small>
     <div class="who">${v}<span style="font-size:14px;margin-left:10px;color:#a99cc9">/ 99</span></div>
     <div class="xbar" style="margin:6px 0 12px"><div style="width:${pr * 100}%;background:#6ee7a8"></div></div>
     <ul><li>Coach : <b>${C.COACHES[c.coach].name}</b> (×${C.COACHES[c.coach].mult})</li><li>Une séance coûte un peu de forme.</li>
@@ -1179,13 +1207,25 @@ $('#ct-quick').addEventListener('click', () => {
 $('#ct-robot').addEventListener('click', () => {
   if (!C.canTrain()) return;
   initAudio(); sfx.ui();
-  const k = choice('ct-stat'), ov = C.overall(C.career.me.stats);
-  startTraining({ ...ROBOT_CFG[k], speed: ov < 60 ? 0 : ov < 78 ? 1 : 2 }, k);
+  const k = choice('ct-stat'), ov = C.overall(C.career.me.stats), mode = choice('ct-mode');
+  const sp = ov < 60 ? 0 : ov < 78 ? 1 : 2;
+  if (mode === 'robot') startTraining({ ...ROBOT_CFG[k], speed: sp }, k);
+  else if (mode === 'vitesse') startTraining({ type: 'mix', zone: 'rand', speed: 2 }, ['speed', 'stamina']);
+  else {
+    const tgt = () => ({ x: (Math.random() - 0.5) * 1.1, z: -(0.35 + Math.random() * 0.85), r: ov < 60 ? 0.3 : ov < 78 ? 0.24 : 0.19 });
+    startTraining({ type: 'mix', zone: 'rand', speed: Math.max(0, sp - 1), target: tgt() }, ['fh', 'bh']);
+    R.setTarget(game.training.target);
+    game.hooks.target = ok => { R.flashTarget(ok); ok ? sfx.ui() : null; };
+    const th = game.hooks.train;
+    game.hooks.train = (ok, T) => { th(ok, T); if (game && game.training) { game.training.target = tgt(); setTimeout(() => game && game.training && R.setTarget(game.training.target), 400); } };
+  }
 });
 function finishCareerTraining(T) {
-  const k = setup.career, q = T.ok / Math.max(1, T.total);
+  const ks = Array.isArray(setup.career) ? setup.career : [setup.career], q = T.ok / Math.max(1, T.total);
   setup.career = null;
+  const k = ks[0];
   const r = C.train(k, q);
+  if (ks[1]) C.trainExtra(ks[1], q);
   setTimeout(() => {
     quitToMenu('scr-ctrain');
     toast('🏋', `SÉANCE TERMINÉE · ${T.ok}/${T.total}`, C.STAT_NAMES[k], r && r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Bonne séance, la progression continue.');
@@ -1275,12 +1315,66 @@ function renderHof() {
   const inHof = L >= 100;
   const rec = (k, v) => `<div class="sv"><small>${k}</small><b>${v}</b></div>`;
   const seasons = (c.seasons || []).map(s => `<div class="rk-row" style="grid-template-columns:90px 90px 1fr 110px 110px"><b>Saison ${s.season}</b><span>${s.rank}e</span><span>${s.titles.length} titre${s.titles.length > 1 ? 's' : ''}</span><span>${s.wins} – ${s.losses}</span><b>${eur(s.money)}</b></div>`).join('');
-  const legends = (c.legends || []).slice(-12).reverse().map(l => `<div class="rk-row" style="grid-template-columns:1fr 120px 120px 100px"><span class="n">${pname(l)}</span><span>${l.slams} Grand Chelem</span><span>${l.worlds} titre mondial</span><span>retraite S${l.season}</span></div>`).join('');
+  const legends = (c.legends || []).slice(-12).reverse().map(l => `<div class="rk-row" style="grid-template-columns:1fr 120px 120px 100px"><span class="n">${pname(l)}</span><span>${l.slams} Grand Smash</span><span>${l.worlds} titre mondial</span><span>retraite S${l.season}</span></div>`).join('');
   $('#hof').innerHTML = `<div class="sreview ${inHof ? 'gold' : ''}"><small class="k">HALL OF FAME</small>
     <div class="big">${inHof ? `${esc(c.me.name)} est une légende` : 'En route vers la légende'}</div>
     <div class="hofbar"><i style="width:${Math.min(100, L)}%"></i><span>${L} / 100 points d'héritage</span></div>
-    <small style="color:#a99cc9">Points : titres (Challenger 1, Contender 2, Star 4, Grand Chelem 10, Mondial 12), semaines n°1 (+1), semaines dans le top 10 (+0,2).</small>
-    <div class="svs">${rec('Meilleur classement', c.bestRank && c.bestRank < 999 ? c.bestRank + 'e' : '—')}${rec('Semaines n°1', c.weeksNo1 || 0)}${rec('Grands Chelems', by('slam'))}${rec('Titres mondiaux', by('worlds'))}${rec('Titres au total', c.titles.length)}${rec('Gains en carrière', eur(c.earned || 0))}</div></div>
+    <small style="color:#a99cc9">Points : titres (Feeder 1, Contender 2, Champions 4, Grand Smash 10, Mondiaux 12), semaines n°1 (+1), semaines dans le top 10 (+0,2).</small>
+    <div class="svs">${rec('Meilleur classement', c.bestRank && c.bestRank < 999 ? c.bestRank + 'e' : '—')}${rec('Semaines n°1', c.weeksNo1 || 0)}${rec('Grand Smash', by('slam'))}${rec('Titres mondiaux', by('worlds'))}${rec('Titres au total', c.titles.length)}${rec('Gains en carrière', eur(c.earned || 0))}</div></div>
     <h2>Tes saisons</h2>${seasons || '<div class="infobox">Ta première saison est en cours.</div>'}
     <h2>Légendes retraitées du circuit</h2>${legends || '<div class="infobox">Aucune légende n\'a encore pris sa retraite.</div>'}`;
+}
+
+// ------------------------------------------------------------------ partie A : simulation, entrée des joueurs, talents
+function simCareerMatch() {
+  const c = C.career, d = c.tour;
+  const bestOf = C.setsFor(d.tier, d.rounds[d.round].length);
+  const roundName = C.ROUND_NAMES(d.rounds[d.round].length);
+  const r = C.simulateMatch(bestOf);
+  if (!r) return;
+  C.reportMatch(r.won, r.sets);
+  if (r.o.rival) c.news.unshift(r.won ? `⚔ ${c.me.name} bat son rival ${r.o.name} !` : `⚔ ${r.o.name} prend le dessus sur ${c.me.name}.`);
+  C.save();
+  r.won ? sfx.crowd(2) : sfx.ui();
+  toast(r.won ? '✅' : '❌', `MATCH SIMULÉ · ${roundName.toUpperCase()}`, `${r.won ? 'Victoire' : 'Défaite'} ${r.sets[0]}–${r.sets[1]}`, `contre ${r.o.name}`);
+  if (d.result && d.result.champion) setTimeout(() => ceremony(d), 500);
+  renderTour();
+  setTimeout(flushPending, 1200);
+}
+
+function walkout(o, d, isFinal) {
+  const c = C.career;
+  game.stateT = 7.6; R.intro = 7.3;
+  const el = $('#walkout');
+  const lines = [
+    { k: isFinal ? `FINALE · ${d.ev.name.toUpperCase()}` : `${d.ev.name.toUpperCase()} · ${C.ROUND_NAMES(d.rounds[d.round].length).toUpperCase()}`, p: o, col: '#ff3d6b' },
+    { k: 'ET FACE À LUI', p: c.me, col: '#3d8bff' },
+  ];
+  const showLine = (L, t) => setTimeout(() => {
+    if (!game) return;
+    el.querySelector('.wk').textContent = L.k;
+    el.querySelector('.wf').innerHTML = C.flag(L.p.country, 54, 36);
+    el.querySelector('.wn').textContent = L.p.name;
+    el.querySelector('.wm').textContent = `${C.COUNTRIES[L.p.country].name} · ${C.rankOf(L.p.id)}e mondial · ${C.STYLE_NAMES[L.p.style]}`;
+    el.style.setProperty('--wc', L.col);
+    el.classList.remove('hidden'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    announcer.say(`${L.p === c.me ? 'Et face à lui' : (isFinal ? 'Pour cette finale, ' : '') + 'Dans le coin rouge'}, ${C.rankOf(L.p.id)}e mondial, ${L.p.name} !`, true);
+    sfx.crowd(L.p === c.me ? 3 : 2);
+  }, t);
+  showLine(lines[0], 3400);
+  showLine(lines[1], 5300);
+  setTimeout(() => el.classList.add('hidden'), 7200);
+}
+
+function renderPerks() {
+  const c = C.career; if (!c) return;
+  $('#perk-pts').textContent = c.perkPts ? `· ${c.perkPts} point${c.perkPts > 1 ? 's' : ''} à dépenser` : '';
+  $('#perks').innerHTML = `<div class="ptree">` + C.PERK_TREE.map(t => `<div class="pcol" style="--pc:${t.color}"><h3>${t.name}</h3>` + t.perks.map(p => {
+    const S = C.perkState(p.id);
+    return `<button class="mbtn perk ${S.own ? 'own' : S.can ? 'accent' : S.open ? '' : 'locked'}" data-perk="${p.id}"><span><b>${S.own ? '✓ ' : S.open ? '' : '🔒 '}${p.name}</b>
+      <small>${p.desc}${S.own ? '' : ` · ${p.cost} pt${p.cost > 1 ? 's' : ''}`}${p.sig ? ' · COUP SIGNATURE' : ''}</small></span></button>`;
+  }).join('<i class="plink"></i>') + '</div>').join('') + `</div><div class="infobox">Tu gagnes des points de talent avec chaque titre, chaque jalon de carrière et chaque nouvelle saison. Les talents d'une branche se débloquent dans l'ordre.</div>`;
+  document.querySelectorAll('#perks [data-perk]').forEach(b => b.addEventListener('click', () => {
+    if (C.buyPerk(b.dataset.perk)) { sfx.unlock(); toast('⚡', 'TALENT DÉBLOQUÉ', b.querySelector('b').textContent.replace('✓ ', ''), b.querySelector('small').textContent.split(' · ')[0]); const k = focusIdx; renderPerks(); focusIdx = k; refreshFocus(); }
+  }));
 }

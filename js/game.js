@@ -3,6 +3,7 @@ import { TABLE, DT, makeBall, copyBall, setBall, stepBall, solveShot, topAxis, p
 import { sfx } from './audio.js';
 import { emptyInput, SHOTS } from './input.js';
 
+export const hasSig = (M, x) => !!M && (M.sig === x || (M.perks && M.perks.includes(x)));
 export const SHOT_LABEL = { top: 'LIFT', plat: 'FRAPPE', coupe: 'COUPÉ', lob: 'LOB', flip: 'FLIP', contre: 'CONTRE', bloc: 'BLOC' };
 export const RING_T = 0.9;     // le cercle de timing apparaît 0,9 s avant la frappe
 // timing à l'appui (cercle) : err > 0 = trop tôt, err < 0 = trop tard
@@ -279,7 +280,7 @@ export class Game {
     const pl = this.players[i], inp = this.inputs[i];
     const serving = (this.state === 'serve' || this.state === 'toss') && this.server() === i;
     const M = pl.mods;
-    let speed = MOVE_SPEED * (pl.charging ? 0.35 : 1) * (M ? 0.85 + 0.3 * M.speed + (M.sig === 'sprinter' ? 0.2 : 0) : 1);
+    let speed = MOVE_SPEED * (pl.charging ? 0.35 : 1) * (M ? 0.85 + 0.3 * M.speed + (hasSig(M, 'sprinter') ? 0.2 : 0) : 1);
     if (serving && this.state === 'toss') speed = 0;
     let wx = inp.mx * pl.side * speed, wz = -inp.my * pl.side * speed;
     // aide au placement (joueur humain) : attire doucement vers la bonne position de frappe
@@ -377,8 +378,11 @@ export class Game {
   // mental : sur les balles décisives, la fenêtre de timing dépend du mental
   pressScale(i) {
     const M = this.players[i].mods;
-    if (!M || !this.pressure) return 1;
-    return 0.75 + 0.5 * M.mental;
+    if (!M) return 1;
+    const c = M.conf || 1;
+    if (!this.pressure) return c;
+    if (hasSig(M, 'roc')) return c * Math.max(1.05, 0.75 + 0.5 * M.mental);
+    return c * (0.75 + 0.5 * M.mental);
   }
 
   armSuper(i) {
@@ -506,7 +510,7 @@ export class Game {
 
     const dx = (b.x - pl.x) * pl.side * pl.hand;   // > 0 : coup droit
     const M = pl.mods;
-    const reach = REACH * (M ? 0.9 + 0.2 * M.speed + (M.sig === 'sprinter' ? 0.15 : 0) : 1);
+    const reach = REACH * (M ? 0.9 + 0.2 * M.speed + (hasSig(M, 'sprinter') ? 0.15 : 0) : 1);
     if (Math.abs(dx) > reach || b.y < 0.45 || b.y > 2.3) {
       this.hooks.feedback && this.hooks.feedback(p, 'HORS DE PORTÉE', 0);
       pl.releaseType = null;
@@ -662,15 +666,14 @@ export class Game {
     if (M) {
       top *= 0.8 + 0.4 * M.spin;
       if (serve) speed *= 0.92 + 0.16 * M.serve;
-      const sig = M.sig;
-      if (sig === 'canon' && pl.swingFore && (type === 'plat' || type === 'top') && !variant) speed += 2;
-      if (sig === 'tornade' && type === 'top') top *= 1.5;
-      if (sig === 'magicien' && type === 'coupe') top *= 1.6;
-      if (sig === 'fantome' && serve) side += 220 * (Math.random() < 0.5 ? 1 : -1);
-      if (sig === 'eclair' && variant === 'contre') speed += 3;
-      if (sig === 'sniper') { eMul *= 0.6; tx *= 1.12; }
-      if (sig === 'mur' && (variant === 'bloc' || type === 'coupe' || type === 'lob')) eMul *= 0.4;
-      if (sig === 'feinte' && !serve && Math.random() < 0.35) tx = -tx;
+      if (hasSig(M, 'canon') && pl.swingFore && (type === 'plat' || type === 'top') && !variant) speed += 2;
+      if (hasSig(M, 'tornade') && type === 'top') top *= 1.5;
+      if (hasSig(M, 'magicien') && type === 'coupe') top *= 1.6;
+      if (hasSig(M, 'fantome') && serve) side += 220 * (Math.random() < 0.5 ? 1 : -1);
+      if (hasSig(M, 'eclair') && variant === 'contre') speed += 3;
+      if (hasSig(M, 'sniper')) { eMul *= 0.6; tx *= 1.12; }
+      if (hasSig(M, 'mur') && (variant === 'bloc' || type === 'coupe' || type === 'lob')) eMul *= 0.4;
+      if (hasSig(M, 'feinte') && !serve && Math.random() < 0.35) tx = -tx;
       const sideQ = serve ? M.serve : (pl.swingFore ? M.fh : M.bh);
       eMul *= 1.45 - 0.85 * sideQ;
     }
@@ -726,6 +729,12 @@ export class Game {
         if (r.serve && this.doubles && e.side === rc && e.x * -hs < -0.01) { this.endPoint(rc, 'Faute de service'); return; }
         if (e.side === rc) {
           if (r.serve && r.netTouch) { this.doLet(); return; }
+          const tg = this.training && this.training.target;
+          if (tg && h === 0) {
+            const ok = Math.hypot(e.x - tg.x, e.z - tg.z) <= tg.r;
+            this.hooks.target && this.hooks.target(ok, e);
+            if (!ok) { this.endPoint(rc, 'Hors cible'); return; }
+          }
           r.phase = 'inPlay';
         } else this.endPoint(rc, r.netTouch ? 'Dans le filet' : 'Faute');
       } else if (r.phase === 'inPlay') {

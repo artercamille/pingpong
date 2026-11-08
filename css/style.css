@@ -141,3 +141,10 @@ h1 span { color: #ffb43c; }
 #ceremony .mbtn { width: 320px; }
 @keyframes cerIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes cerLift { from { opacity: 0; transform: translateY(80px) scale(.6); } to { opacity: 1; transform: none; } }
+#walkout { position: fixed; left: 6vw; bottom: 14vh; z-index: 40; pointer-events: none; animation: wkIn .5s cubic-bezier(.2,1.2,.4,1); }
+#walkout.hidden { display: none; }
+#walkout .wk { display: block; letter-spacing: 5px; font-weight: 900; font-size: 13px; color: var(--wc); margin-bottom: 6px; }
+#walkout .wl { display: flex; align-items: center; gap: 14px; padding: 10px 28px 10px 16px; background: linear-gradient(90deg, rgba(10,8,20,.92), rgba(10,8,20,.5)); border-left: 6px solid var(--wc); }
+#walkout .wn { font-size: 54px; font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1; color: #fff; text-shadow: 0 0 24px var(--wc); }
+#walkout .wm { display: block; margin-top: 6px; font-weight: 800; font-size: 15px; color: #ddd5f2; letter-spacing: 1px; }
+@keyframes wkIn { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }

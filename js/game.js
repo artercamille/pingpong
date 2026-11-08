@@ -281,7 +281,7 @@ export class Game {
     const serving = (this.state === 'serve' || this.state === 'toss') && this.server() === i;
     const M = pl.mods;
     let speed = MOVE_SPEED * (pl.charging ? 0.35 : 1) * (M ? 0.85 + 0.3 * M.speed + (hasSig(M, 'sprinter') ? 0.2 : 0) : 1);
-    if (serving && this.state === 'toss') speed = 0;
+    if (serving && (this.state === 'toss' || this.ctrl[i] === 'human')) speed = 0;
     let wx = inp.mx * pl.side * speed, wz = -inp.my * pl.side * speed;
     // aide au placement (joueur humain) : attire doucement vers la bonne position de frappe
     const pr = this.pred[i];
@@ -357,7 +357,7 @@ export class Game {
       else { const r = predict(b, 1.2, bb => bb.v.y < 0 && bb.p.y <= SERVE_Y); err = r ? r.t : 0.5; }
       if (err > RING_T) return;
       const g = gradePress(err, this.pressScale(i));
-      this.lastPress = { i, grade: g.grade, t: this.simTime };
+      this.lastPress = { i, grade: g.grade, label: g.label, t: this.simTime };
       this.serveHit(i, pl.chargeType || t, 0.4 + 0.4 * g.q, g.q, g.grade === 3 ? 'SERVICE PARFAIT' : 'SERVICE ' + g.label);
       pl.charging = false;
       return;
@@ -370,7 +370,7 @@ export class Game {
     if (err > RING_T) return; // le cercle n'est pas encore là : on ignore
     pl.pressType = t; pl.pressT = this.simTime; pl.pressErr = err;
     pl.pressFore = (pr.x - pl.x) * pl.side * pl.hand >= -0.05;
-    this.lastPress = { i, grade: gradePress(err, this.pressScale(i)).grade, t: this.simTime };
+    { const gp = gradePress(err, this.pressScale(i)); this.lastPress = { i, grade: gp.grade, label: gp.label, t: this.simTime }; }
     if (err > 0.1) pl.swingAt = pr.t - 0.08; else this.startSwing(i, pl.pressFore, t);
     this.net && this.net.send({ t: 'swing', i, fore: pl.pressFore, type: t });
   }
@@ -470,7 +470,19 @@ export class Game {
 
   serveHit(i, type, power, q, label) {
     const pl = this.players[i];
-    const shot = this.buildShot(i, type, power, q, true);
+    let shot = null;
+    // le service est toujours bon : seule sa qualité varie (vitesse, effet, précision)
+    for (let k = 0; k < 6 && !shot; k++) {
+      const qq = k < 3 ? q : 1, pw = k < 4 ? power : 0.3;
+      const c = this.buildShot(i, type, pw, qq, true);
+      if (this.serveOk(i, c)) shot = c;
+    }
+    if (!shot) {
+      const ax = pl.aimX, ay = pl.aimY; pl.aimX = 0; pl.aimY = 0;
+      for (const t of [type, 'top', 'coupe']) { const c = this.buildShot(i, t, 0.25, 1, true); if (this.serveOk(i, c)) { shot = c; break; } }
+      pl.aimX = ax; pl.aimY = ay;
+      if (!shot) shot = this.buildShot(i, 'top', 0.25, 1, true);
+    }
     this.ball.v = shot.v; this.ball.w = shot.w;
     this.beginRally(i, true);
     this.superBall = false;
@@ -480,6 +492,26 @@ export class Game {
     this.hooks.feedback && this.hooks.feedback(i, label, q, SERVE_LABEL[type]);
     this.hooks.hit && this.hooks.hit(i, { type, power, aimX: pl.aimX, aimY: pl.aimY, serve: true });
     this.sendHit(i, type, true, label, q);
+  }
+
+  // simule le service : 1er rebond chez le serveur, 2e chez le relanceur, sans filet
+  serveOk(i, shot) {
+    const b = copyBall(this.ball); b.v = { ...shot.v }; b.w = { ...shot.w };
+    const own = this.players[i].z > 0 ? 0 : 1;
+    const bounces = [];
+    for (let t = 0; t < 2.5 && bounces.length < 2; t += DT) {
+      const ev = []; stepBall(b, DT, ev);
+      for (const e of ev) {
+        if (e.type === 'net') return false;
+        if (e.type === 'floor') return false;
+        if (e.type === 'table') bounces.push(e);
+      }
+    }
+    if (bounces.length < 2) return false;
+    const [a, c] = bounces;
+    if (a.side !== own || c.side === own) return false;
+    if (this.doubles) { const hs = own === 0 ? 1 : -1; if (a.x * hs < -0.01 || c.x * -hs < -0.01) return false; }
+    return true;
   }
 
   beginRally(hitter, serve) {
@@ -526,7 +558,7 @@ export class Game {
       }
       const err = pl.pressErr != null ? pl.pressErr : -(this.simTime - r.pending);
       const g = gradePress(err, this.pressScale(p));
-      if (pl.pressErr == null) { this.lastPress = { i: p, grade: g.grade, t: this.simTime }; this.startSwing(p, dx >= 0, pl.pressType); }
+      if (pl.pressErr == null) { this.lastPress = { i: p, grade: g.grade, label: g.label, t: this.simTime }; this.startSwing(p, dx >= 0, pl.pressType); }
       type = pl.pressType; q = g.q; label = g.label; power = 0.4 + 0.4 * g.q;
       pl.pressType = null; pl.swingAt = 0; r.pending = 0;
     } else if (pl.charging && !r.pending) {
@@ -588,7 +620,7 @@ export class Game {
     const pl = this.players[p];
     pl.pressType = null; pl.swingAt = 0;
     this.errSide[this.team(p)][dx >= 0 ? 0 : 1]++;
-    this.lastPress = { i: p, grade: -1, t: this.simTime };
+    this.lastPress = { i: p, grade: -1, label: 'RATÉ', t: this.simTime };
     this.hooks.feedback && this.hooks.feedback(p, 'RATÉ', 0);
   }
 
@@ -683,8 +715,9 @@ export class Game {
 
     // imprécision : timing raté + puissance
     const e = sup || target ? 0 : ((1 - q) * 1.0 + power * power * (serve ? 0.12 : 0.4) + (serve ? 0 : 0.03)) * eMul;
-    tx += gauss() * e * 0.45;
-    depth += gauss() * e * 0.4 + e * 0.15 * power;
+    tx += gauss() * e * (serve ? 0.25 : 0.45);
+    depth += gauss() * e * (serve ? 0.2 : 0.4) + e * 0.15 * power;
+    if (serve) { tx = clamp(tx, -0.66, 0.66); depth = clamp(depth, 0.3, 1.25); }
     const tz = -s * depth;
 
     const sol = solveShot({ pos: { ...b.p }, target: { x: tx, z: tz }, speed, top, side, serve });
@@ -695,7 +728,7 @@ export class Game {
       k *= (1.3 - q) * kMul;
       sol.v.y += inTop * k;
     }
-    sol.v.y += gauss() * e * 0.25;
+    if (!serve) sol.v.y += gauss() * e * 0.25;
     return { v: sol.v, w: sol.w, smash, variant };
   }
 

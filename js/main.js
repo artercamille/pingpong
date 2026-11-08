@@ -377,7 +377,7 @@ function enterGame(oppPaddle, oppTrail) {
   initAudio();
   applyCosmetics(oppPaddle, oppTrail);
   [0x3d8bff, 0xff3d6b, 0x3de8ff, 0xffa23d].forEach((c, i) => { R.figures[i].setColor(c); R.figures[i].setAccessory(0); });
-  R.setCrowdDensity(1); R.setEventTitle(null); R.setTarget(null); $('#walkout').classList.add('hidden');
+  R.setCrowdDensity(1); R.setEventTitle(null); R.setTarget(null); R.setAim(null); $('#walkout').classList.add('hidden');
   recorder.reset(); bestClip = null; replay = null; postPoint = null; replayDone = {};
   if (!tuto && setup.mode !== 'training') { game.stateT = 3.4; R.intro = 3.2; showVS(); } else { R.intro = 0; game.stateT = 1; }
   music.stop();
@@ -733,28 +733,52 @@ function updateHUD(dt) {
 
 // ------------------------------------------------------------------ cercle de timing
 let ringFlash = 0, ringLastPress = null;
+let ringLbl = 0, timingHelp = false;
 function updateRing(dt) {
   const el = $('#ring');
   const me = game.me, pl = game.players[me];
+  const human = game.ctrl[me] === 'human';
+  // position fixe, bien visible, au-dessus de ton joueur
+  el.style.transform = `translate(${innerWidth / 2}px, ${innerHeight * 0.64}px)`;
+  updateServeHud(human);
   const lp = game.lastPress;
   if (lp && lp.i === me && lp !== ringLastPress) {
-    ringLastPress = lp; ringFlash = 0.38;
+    ringLastPress = lp; ringFlash = 0.5; ringLbl = 0.9;
     el.className = 'show hit ' + (lp.grade < 0 ? 'gm' : 'g' + lp.grade);
+    el.querySelector('.rl').textContent = lp.label || '';
+    el.querySelector('.rl').className = 'rl on';
   }
+  if (ringLbl > 0) { ringLbl -= dt; if (ringLbl <= 0) el.querySelector('.rl').className = 'rl'; }
   if (ringFlash > 0) { ringFlash -= dt; if (ringFlash <= 0) el.className = ''; return; }
   const pr = game.pred[me];
-  let active = false, P = null;
-  if (pr && game.state === 'rally' && game.rally && game.nextHitter() === me && !game.rally.contactTried && !pl.pressType) { active = true; P = { x: pr.x, y: pr.y, z: pr.z }; }
-  if (pr && pr.serve && game.state === 'toss' && game.server() === me) { active = true; P = { x: game.ball.p.x, y: 1.06, z: game.ball.p.z }; }
+  let active = false;
+  if (pr && game.state === 'rally' && game.rally && game.nextHitter() === me && !game.rally.contactTried && !pl.pressType) active = true;
+  if (pr && pr.serve && game.state === 'toss' && game.server() === me) active = true;
   const rem = active ? pr.t - game.simTime : 99;
-  if (!active || rem > RING_T || rem < -0.2) { el.className = ''; return; }
-  const sp = R.worldToScreen(P);
-  el.style.transform = `translate(${sp.x}px, ${sp.y}px)`;
-  const scale = 1 + 2.6 * Math.max(0, rem) / RING_T;
-  el.querySelector('.app').style.width = el.querySelector('.app').style.height = (34 * scale) + 'px';
-  el.className = 'show';
+  if (!active || rem > RING_T || rem < -0.2 || !human) { el.className = ''; return; }
+  if (!timingHelp && !tuto && !store.get('pp-timing-help')) { timingHelp = true; store.set('pp-timing-help', '1'); hint('Le cercle se resserre : appuie sur un bouton de coup quand il touche le rond blanc (il devient VERT)', 6); }
+  const scale = 1 + 2.4 * Math.max(0, rem) / RING_T;
+  const app = el.querySelector('.app');
+  app.style.width = app.style.height = (64 * scale) + 'px';
+  const a = Math.abs(rem) / game.pressScale(me);
+  el.className = 'show ' + (a <= 0.05 ? 'now' : a <= 0.11 ? 'near' : '');
+  const pad = !!input.padName;
+  el.querySelector('.rk').innerHTML = game.state === 'toss' ? `<span>${kb('top')}</span> frappe le service` : `<span>${kb('top')} lift</span><span>${kb('plat')} frappe</span><span>${kb('coupe')} coupé</span><span>${kb('lob')} lob</span>`;
 }
-
+function updateServeHud(human) {
+  const el = $('#servehud');
+  const me = game.me, serving = human && (game.state === 'serve' || game.state === 'toss') && game.server && game.server() === me && !game.training;
+  if (!serving) { if (el.classList.contains('on')) { el.classList.remove('on'); R.setAim && R.setAim(null); } return; }
+  const pl = game.players[me], s = pl.side;
+  const ax = Math.max(-1, Math.min(1, pl.aimX)), ay = Math.max(-1, Math.min(1, pl.aimY));
+  const tx = game.doubles ? -s * Math.max(0.15, Math.min(0.62, 0.38 - ax * 0.2)) : ax * 0.6 * s;
+  const tz = -s * (0.8 + ay * 0.33);
+  R.setAim && R.setAim({ x: tx, z: tz });
+  el.classList.add('on');
+  el.innerHTML = game.state === 'serve'
+    ? `<b>SERVICE</b><span>${input.padName ? 'Stick gauche' : 'Flèches'} : vise la zone</span><span>${kb('top')} lift · ${kb('plat')} rapide · ${kb('coupe')} coupé · ${kb('lob')} latéral : lance la balle</span>`
+    : `<b>SERVICE</b><span>Appuie quand le cercle devient vert</span>`;
+}
 // ------------------------------------------------------------------ ralenti
 function startReplay(clip, onEnd) {
   replay = new Player(clip, game, 0.35);

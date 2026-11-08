@@ -728,6 +728,19 @@ export class Renderer {
       if (t) { m.position.set(t.x, 0.762, t.z); m.scale.setScalar(t.r); }
     }
   }
+  // visée du service
+  setAim(t) {
+    if (!this.aimMesh) {
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.135, 40), new THREE.MeshBasicMaterial({ color: 0x3de8ff, transparent: true, opacity: 0.95, toneMapped: false, side: THREE.DoubleSide }));
+      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.035, 24), new THREE.MeshBasicMaterial({ color: 0x3de8ff, toneMapped: false }));
+      const fill = new THREE.Mesh(new THREE.CircleGeometry(0.11, 40), new THREE.MeshBasicMaterial({ color: 0x3de8ff, transparent: true, opacity: 0.15, toneMapped: false }));
+      for (const m of [ring, dot, fill]) { m.rotation.x = -Math.PI / 2; g.add(m); }
+      this.scene.add(g); this.aimMesh = g;
+    }
+    this.aimMesh.visible = !!t;
+    if (t) { this.aimMesh.position.set(t.x, 0.763, t.z); this.aimMesh.scale.setScalar(1 + 0.12 * Math.sin(this.time * 6)); }
+  }
   flashTarget(ok) { if (this.targetMesh) { this.targetMesh.material.color.setHex(ok ? 0xffffff : 0xff3d5a); this.targetFlash = 0.35; } }
 
   updateCrowd(dt) {

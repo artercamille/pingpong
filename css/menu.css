@@ -214,18 +214,31 @@
 @media (max-width: 1100px) { #daily { display: none; } }
 
 /* ---------- cercle de timing ---------- */
-#ring { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity .1s; }
-#ring.show { opacity: 1; }
-#ring .tgt, #ring .app { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
-#ring .tgt { width: 34px; height: 34px; border: 3px solid rgba(255,255,255,.95); box-shadow: 0 0 10px rgba(255,255,255,.6); }
-#ring .app { width: 34px; height: 34px; border: 3px solid var(--neon); box-shadow: 0 0 14px var(--neon), inset 0 0 8px var(--neon); }
-#ring.g3 .tgt { background: rgba(61,255,138,.55); border-color: #3dff8a; box-shadow: 0 0 22px #3dff8a; }
-#ring.g2 .tgt { background: rgba(255,225,77,.45); border-color: #ffe14d; box-shadow: 0 0 18px #ffe14d; }
-#ring.g1 .tgt { background: rgba(255,150,40,.4); border-color: #ff9628; }
-#ring.g0 .tgt, #ring.gm .tgt { background: rgba(255,60,80,.4); border-color: #ff3c50; }
-#ring.hit .tgt { animation: ringhit .35s ease-out; }
+#ring { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+#ring .tgt, #ring .app { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; transition: opacity .1s; }
+#ring.show .tgt, #ring.show .app { opacity: 1; }
+#ring .tgt { width: 64px; height: 64px; border: 4px solid rgba(255,255,255,.95); box-shadow: 0 0 14px rgba(255,255,255,.55), inset 0 0 10px rgba(255,255,255,.25); background: rgba(10,8,20,.35); }
+#ring .app { width: 64px; height: 64px; border: 4px solid #ffffff; box-shadow: 0 0 16px rgba(255,255,255,.7); }
+#ring.near .app { border-color: #ffe14d; box-shadow: 0 0 18px #ffe14d; }
+#ring.now .app, #ring.now .tgt { border-color: #3dff8a; box-shadow: 0 0 28px #3dff8a, inset 0 0 14px #3dff8a; }
+#ring.now .tgt { background: rgba(61,255,138,.35); }
+#ring.g3 .tgt { background: rgba(61,255,138,.6); border-color: #3dff8a; box-shadow: 0 0 30px #3dff8a; }
+#ring.g2 .tgt { background: rgba(255,225,77,.5); border-color: #ffe14d; box-shadow: 0 0 22px #ffe14d; }
+#ring.g1 .tgt { background: rgba(255,150,40,.45); border-color: #ff9628; }
+#ring.g0 .tgt, #ring.gm .tgt { background: rgba(255,60,80,.45); border-color: #ff3c50; }
+#ring.hit .tgt { animation: ringhit .45s ease-out forwards; }
 #ring.hit .app { opacity: 0; }
-@keyframes ringhit { 0% { transform: translate(-50%, -50%) scale(1); } 40% { transform: translate(-50%, -50%) scale(1.5); } 100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; } }
+#ring .rl { position: absolute; left: 0; top: -78px; transform: translateX(-50%) scale(.6); font-size: 30px; font-weight: 900; font-style: italic; letter-spacing: 1px; white-space: nowrap; opacity: 0; transition: opacity .15s, transform .15s; text-shadow: 0 2px 10px #000; }
+#ring .rl.on { opacity: 1; transform: translateX(-50%) scale(1); }
+#ring.g3 .rl { color: #3dff8a; } #ring.g2 .rl { color: #ffe14d; } #ring.g1 .rl { color: #ff9628; } #ring.g0 .rl, #ring.gm .rl { color: #ff3c50; }
+#ring .rk { position: absolute; left: 0; top: 52px; transform: translateX(-50%); display: flex; gap: 10px; white-space: nowrap; font-size: 12px; font-weight: 800; color: #ddd5f2; opacity: 0; transition: opacity .15s; text-shadow: 0 1px 4px #000; }
+#ring.show .rk { opacity: .9; }
+#ring .rk span { display: flex; align-items: center; gap: 4px; }
+@keyframes ringhit { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 40% { transform: translate(-50%, -50%) scale(1.45); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.25); opacity: 0; } }
+#servehud { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 4px; padding: 10px 22px; background: rgba(10,8,20,.75); border-bottom: 3px solid #3de8ff; pointer-events: none; text-align: center; }
+#servehud.on { display: flex; }
+#servehud b { letter-spacing: 6px; font-size: 13px; color: #3de8ff; }
+#servehud span { font-size: 14px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
 
 /* entraînement */
 #trainhud { position: absolute; top: 22px; left: 22px; padding: 12px 18px; background: rgba(11,9,18,.9); border-left: 4px solid var(--neon); display: flex; gap: 22px; }

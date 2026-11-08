@@ -156,6 +156,18 @@
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
 
+    <section class="screen hidden xwide" id="scr-slots">
+      <h2>Carrière · choisis une sauvegarde</h2>
+      <div id="slots"></div>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-jubile">
+      <div id="jubile"></div>
+      <button class="mbtn accent" id="jub-match"><span><b>Match d'adieu</b><small>Une dernière exhibition contre ton plus grand rival</small></span></button>
+      <button class="mbtn ghost" data-go="scr-slots"><span><b>Retour aux sauvegardes</b></span></button>
+    </section>
+
     <section class="screen hidden xwide" id="scr-career-new">
       <h2>Crée ton joueur</h2>
       <div class="cnew">
@@ -166,9 +178,11 @@
           <div class="opt" id="car-style" data-values="Attaquant|Défenseur|Coupeur|Polyvalent" data-v="attaquant|defenseur|coupeur|polyvalent" data-i="0"><span class="ol">Style</span><span class="ov"></span></div>
           <div class="opt" id="car-neon" data-values="Bleu|Cyan|Vert|Violet|Rose|Or" data-v="0|1|2|3|4|5" data-i="0"><span class="ol">Couleur néon</span><span class="ov"></span></div>
           <div class="opt" id="car-acc" data-values="Aucun|Bandeau|Casquette|Bracelets" data-v="0|1|2|3" data-i="0"><span class="ol">Accessoire</span><span class="ov"></span></div>
+          <div class="opt" id="car-age" data-values="16 ans|17 ans|18 ans|19 ans|20 ans" data-v="16|17|18|19|20" data-i="1"><span class="ol">Âge de départ</span><span class="ov"></span></div>
+          <div class="opt" id="car-diff" data-values="Rookie|Pro|Légende" data-v="0|1|2" data-i="1"><span class="ol">Difficulté</span><span class="ov"></span></div>
           <div class="opt" id="car-len" data-values="Rapide (1 set)|Normale (3 sets)|Longue (jusqu'à 5)" data-v="0|1|2" data-i="1"><span class="ol">Durée des matchs</span><span class="ov"></span></div>
           <button class="mbtn accent" id="car-create"><span><b>Commencer la carrière</b><small>Tu démarres 200e mondial</small></span></button>
-          <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+          <button class="mbtn ghost" data-go="scr-slots"><span><b>Retour</b></span></button>
         </div>
         <div id="car-preview"></div>
       </div>
@@ -198,6 +212,7 @@
           <div id="car-rival"></div>
         </div>
       </div>
+      <button class="mbtn ghost" data-go="scr-slots"><span><b>Changer de sauvegarde</b></span></button>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour au menu</b></span></button>
     </section>
 

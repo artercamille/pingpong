@@ -53,6 +53,8 @@ function show(id) {
   if (id === 'scr-hof') renderHof();
   if (id === 'scr-perks') renderPerks();
   if (id === 'scr-press') renderPress();
+  if (id === 'scr-slots') renderSlots();
+  if (id === 'scr-jubile') renderJubile();
   if (id === 'scr-season') renderSeason();
   if (id === 'scr-team') renderTeam();
   if (id === 'scr-shop') renderShop();
@@ -513,7 +515,7 @@ function showEnd(m) {
   const sum = game.summary();
   const setsWon = m.sets[me], setsLost = m.sets[op];
   const ranked = setup.mode === 'online' && !game.doubles;
-  const res = recordMatch({ won: win, mode: setup.mode === 'career' ? 'ai' : setup.mode, oppName: game.names[op], oppLp: opp.lp, ranked, aiLevel: setup.level,
+  const res = recordMatch({ won: win, mode: setup.mode === 'career' || setup.mode === 'farewell' ? 'ai' : setup.mode, oppName: game.names[op], oppLp: opp.lp, ranked, aiLevel: setup.level,
     setsWon, setsLost, stats: { longest: sum.longest, maxSpeed: sum.stats[me].maxSpeed, ach: sum.ach } });
   // rang
   if (ranked) {
@@ -522,6 +524,7 @@ function showEnd(m) {
     $('#end-rank').innerHTML = `<div class="rankbox">${emblem(res.lpAfter, 64)}<div><div class="promo">${promo}</div><div class="rl" style="color:${ra.glow}">${ra.label}</div><div>${ra.lp} LP</div></div>
       <div style="margin-left:auto" class="rd ${res.lpDelta >= 0 ? 'up' : 'down'}">${res.lpDelta >= 0 ? '+' : ''}${res.lpDelta} LP</div></div>`;
   } else if (setup.mode === 'career') $('#end-rank').innerHTML = careerEnd(win, setsWon, setsLost);
+  else if (setup.mode === 'farewell') { $('#end-rank').innerHTML = `<div class="endcareer">${win ? '👋 Une dernière victoire pour la route. Le public se lève pour toi.' : '👋 Défaite pour ton dernier match, mais le public scande ton nom.'}</div>`; setTimeout(() => { R.confetti(); sfx.crowd(3); announcer.say(`Merci pour tout, ${C.career.me.name} !`, true); }, 800); }
   else $('#end-rank').innerHTML = `<div class="infobox">Match amical contre l'IA : pas de LP en jeu. <b>Les matchs en ligne sont classés.</b></div>`;
   // face-à-face
   const h = res.h2h;
@@ -547,8 +550,8 @@ function showEnd(m) {
     ${row('Vitesse max', Math.round(S[me].maxSpeed) + ' km/h', Math.round(S[op].maxSpeed) + ' km/h')}
     <tr><td colspan="3">Plus long échange : <b>${sum.longest} coups</b></td></tr></table>`;
   $('#bestpt').classList.toggle('hidden', !bestClip);
-  $('#again').innerHTML = setup.mode === 'career' ? '<span><b>Continuer</b><small>Retour au tableau du tournoi</small></span>' : '<span><b>Revanche</b><small>On remet ça tout de suite</small></span>';
-  $('#tomenu').classList.toggle('hidden', setup.mode === 'career');
+  $('#again').innerHTML = setup.mode === 'farewell' ? '<span><b>Continuer</b><small>Retour au jubilé</small></span>' : setup.mode === 'career' ? '<span><b>Continuer</b><small>Retour au tableau du tournoi</small></span>' : '<span><b>Revanche</b><small>On remet ça tout de suite</small></span>';
+  $('#tomenu').classList.toggle('hidden', setup.mode === 'career' || setup.mode === 'farewell');
   for (const u of res.unlocks) toast('🎁', 'DÉBLOQUÉ', u.name, u.kind === 'paddle' ? 'Nouvelle raquette' : u.kind === 'trail' ? 'Nouvelle traînée' : 'Nouvelle salle');
   const dd = dailyProgress({ wins: win ? 1 : 0, aces: S[me].aces, smashes: S[me].smashes, superWins: S[me].superWins, longest: sum.longest,
     points: S[me].points, winners: S[me].winners, online: setup.mode === 'online' ? 1 : 0 });
@@ -561,6 +564,7 @@ function again() {
   if (!game) return;
   if (setup.mode === 'ai') { startAI(); return; }
   if (setup.mode === 'career') { quitToMenu(C.career.tour ? 'scr-tour' : 'scr-career'); return; }
+  if (setup.mode === 'farewell') { quitToMenu('scr-jubile'); return; }
   if (setup.me === 0) { const fs = Math.random() < 0.5 ? 0 : 1; net.send({ t: 'rematch', firstServer: fs }); restartOnline(fs); }
   else { net.send({ t: 'rematchReq' }); $('#end-status').textContent = 'Demande envoyée…'; }
 }
@@ -632,7 +636,7 @@ function endTimeout(send) {
 }
 function togglePause(v) {
   if (game && setup.mode === 'online') { if (timeout && !timeout.pending) endTimeout(true); else requestTimeout(); return; }
-  if (!game || (setup.mode !== 'ai' && setup.mode !== 'training' && setup.mode !== 'career')) return;
+  if (!game || (setup.mode !== 'ai' && setup.mode !== 'training' && setup.mode !== 'career' && setup.mode !== 'farewell')) return;
   game.paused = v ?? !game.paused;
   $('#pause').classList.toggle('hidden', !game.paused);
   focusIdx = 0; refreshFocus();
@@ -953,16 +957,16 @@ function renderCreate() {
     <div>${C.STYLE_NAMES[choice('car-style')]} · ${choice('car-hand') === 1 ? 'Droitier' : 'Gaucher'}</div></div>`;
 }
 $('#car-name').addEventListener('input', renderCreate);
-$('#btn-career').addEventListener('click', () => { initAudio(); sfx.ui(); show(C.load() ? 'scr-career' : 'scr-career-new'); });
+$('#btn-career').addEventListener('click', () => { initAudio(); sfx.ui(); show('scr-slots'); });
 $('#car-create').addEventListener('click', () => {
   sfx.ui();
   C.create({ name: ($('#car-name').value.trim() || myName()).slice(0, 16), country: choice('car-country'), hand: choice('car-hand'),
-    style: choice('car-style'), neon: choice('car-neon'), acc: choice('car-acc'), length: choice('car-len') });
+    style: choice('car-style'), neon: choice('car-neon'), acc: choice('car-acc'), length: choice('car-len'), age: choice('car-age'), diff: choice('car-diff') });
   show('scr-career');
 });
 $('#car-reset-btn').addEventListener('click', () => {
   if (!confirmReset) { confirmReset = true; $('#car-reset-btn small').textContent = 'Clique encore pour confirmer'; return; }
-  confirmReset = false; C.erase(); show('scr-career-new');
+  confirmReset = false; C.erase(); show('scr-slots');
 });
 let confirmReset = false;
 
@@ -973,6 +977,7 @@ function bindCareerButtons(root) {
     if (a === 'enter') { const ev = C.weekEvents(c.season, c.week).find(e => e.id === b.dataset.ev); if (ev && C.eligible(ev)) { C.enterTournament(ev); show('scr-tour'); } return; }
     if (a === 'tour') { show('scr-tour'); return; }
     if (a === 'rest') { C.endWeek(); show('scr-career'); return; }
+    if (a === 'retire') { if (!confirmRetire) { confirmRetire = true; renderCareer(); return; } confirmRetire = false; C.retire(); show('scr-jubile'); return; }
     if (a === 'up') { if (C.upgrade(b.dataset.k)) { sfx.unlock(); renderCareer(); const k = navItems().findIndex(x => x.dataset.k === b.dataset.k); if (k >= 0) { focusIdx = k; refreshFocus(); } } return; }
     if (a === 'play') { startCareerMatch(); return; }
     if (a === 'sim') { simCareerMatch(); return; }
@@ -982,12 +987,14 @@ function bindCareerButtons(root) {
 
 function renderCareer() {
   const c = C.career; if (!c) return;
+  if (c.retired) { show('scr-jubile'); return; }
   if (c.review) { show('scr-season'); return; }
   if (c.press) { show('scr-press'); return; }
   flushPending();
   const me = c.me, rk = C.rankOf('me');
   $('#car-head').innerHTML = `${C.flag(me.country, 54, 36)}<div><div class="big">${esc(me.name)}</div>
-    <div class="meta">${C.COUNTRIES[me.country].name.toUpperCase()} · ${C.STYLE_NAMES[me.style].toUpperCase()} · ${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · NIVEAU ${C.overall(me.stats)}</div>
+    <div class="meta">${C.COUNTRIES[me.country].name.toUpperCase()} · ${C.STYLE_NAMES[me.style].toUpperCase()} · ${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · NIVEAU ${C.overall(me.stats)} · ${me.age || 17} ANS · ${C.DIFFS[c.diff ?? 1].name.toUpperCase()}</div>
+    <div class="meta" style="color:#c84dff">${C.peakLabel(me.age || 17).toUpperCase()}</div>
     <div class="meta">SAISON ${c.season} · SEMAINE ${c.week} / ${C.WEEKS} · ${C.rankPoints(me)} PTS</div>
     ${moneyLine()}</div>
     <div class="rk"><b>${rk}e</b><span class="meta">CLASSEMENT MONDIAL</span></div>`;
@@ -1006,6 +1013,7 @@ function renderCareer() {
         <small>${lock || info}</small></span>${ev.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : tierTag(ev.tier)}</button>`;
     }
     html += `<button class="mbtn ghost" data-act="rest"><span><b>Se reposer</b><small>Passer la semaine</small></span></button>`;
+    if (C.canRetire()) html += `<button class="mbtn ghost" data-act="retire"><span><b>${c.forceRetire ? '⏳ Il est temps de raccrocher' : 'Prendre ma retraite'}</b><small>${confirmRetire ? 'Clique encore pour confirmer : la carrière se termine' : 'Termine ta carrière avec un jubilé'}</small></span></button>`;
   }
   $('#car-week-title').textContent = c.week === C.WEEKS ? 'Semaine finale' : 'Cette semaine';
   $('#car-week').innerHTML = html;
@@ -1142,11 +1150,11 @@ function startCareerMatch() {
     game = new Game({ mode: 'ai', ctrl: ['human', 'ai', 'ai', 'ai'], me: 0, names: [`${first(pn[0])} / ${first(pn[2])}`, `${first(pn[1])} / ${first(pn[3])}`], playerNames: pn,
       assist: profile.settings.assist, bestOf, firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(),
       mods: [myMods, toMods(o1.stats, o1.sig), toMods(P.stats, P.sig), toMods(o2.stats, o2.sig)], hands: [c.me.hand, o1.hand, P.hand, o2.hand] });
-    [[1, o1], [2, P], [3, o2]].forEach(([i, pl]) => { game.ai[i] = new AI(game, i, 2, { rating: pl.rating + (i === 2 ? (c.chem || 0) : 0), style: pl.style, sig: pl.sig }); });
+    [[1, o1], [2, P], [3, o2]].forEach(([i, pl]) => { game.ai[i] = new AI(game, i, 2, { rating: pl.rating + (i === 2 ? (c.chem || 0) : C.diffAI()), style: pl.style, sig: pl.sig }); });
   } else {
     game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf,
       firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [myMods, toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
-    game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style, sig: o.sig });
+    game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o) + C.diffAI(), style: o.style, sig: o.sig });
   }
   enterGame();
   const venue = C.VENUES[d.ev.name];
@@ -1370,6 +1378,7 @@ function renderHof() {
     <div class="hofbar"><i style="width:${Math.min(100, L)}%"></i><span>${L} / 100 points d'héritage</span></div>
     <small style="color:#a99cc9">Points : titres (Feeder 1, Contender 2, Champions 4, Grand Smash 10, Mondiaux 12), semaines n°1 (+1), semaines dans le top 10 (+0,2).</small>
     <div class="svs">${rec('Meilleur classement', c.bestRank && c.bestRank < 999 ? c.bestRank + 'e' : '—')}${rec('Semaines n°1', c.weeksNo1 || 0)}${rec('Grand Smash', by('slam'))}${rec('Titres mondiaux', by('worlds'))}${rec('Titres au total', c.titles.length)}${rec('Gains en carrière', eur(c.earned || 0))}</div></div>
+    <h2>Records du circuit</h2><div class="recs">${Object.values(C.records()).map(r => `<div class="${r.holder === c.me.name ? 'mine' : ''}"><small>${r.name}</small><b>${r.value || '—'} ${r.value ? r.unit : ''}</b><span>${esc(r.holder)}${r.season ? ` · S${r.season}` : ''}</span></div>`).join('')}</div>
     <h2>Tes saisons</h2>${seasons || '<div class="infobox">Ta première saison est en cours.</div>'}
     <h2>Légendes retraitées du circuit</h2>${legends || '<div class="infobox">Aucune légende n\'a encore pris sa retraite.</div>'}`;
 }
@@ -1465,3 +1474,57 @@ function renderStaff() {
   document.querySelectorAll('#staff [data-staff]').forEach(b => b.addEventListener('click', () => { sfx.ui(); C.hireStaff(b.dataset.staff, +b.dataset.lv); const k = focusIdx; renderTeam(); focusIdx = k; refreshFocus(); }));
   document.querySelectorAll('#staff [data-partner]').forEach(b => b.addEventListener('click', () => { sfx.unlock(); C.setPartner(b.dataset.partner); const k = focusIdx; renderTeam(); focusIdx = k; refreshFocus(); }));
 }
+
+
+// ------------------------------------------------------------------ partie C : sauvegardes, jubilé
+let confirmRetire = false, confirmDel = 0;
+function renderSlots() {
+  let h = '';
+  for (let n = 1; n <= C.SLOTS; n++) {
+    const c = C.peek(n);
+    if (c) {
+      const sub = c.retired ? `Retraité à ${c.retired.age} ans · ${c.titles.length} titres · héritage ${c.retired.legacy}` : `Saison ${c.season} · semaine ${c.week} · ${c.me.age || 17} ans · ${c.titles.length} titre${c.titles.length > 1 ? 's' : ''} · ${(C.DIFFS[c.diff ?? 1] || {}).name}`;
+      h += `<div class="slotrow"><button class="mbtn ${c.retired ? '' : 'accent'}" data-slot="${n}"><span><b>${C.flag(c.me.country, 22, 15)}${esc(c.me.name)}${c.retired ? ' · 🏛 Légende' : ''}</b><small>${sub}</small></span></button>
+        <button class="mbtn small ghost" data-del="${n}"><span><b>${confirmDel === n ? 'Confirmer ?' : 'Supprimer'}</b></span></button></div>`;
+    } else h += `<div class="slotrow"><button class="mbtn" data-slot="${n}"><span><b>Emplacement ${n} · vide</b><small>Nouvelle carrière</small></span></button><span></span></div>`;
+  }
+  $('#slots').innerHTML = h;
+  document.querySelectorAll('#slots [data-slot]').forEach(b => b.addEventListener('click', () => {
+    sfx.ui(); confirmDel = 0; C.setSlot(+b.dataset.slot);
+    show(C.load() ? 'scr-career' : 'scr-career-new');
+  }));
+  document.querySelectorAll('#slots [data-del]').forEach(b => b.addEventListener('click', () => {
+    const n = +b.dataset.del;
+    if (confirmDel !== n) { confirmDel = n; renderSlots(); refreshFocus(); return; }
+    confirmDel = 0; C.erase(n); sfx.ui(); renderSlots(); refreshFocus();
+  }));
+}
+function renderJubile() {
+  const c = C.career; if (!c || !c.retired) { show('scr-slots'); return; }
+  const by = t => c.titles.filter(x => x.tier === t && !x.dbl).length;
+  const R0 = c.retired, L = R0.legacy, hof = L >= 100;
+  const rv = C.rivals().map(({ p, type }) => { const h = c.h2h[p.id] || { w: 0, l: 0 }; return `${esc(p.name)} (${type.toLowerCase()}) : <b>${h.w} – ${h.l}</b>`; }).join(' · ');
+  const rec = (k, v) => `<div class="sv"><small>${k}</small><b>${v}</b></div>`;
+  $('#jubile').innerHTML = `<div class="sreview ${hof ? 'gold' : ''}"><small class="k">JUBILÉ · ${(c.seasons || []).length} SAISONS SUR LE CIRCUIT</small>
+    <div class="big">${hof ? `${esc(c.me.name)}, légende du ping` : `Merci ${esc(c.me.name)} !`}</div>
+    <div style="color:#ddd5f2;margin-bottom:8px">${C.flag(c.me.country, 30, 20)} ${C.COUNTRIES[c.me.country].name} · retraite à ${R0.age} ans · ${hof ? '<b style="color:#ffc83c">Entre au Hall of Fame</b>' : `${L} / 100 points d'héritage`}</div>
+    <div class="svs">${rec('Meilleur classement', (c.bestRank || R0.bestRank) + 'e')}${rec('Semaines n°1', c.weeksNo1 || 0)}${rec('Titres', c.titles.filter(t => !t.dbl).length)}${rec('Grand Smash', by('slam'))}${rec('Titres mondiaux', by('worlds'))}${rec('Gains', eur(c.earned || 0))}</div>
+    <div class="cab" style="margin-top:12px">${(c.medals || []).map(x => `<div>${medalSVG(x.medal, 56)}<small>${esc(x.name)}</small></div>`).join('')}${c.titles.filter(t => !t.dbl && t.tier !== 'olympics').slice(-12).map(x => `<div>${trophySVG(x.tier, 52)}<small>${esc(x.name)}</small></div>`).join('') || '<div><small>Aucun titre</small></div>'}</div>
+    ${rv ? `<div class="infobox">⚔ ${rv}</div>` : ''}
+    <div class="infobox">👥 ${fansN(c.fans)} fans · ${c.titles.filter(t => t.dbl).length} titres en double · ${(c.medals || []).length} médaille${(c.medals || []).length > 1 ? 's' : ''} olympique${(c.medals || []).length > 1 ? 's' : ''}</div></div>`;
+}
+$('#jub-match').addEventListener('click', () => {
+  initAudio(); sfx.ui();
+  const c = C.career;
+  const o = (C.rivals().find(r => r.type === 'Rival') || {}).p || C.ranking().find(e => e.p.id !== 'me').p;
+  setup = { mode: 'farewell', level: 2, bestOf: 3, oppId: o.id, aiName: o.name, aiStyle: C.STYLE_NAMES[o.style] };
+  game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf: 3,
+    firstServer: 0, hooks: hooks(), mods: [toMods(C.effStats()), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
+  game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style });
+  enterGame();
+  R.setTheme(COSMETICS.arena.find(a => a.id === 'legende'));
+  R.setEventTitle(`Jubilé de ${c.me.name}`);
+  setup.crowdMul = 1.4;
+  R.figures[0].setColor(NEONS[c.me.neon] || NEONS[0]); R.figures[0].setAccessory(c.me.acc || 0);
+  setTimeout(() => announcer.say(`Mesdames et messieurs, pour son dernier match, ${c.me.name} !`, true), 1500);
+});

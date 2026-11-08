@@ -1,6 +1,14 @@
 // Mode carrière : joueur, circuit mondial (200 joueurs IA), calendrier, tournois, classement.
 import { REAL_PLAYERS } from './players.js';
-const KEY = 'pingpong-career-v2';
+const KEY0 = 'pingpong-career-v2';
+let slot = 1;
+const KEY_OF = n => `${KEY0}-s${n}`;
+export const SLOTS = 3;
+export function setSlot(n) { slot = n; }
+export const getSlot = () => slot;
+// ancienne sauvegarde unique → emplacement 1
+try { const old = localStorage.getItem(KEY0); if (old && !localStorage.getItem(KEY_OF(1))) { localStorage.setItem(KEY_OF(1), old); localStorage.removeItem(KEY0); } } catch (e) {}
+export function peek(n) { try { return JSON.parse(localStorage.getItem(KEY_OF(n))) || null; } catch (e) { return null; } }
 export const WEEKS = 24;
 
 // ------------------------------------------------------------------ pays (noms fictifs)
@@ -122,19 +130,19 @@ function makeStats(rating, style) {
 // ------------------------------------------------------------------ état
 export let career = null;
 export function load() {
-  try { career = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { career = null; }
+  try { career = JSON.parse(localStorage.getItem(KEY_OF(slot))) || null; } catch (e) { career = null; }
   migrate();
   return career;
 }
-export function save() { try { localStorage.setItem(KEY, JSON.stringify(career)); } catch (e) {} }
-export function erase() { career = null; try { localStorage.removeItem(KEY); } catch (e) {} }
+export function save() { try { localStorage.setItem(KEY_OF(slot), JSON.stringify(career)); } catch (e) {} }
+export function erase(n = slot) { if (n === slot) career = null; try { localStorage.removeItem(KEY_OF(n)); } catch (e) {} }
 export const absWeek = (s, w) => (s - 1) * WEEKS + w;
 
 export function create(p) {
   seed = (Date.now() & 0xffffffff) >>> 0;
   const stats = {};
   for (const k of STAT_KEYS) stats[k] = clamp(46 + STYLE_BIAS[p.style][k], 30, 70);
-  const me = { id: 'me', name: p.name, country: p.country, hand: p.hand, style: p.style, neon: p.neon, acc: p.acc, stats, pts: [] };
+  const me = { id: 'me', name: p.name, country: p.country, hand: p.hand, style: p.style, neon: p.neon, acc: p.acc, stats, pts: [], age: p.age || 17 };
   // circuit réel
   const used = new Set([p.name]);
   const N = REAL_PLAYERS.length;
@@ -153,7 +161,7 @@ export function create(p) {
   const rival = cands[Math.floor(rnd() * cands.length)] || pool[N - 10];
   rival.rival = true; rival.rating = overall(stats) + 3; rival.stats = makeStats(rival.rating, rival.style);
   career = {
-    v: 1, season: 1, week: 1, me, pool, length: p.length ?? 1, upPoints: 0,
+    v: 1, diff: p.diff ?? 1, season: 1, week: 1, me, pool, length: p.length ?? 1, upPoints: 0,
     h2h: {}, titles: [], results: [], tour: null, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0, news: ['Bienvenue sur le circuit WTT ! Commence par les WTT Feeder pour grimper au classement mondial.'],
   };
   // classement de départ : points fictifs de la saison précédente
@@ -331,8 +339,9 @@ export function reportMatch(won, sets) {
     if (won && op.sig) career.bossWins = (career.bossWins || 0) + 1;
     if (won && op.rival) career.rivalWins = (career.rivalWins || 0) + 1;
   }
+  if (d.kind !== 'double') { career.streak = won ? (career.streak || 0) + 1 : 0; checkRecords(); }
   if (d.kind === 'double') career.chem = Math.min(6, (career.chem || 0) + 0.5);
-  career.upPoints += won ? 3 : 1;
+  career.upPoints += Math.max(1, Math.round((won ? 3 : 1) * growthMult()));
   career.weekMatches = (career.weekMatches || 0) + 1;
   spendEnergy(10);
   const loss = [1, 0.7, 0.45][career.staff ? career.staff.psy : 0];
@@ -558,7 +567,7 @@ export function hireCoach(i) { if (!COACHES[i]) return false; career.coach = i; 
 export const canTrain = () => career.trained !== absWeek(career.season, career.week);
 export function trainExtra(k, quality) {
   const v = career.me.stats[k];
-  const gain = (0.4 + 1.0 * quality) * COACHES[career.coach].mult / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
+  const gain = (0.4 + 1.0 * quality) * COACHES[career.coach].mult * growthMult() / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
   let pr = (career.me.prog[k] || 0) + gain;
   while (pr >= 1 && career.me.stats[k] < 99) { pr -= 1; career.me.stats[k]++; }
   career.me.prog[k] = pr; save();
@@ -566,7 +575,7 @@ export function trainExtra(k, quality) {
 export function train(k, quality) {
   if (!canTrain()) return null;
   const v = career.me.stats[k];
-  const gain = (0.6 + 1.6 * quality) * COACHES[career.coach].mult / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
+  const gain = (0.6 + 1.6 * quality) * COACHES[career.coach].mult * growthMult() / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
   career.me.prog = career.me.prog || {};
   let pr = (career.me.prog[k] || 0) + gain, up = 0;
   while (pr >= 1 && career.me.stats[k] < 99) { pr -= 1; career.me.stats[k]++; up++; }
@@ -691,9 +700,11 @@ export function takePending() { const p = career.pending || []; career.pending =
 
 function trackRank() {
   const rk = rankOf('me');
+  if (rk === 1 && !career.firstNo1Age) career.firstNo1Age = career.me.age || 17;
   career.bestRank = Math.min(career.bestRank || 999, rk);
   if (rk === 1) career.weeksNo1 = (career.weeksNo1 || 0) + 1;
   if (rk <= 10) career.weeksTop10 = (career.weeksTop10 || 0) + 1;
+  checkRecords();
   checkMilestones();
 }
 export function legacy() {
@@ -744,6 +755,7 @@ function seasonEnd() {
     const y = career.pool.filter(p => p.young && !p.rival).sort((a, b) => b.rating - a.rating)[0];
     if (y) { y.prodige = true; y.rating = Math.max(y.rating, overall(career.me.stats) - 4); y.stats = makeStats(Math.round(y.rating), y.style); career.news.unshift(`⭐ Un jeune prodige débarque : ${y.name} (${y.age} ans) vise déjà ta place.`); }
   }
+  ageMe(rev);
   career.seasons.push(rev);
   career.perkPts = (career.perkPts || 0) + 1;
   career.review = rev;
@@ -801,7 +813,7 @@ export function simulateMatch(bestOf) {
   const o = myOpponent();
   const base = career.tour.kind === 'double' ? getP('me').rating : rating(career.me);
   const mine = base * formOf() + ((career.conf ?? 50) - 50) / 10;
-  const p = 1 / (1 + Math.exp(-(mine - rating(o)) / 5.5));
+  const p = 1 / (1 + Math.exp(-(mine - rating(o) - diffAI()) / 5.5));
   const won = rnd() < p;
   const need = Math.floor(bestOf / 2) + 1;
   let a = 0, b = 0;
@@ -834,7 +846,7 @@ function injuryRoll() {
   }
   const e = career.energy;
   let risk = 0.011 * (career.weekMatches || 0) + (career.trained === absWeek(career.season, career.week) ? 0.008 : 0) + (e < 40 ? (40 - e) * 0.004 : 0);
-  risk *= [1, 0.6, 0.35][(career.staff || {}).physio || 0];
+  risk *= [1, 0.6, 0.35][(career.staff || {}).physio || 0] * [0.7, 1, 1.5][career.diff ?? 1];
   if (rnd() < risk) {
     const weeks = Math.max(1, Math.round((1 + rnd() * 3) * [1, 0.7, 0.5][(career.staff || {}).kine || 0]));
     career.injury = { weeks, name: pick(INJ) };
@@ -956,4 +968,66 @@ function teamTie(d, m, won) {
     rnd() < winProb(p, q) ? a++ : b++;
   }
   return { won: a > b, sc: [a, b] };
+}
+
+
+// ================================================================== partie C : difficulté, âge, records, retraite
+export const DIFFS = [
+  { name: 'Rookie', desc: 'Adversaires plus faibles, tu progresses vite, moins de blessures' },
+  { name: 'Pro', desc: 'L\'expérience normale' },
+  { name: 'Légende', desc: 'Adversaires plus forts, progression lente, plus de blessures' },
+];
+export const diffAI = () => [-6, 0, 5][career.diff ?? 1];
+export function ageMult(a = career.me.age || 17) { return a < 21 ? 1.3 : a < 27 ? 1 : a < 31 ? 0.75 : 0.45; }
+export const growthMult = () => ageMult() * [1.3, 1, 0.8][career.diff ?? 1];
+export const peakLabel = a => a < 21 ? 'Jeune talent · progression rapide' : a < 27 ? 'En pleine progression' : a < 31 ? 'Au sommet de sa carrière' : a < 35 ? 'Vétéran · déclin physique' : 'Fin de carrière';
+function ageMe(rev) {
+  const me = career.me;
+  me.age = (me.age || 17) + 1;
+  const a = me.age, lost = [];
+  if (a >= 30) for (const k of ['speed', 'stamina']) { const n = a >= 34 ? 3 : a >= 32 ? 2 : 1; me.stats[k] = Math.max(30, me.stats[k] - n); lost.push(k); }
+  if (a >= 34) for (const k of ['fh', 'bh', 'spin']) me.stats[k] = Math.max(30, me.stats[k] - 1);
+  if (lost.length) career.news.unshift(`⏳ ${me.name} a ${a} ans : le physique commence à décliner (vitesse et endurance en baisse).`);
+  rev.age = a;
+  if (a >= 40 && !career.retired) career.forceRetire = true;
+}
+
+// ---------- records
+const BASE_RECORDS = {
+  youngNo1: { name: 'Plus jeune n°1 mondial', holder: 'Sora Matsushima', value: 19, unit: 'ans', low: true },
+  weeksNo1: { name: 'Semaines au n°1 (ère moderne du jeu)', holder: '—', value: 0, unit: 'sem.' },
+  streak: { name: 'Plus longue série de victoires', holder: '—', value: 0, unit: 'matchs' },
+  seasonTitles: { name: 'Titres en une saison', holder: '—', value: 0, unit: 'titres' },
+  slams: { name: 'Grand Smash remportés', holder: '—', value: 0, unit: 'titres' },
+  worlds: { name: 'Titres de champion du monde', holder: 'Ma Long', value: 3, unit: 'titres' },
+};
+export function records() {
+  career.records = career.records || JSON.parse(JSON.stringify(BASE_RECORDS));
+  return career.records;
+}
+function checkRecords() {
+  const Rc = records(), me = career.me.name;
+  const vals = {
+    youngNo1: career.firstNo1Age || null, weeksNo1: career.weeksNo1 || 0, streak: career.streak || 0,
+    seasonTitles: career.titles.filter(t => t.season === career.season && !t.dbl).length,
+    slams: career.titles.filter(t => t.tier === 'slam' && !t.dbl).length, worlds: career.titles.filter(t => t.tier === 'worlds').length,
+  };
+  for (const k in vals) {
+    const v = vals[k], r = Rc[k];
+    if (v === null || v === 0) continue;
+    const beat = r.low ? v < r.value || (r.holder !== me && v === r.value && false) : v > r.value;
+    if (beat) {
+      const was = r.holder !== me;
+      r.value = v; r.holder = me; r.season = career.season;
+      if (was) { career.news.unshift(`📜 RECORD : ${me} bat le record « ${r.name} » (${v} ${r.unit}) !`); career.pending = [...(career.pending || []), { name: 'Record battu', desc: `${r.name} : ${v} ${r.unit}` }]; addFans(8000); }
+    }
+  }
+}
+
+// ---------- retraite
+export const canRetire = () => (career.me.age || 17) >= 30 || career.forceRetire;
+export function retire() {
+  career.retired = { season: career.season, age: career.me.age, legacy: legacy(), bestRank: career.bestRank || rankOf('me') };
+  career.news.unshift(`👋 ${career.me.name} annonce sa retraite à ${career.me.age} ans.`);
+  save();
 }

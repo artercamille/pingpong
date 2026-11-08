@@ -31,9 +31,10 @@ Le profil est sauvegardé dans le navigateur.
 | Lob | Y / Triangle | I |
 | Effet latéral | LB / RB | A / E |
 | Super coup (jauge pleine) | RT | L |
-| Pause (contre l'IA) | Start | Échap |
+| Caméra (raquette / TV / haute) | Select | C |
+| Pause / temps mort en ligne | Start | Échap |
 
-Maintiens le bouton pour charger, puis relâche juste avant l'arrivée de la balle. Le timing et le placement décident de la qualité du coup.
+Quand la balle arrive, un cercle se referme sur elle : appuie sur un coup pile quand il touche le cercle blanc. A sur balle courte = flip, B sur gros lift = contre, X sur gros lift = bloc. L'anneau sur la balle montre l'effet (rouge = lift, bleu = coupé, vert = latéral).
 
 ## Mettre en ligne (GitHub Pages)
 

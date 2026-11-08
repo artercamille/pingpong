@@ -510,7 +510,7 @@ $('#bestpt').addEventListener('click', async () => {
 });
 $('#tomenu').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(); });
 $('#resume').addEventListener('click', () => { if (timeout) endTimeout(true); else togglePause(false); });
-$('#quit').addEventListener('click', () => quitToMenu());
+$('#quit').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(); });
 // temps mort en ligne (1 par joueur et par match, 30 s max)
 let timeout = null;
 function requestTimeout() {

@@ -76,30 +76,37 @@ export const SIGNATURES = {
 
 // ------------------------------------------------------------------ tournois
 export const TIERS = {
-  challenger: { name: 'WTT Feeder', size: 16, need: 999, pts: [125, 90, 45, 25, 15], arena: 'glacier', color: '#3cc8ff' },
-  contender: { name: 'WTT Contender', size: 16, need: 120, pts: [400, 280, 140, 70, 35], arena: 'jungle', color: '#3cff8a' },
-  star: { name: 'WTT Champions', size: 32, need: 50, pts: [1000, 700, 350, 175, 90, 15], arena: 'inferno', color: '#ff3c3c' },
-  slam: { name: 'Grand Smash', size: 32, need: 32, pts: [2000, 1400, 700, 350, 175, 90], arena: 'finale', color: '#d23cff' },
-  finals: { name: 'WTT Finals', size: 16, need: 16, pts: [1500, 1050, 525, 265, 100], arena: 'legende', color: '#ff4dc8' },
-  exhib: { name: 'Exhibition', size: 2, need: 999, pts: [0, 0], arena: 'finale', color: '#6ee7a8' },
-  team: { name: 'Coupe du monde par équipes', size: 8, need: 999, pts: [0, 0, 0, 0], arena: 'inferno', color: '#ff9a3c' },
-  olympics: { name: 'Jeux olympiques', size: 32, need: 40, pts: [0, 0, 0, 0, 0, 0], arena: 'legende', color: '#ffffff' },
-  worlds: { name: 'Championnats du monde', size: 16, need: 16, pts: [1500, 1050, 525, 265, 100], arena: 'legende', color: '#ffc83c' },
+  challenger: { name: 'WTT Feeder', size: 32, need: 999, best: 5, pts: [125, 90, 45, 25, 15, 8], prize: [2000, 1200, 700, 400, 250, 120], arena: 'glacier', color: '#3cc8ff' },
+  contender: { name: 'WTT Contender', size: 32, need: 120, best: 5, pts: [400, 280, 140, 70, 35, 4], prize: [7500, 4300, 2400, 1300, 750, 380], arena: 'jungle', color: '#3cff8a' },
+  star: { name: 'WTT Champions', size: 32, need: 36, best: 7, pts: [1000, 700, 350, 175, 90, 15], prize: [45000, 25000, 13000, 7000, 3500, 1800], arena: 'inferno', color: '#ff3c3c' },
+  slam: { name: 'Grand Smash', size: 64, need: 48, best: 7, pts: [2000, 1400, 700, 350, 175, 90, 20], prize: [100000, 50000, 25000, 13000, 6500, 3500, 1800], arena: 'finale', color: '#d23cff' },
+  finals: { name: 'WTT Finals', size: 16, need: 16, best: 7, pts: [1500, 1050, 525, 265, 100], prize: [70000, 40000, 20000, 10000, 5000], arena: 'legende', color: '#ff4dc8' },
+  exhib: { name: 'Exhibition', size: 2, need: 999, best: 5, pts: [0, 0], prize: [0, 0], arena: 'finale', color: '#6ee7a8' },
+  team: { name: 'Championnats du monde par équipes', size: 8, need: 999, best: 5, pts: [0, 0, 0, 0], prize: [25000, 12000, 6000, 3000], arena: 'inferno', color: '#ff9a3c' },
+  olympics: { name: 'Jeux olympiques', size: 32, need: 40, best: 7, pts: [0, 0, 0, 0, 0, 0], prize: [0, 0, 0, 0, 0, 0], arena: 'legende', color: '#ffffff' },
+  worlds: { name: 'Championnats du monde', size: 16, need: 16, best: 7, pts: [2000, 1400, 700, 350, 90], prize: [100000, 50000, 25000, 12000, 4000], arena: 'legende', color: '#ffc83c' },
 };
 const FEEDERS = ['Düsseldorf', 'Varaždin', 'Olomouc', 'Otočec', 'Havířov', 'Vila Nova de Gaia', 'Biella', 'Cappadocia', 'Doha', 'Beyrouth', 'Panagyurishte', 'Lille'];
 const CONTENDERS = ['Doha', 'Tunis', 'Taiyuan', 'Lagos', 'Skopje', 'Zagreb', 'Almaty', 'Buenos Aires', 'Rio de Janeiro', 'Muscat', 'Antalya', 'Istanbul', 'Lima', 'Mascate'];
-const SLAMS = { 6: 'Singapore Smash', 12: 'United States Smash', 18: 'Europe Smash', 23: 'China Smash' };
-const STARS = { 3: 'WTT Champions Chongqing', 9: 'WTT Champions Incheon', 15: 'WTT Champions Macao', 20: 'WTT Champions Montpellier' };
+const SLAMS = { 4: 'Singapore Smash', 13: 'United States Smash', 15: 'Europe Smash', 19: 'China Smash' };
+const STARS = { 3: 'WTT Champions Doha', 6: 'WTT Champions Chongqing', 11: 'WTT Champions Yokohama', 17: 'WTT Champions Macao', 20: 'WTT Champions Montpellier', 21: 'WTT Champions Frankfurt' };
+// dates réelles : la saison suit l'année civile (saison 1 = 2027)
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+export function weekDate(season, week) {
+  const d = new Date(Date.UTC(2026 + season, 0, 6 + Math.round((week - 1) * 14.6)));
+  return { day: d.getUTCDate(), month: d.getUTCMonth(), year: d.getUTCFullYear(), label: `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`, short: `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 4)}.` };
+}
+export const yearOf = season => 2026 + season;
 export const VENUES = {
   'Singapore Smash': { city: 'Singapour', arena: 'finale', crowd: 1 }, 'United States Smash': { city: 'Las Vegas', arena: 'inferno', crowd: 1 },
   'Europe Smash': { city: 'Malmö', arena: 'glacier', crowd: 1 }, 'China Smash': { city: 'Pékin', arena: 'inferno', crowd: 1 },
-  'Championnats du monde': { city: 'Finale de saison', arena: 'legende', crowd: 1 },
+  'Championnats du monde': { city: 'Mondiaux', arena: 'legende', crowd: 1 }, 'WTT Finals Hong Kong': { city: 'Hong Kong', arena: 'legende', crowd: 1 },
 };
 
 const de = c => /^[AEIOUÉÈ]/.test(c) ? `d'${c}` : `de ${c}`;
 function baseEvents(season, week) {
-  if (week === 21) return [{ id: `s${season}w21fin`, tier: 'finals', name: 'WTT Finals Hong Kong' }, { id: `s${season}w21ch`, tier: 'challenger', name: `WTT Feeder ${FEEDERS[(week * 7 + season) % FEEDERS.length]}` }];
-  if (week === WEEKS) return [{ id: `s${season}w${week}worlds`, tier: 'worlds', name: 'Championnats du monde' }];
+  if (week === WEEKS) return [{ id: `s${season}w${week}fin`, tier: 'finals', name: 'WTT Finals Hong Kong' }];
+  if (week === 9) return [{ id: `s${season}w9worlds`, tier: 'worlds', name: 'Championnats du monde' }];
   if (SLAMS[week]) return [{ id: `s${season}w${week}slam`, tier: 'slam', name: SLAMS[week] }, { id: `s${season}w${week}ch`, tier: 'challenger', name: `WTT Feeder ${FEEDERS[(week * 7 + season) % FEEDERS.length]}` }];
   if (STARS[week]) return [{ id: `s${season}w${week}star`, tier: 'star', name: STARS[week] }, { id: `s${season}w${week}co`, tier: 'contender', name: `WTT Contender ${CONTENDERS[(week * 5 + season) % CONTENDERS.length]}` }];
   return [
@@ -111,8 +118,8 @@ function baseEvents(season, week) {
 const EXHIB_CITIES = ['Paris (Accor Arena)', 'Londres', 'Shanghai', 'Tokyo', 'New York', 'Dubaï', 'Stockholm', 'Rio'];
 export const olympicName = s => s === 2 ? 'Jeux olympiques de Los Angeles' : s === 6 ? 'Jeux olympiques de Brisbane' : 'Jeux olympiques';
 export function weekEvents(season, week) {
-  if (week === 14) return [{ id: `s${season}w14team`, tier: 'team', kind: 'team', name: 'Coupe du monde par équipes' }, ...baseEvents(season, week).filter(e => e.tier === 'challenger')];
-  if (season % 4 === 2 && week === 16) return [{ id: `s${season}w16oly`, tier: 'olympics', kind: 'olympics', name: olympicName(season) }];
+  if (week === 7) return [{ id: `s${season}w7team`, tier: 'team', kind: 'team', name: 'Championnats du monde par équipes' }, ...baseEvents(season, week).filter(e => e.tier === 'challenger')];
+  if (season % 4 === 2 && week === 14) return [{ id: `s${season}w14oly`, tier: 'olympics', kind: 'olympics', name: olympicName(season) }];
   const out = [];
   for (const e of baseEvents(season, week)) {
     out.push(e);
@@ -171,10 +178,10 @@ export function create(p) {
   rival.rival = true; rival.rating = overall(stats) + 3; rival.stats = makeStats(rival.rating, rival.style);
   career = {
     v: 1, diff: p.diff ?? 1, season: 1, week: 1, me, pool, length: p.length ?? 1, upPoints: 0,
-    h2h: {}, titles: [], results: [], tour: null, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0, news: ['Bienvenue sur le circuit WTT ! Commence par les WTT Feeder pour grimper au classement mondial.'],
+    h2h: {}, titles: [], results: [], tour: null, money: 3000, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0, news: ['Bienvenue sur le circuit WTT ! Commence par les WTT Feeder pour grimper au classement mondial.'],
   };
   // classement de départ : points fictifs de la saison précédente
-  for (const pl of pool) { for (let k = 0; k < WEEKS; k++) pl.pts.push({ w: -k, p: Math.round(pl.seedTotal / WEEKS) }); delete pl.seedTotal; }
+  for (const pl of pool) { const sh = [0.24, 0.18, 0.14, 0.12, 0.1, 0.09, 0.07, 0.06]; sh.forEach((f, k) => pl.pts.push({ w: -k * 3, p: Math.round(pl.seedTotal * f) })); delete pl.seedTotal; }
   migrate();
   save();
   return career;
@@ -184,9 +191,14 @@ export function create(p) {
 export function allPlayers() { return [career.me, ...career.pool]; }
 export function getP(id) { const E = career.tour && career.tour.ents; if (E && E[id]) return E[id]; if (id === 'me') return career.me; return career.pool.find(p => p.id === id) || (career.wpool || []).find(p => p.id === id); }
 export function rating(pl) { return pl.ent ? pl.rating : pl.id === 'me' ? overall(effStats()) : pl.rating; }
+// classement ITTF : seuls les 8 meilleurs résultats comptent, chacun reste valable un an (jusqu'à l'édition suivante)
 export function rankPoints(pl) {
   const now = absWeek(career.season, career.week);
-  return pl.pts.reduce((a, e) => a + (e.w > now - WEEKS ? e.p : 0), 0);
+  return pl.pts.filter(e => e.w > now - WEEKS).map(e => e.p).sort((a, b) => b - a).slice(0, 8).reduce((a, b) => a + b, 0);
+}
+export function countedResults(pl) {
+  const now = absWeek(career.season, career.week);
+  return pl.pts.filter(e => e.w > now - WEEKS).sort((a, b) => b.p - a.p).slice(0, 8);
 }
 export function ranking() {
   const list = allPlayers().map(p => ({ p, pts: rankPoints(p) }));
@@ -227,9 +239,9 @@ function entrants(ev, withMe) {
   const r = ranking().filter(e => e.p.id !== 'me');
   let lo = 0, hi = r.length;
   if (ev.tier === 'challenger') { lo = 60; hi = r.length; }
-  if (ev.tier === 'contender') { lo = 25; hi = 125; }
-  if (ev.tier === 'star') { lo = 4; hi = 70; }
-  if (ev.tier === 'slam') { lo = 0; hi = 44; }
+  if (ev.tier === 'contender') { lo = 15; hi = 125; }
+  if (ev.tier === 'star') { lo = 0; hi = 42; }
+  if (ev.tier === 'slam') { lo = 0; hi = 80; }
   if (ev.tier === 'worlds' || ev.tier === 'finals') { lo = 0; hi = 16; }
   if (ev.tier === 'olympics') { lo = 0; hi = r.length; }
   let cands = r.slice(lo, hi).map(e => e.p);
@@ -264,8 +276,11 @@ export const ROUND_NAMES = n => n === 1 ? 'Finale' : n === 2 ? 'Demi-finales' : 
 
 // sets à jouer pour le match du joueur
 export function setsFor(tier, matchesInRound) {
-  const L = career.length; // 0 rapide, 1 normal, 2 long
+  const L = career.length; // 0 rapide, 1 normal, 2 réel
   if (L === 0) return 1;
+  const k = career.tour && career.tour.kind;
+  if (L === 2) return k === 'double' || k === 'mixed' || k === 'team' || k === 'qualif' || k === 'exhib' ? 5 : (TIERS[tier] && TIERS[tier].best) || 5;
+  if (k === 'double' || k === 'mixed') return 3;
   if (tier === 'olympics') tier = 'slam';
   if (tier === 'team') return 3;
   const final = matchesInRound === 1, late = matchesInRound <= 4;
@@ -273,10 +288,18 @@ export function setsFor(tier, matchesInRound) {
   return late && (tier === 'slam' || tier === 'worlds' || tier === 'star') ? 5 : 3;
 }
 
+export function gameScores(sc) {
+  // détail des manches (11-8, 9-11…) pour un score en manches
+  const [a, b] = sc, out = [], seq = [];
+  for (let i = 0; i < a; i++) seq.push(1); for (let i = 0; i < b; i++) seq.push(0);
+  const last = seq.pop(); seq.sort(() => rnd() - 0.5); seq.push(last);
+  for (const w of seq) { const close = rnd() < 0.35, l = close ? 9 + Math.floor(rnd() * 2) : 3 + Math.floor(rnd() * 6); const deuce = close && rnd() < 0.3; const W = deuce ? 12 + Math.floor(rnd() * 3) : 11, L = deuce ? W - 2 : l; out.push(w ? [W, L] : [L, W]); }
+  return out;
+}
 function simScore(winnerA, sets) {
   const need = Math.floor(sets / 2) + 1;
   let a = 0, b = 0;
-  while (a < need && b < need) { if (rnd() < (winnerA ? 0.68 : 0.32)) a++; else b++; }
+  while (a < need && b < need) { if (rnd() < (winnerA ? 0.64 : 0.36)) a++; else b++; }
   if (winnerA && a < need) a = need; if (!winnerA && b < need) b = need;
   if (winnerA) b = Math.min(b, need - 1); else a = Math.min(a, need - 1);
   return [a, b];
@@ -293,10 +316,10 @@ function simRound(d) {
     m.w = aw ? m.a : m.b;
     if (!A.ent) A.form = ((A.form || '') + (aw ? 'V' : 'D')).slice(-5);
     if (!B.ent) B.form = ((B.form || '') + (aw ? 'D' : 'V')).slice(-5);
-    m.sc = simScore(aw, d.kind === 'team' ? 5 : 3);
+    m.sc = simScore(aw, d.kind === 'team' ? 5 : (TIERS[d.tier].best || 5));
   }
   const B = d.bronze;
-  if (B && !B.w && B.a !== 'me' && B.b !== 'me') { const aw = rnd() < winProb(getP(B.a), getP(B.b)); B.w = aw ? B.a : B.b; B.sc = simScore(aw, 3); }
+  if (B && !B.w && B.a !== 'me' && B.b !== 'me') { const aw = rnd() < winProb(getP(B.a), getP(B.b)); B.w = aw ? B.a : B.b; B.sc = simScore(aw, 7); }
 }
 
 function nextRound(d) {
@@ -324,7 +347,28 @@ export function myOpponent() {
   return getP(m.a === 'me' ? m.b : m.a);
 }
 
+// ---------- voyages : coûts et décalage horaire
+const CITY_REGION = { Doha: 'me', Muscat: 'me', Mascate: 'me', Beyrouth: 'me', 'Hong Kong': 'as', Singapore: 'as', Singapour: 'as', Chongqing: 'as', Yokohama: 'as', Macao: 'as', Taiyuan: 'as', Almaty: 'as', China: 'as', Incheon: 'as',
+  Tunis: 'af', Lagos: 'af', 'Rio de Janeiro': 'am', 'Buenos Aires': 'am', Lima: 'am', 'United States': 'am', Montpellier: 'eu', Frankfurt: 'eu', Europe: 'eu', Skopje: 'eu', Zagreb: 'eu', Antalya: 'eu', Istanbul: 'eu',
+  Düsseldorf: 'eu', Varaždin: 'eu', Olomouc: 'eu', Otočec: 'eu', Havířov: 'eu', 'Vila Nova de Gaia': 'eu', Biella: 'eu', Cappadocia: 'eu', Panagyurishte: 'eu', Lille: 'eu', Paris: 'eu', Londres: 'eu', Shanghai: 'as', Tokyo: 'as', 'New York': 'am', Dubaï: 'me', Stockholm: 'eu', Rio: 'am' };
+const COUNTRY_REGION = { FR: 'eu', DE: 'eu', SE: 'eu', DK: 'eu', SI: 'eu', HR: 'eu', SK: 'eu', RO: 'eu', HU: 'eu', AT: 'eu', PT: 'eu', ES: 'eu', IT: 'eu', BE: 'eu', PL: 'eu', CZ: 'eu', GB: 'eu', RU: 'eu',
+  CN: 'as', JP: 'as', KR: 'as', TW: 'as', HK: 'as', SG: 'as', IN: 'as', KZ: 'as', IR: 'me', EG: 'af', NG: 'af', US: 'am', CA: 'am', BR: 'am', AR: 'am', MX: 'am', PR: 'am', CL: 'am', AU: 'oc' };
+export function regionOf(ev) { for (const [c, r] of Object.entries(CITY_REGION)) if (ev.name.includes(c)) return r; return 'eu'; }
+export function travelCost(ev) {
+  const home = COUNTRY_REGION[career.me.country] || 'eu', r = regionOf(ev);
+  let c = r === home ? 600 : 1700;
+  if (['slam', 'finals', 'worlds', 'olympics', 'team'].includes(ev.tier)) c = Math.round(c * 0.5); // hôtel pris en charge
+  if (ev.kind === 'exhib') c = 0;
+  return c;
+}
 export function enterTournament(ev) {
+  if (ev.kind !== 'qualif') {
+    const cost = travelCost(ev), r = regionOf(ev);
+    career.money -= cost; career.lastTravel = cost;
+    if (career.lastRegion && career.lastRegion !== r && ev.kind !== 'exhib') { career.energy = clamp(career.energy - 8, 0, 100); career.news.unshift(`✈️ Décalage horaire : arrivée à ${ev.name.replace(/^WTT \w+ /, '')} un peu fatigué.`); }
+    career.lastRegion = r;
+    sst().events = (sst().events || 0) + 1; career.eventsTotal = (career.eventsTotal || 0) + 1;
+  }
   career.tour = ev.kind === 'double' ? makeDoubleDraw(ev) : ev.kind === 'mixed' ? makeDoubleDraw(ev, true) : ev.kind === 'team' ? makeTeamDraw(ev)
     : ev.kind === 'exhib' ? makeExhib(ev) : ev.kind === 'qualif' ? makeQualif(ev) : ev.tier === 'worlds' ? makeGroupsDraw(ev) : makeDraw(ev, true);
   career.tour.kind = career.tour.kind || ev.kind || 'single';
@@ -425,18 +469,23 @@ function finishTournament() {
     for (const [id, p] of Object.entries(res)) { const E = d.ents[id]; if (E && p) for (const mid of E.members) { const pl = mid === 'me' ? career.me : career.pool.find(x => x.id === mid); if (pl) (pl.dpts = pl.dpts || []).push({ w, p: Math.round(p * (d.kind === 'mixed' ? 0.4 : 0.6)) }); } }
   } else for (const [id, p] of Object.entries(res)) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
   const mine = res.me || 0;
-  let prize = d.kind === 'double' || d.kind === 'mixed' ? mine * 4 : mine * 10;
+  const idx = placeIdx(d);
+  let prize = idx >= 0 ? (TIERS[d.tier].prize || [])[idx] || 0 : 0;
+  if (d.kind === 'double' || d.kind === 'mixed') prize = Math.round(prize * 0.35);
   const finalM = d.rounds[d.rounds.length - 1][0];
   let medal = null;
   if (d.kind === 'olympics') {
     medal = finalM.w === 'me' ? 'or' : (finalM.a === 'me' || finalM.b === 'me') ? 'argent' : d.bronze && d.bronze.w === 'me' ? 'bronze' : null;
     if (medal) { setMoment({ type: 'medal', ev: d.ev.name, tier: d.tier, medal }); prize = { or: 60000, argent: 30000, bronze: 15000 }[medal]; (career.medals = career.medals || []).push({ medal, name: d.ev.name, season: career.season }); career.news.unshift(`🏅 ${career.me.name} décroche la médaille ${medalTxt(medal)} aux ${d.ev.name} !`); addFans({ or: 60000, argent: 30000, bronze: 18000 }[medal]); }
   }
-  if (d.kind === 'team' && finalM.w === 'me') prize = 25000;
+  const gross = prize;
+  const comm = Math.round(gross * [0, 0.1, 0.15][(career.staff || {}).agent || 0]);
+  const tax = Math.round((gross - comm) * 0.25);
+  prize = gross - comm - tax;
   if (prize) { career.money += prize; career.earned = (career.earned || 0) + prize; }
   const final = d.rounds[d.rounds.length - 1][0];
   const champion = final && final.w === 'me';
-  d.result = { pts: mine, prize, champion, reached: medal ? `Médaille ${medalTxt(medal)}` : roundReached(d), medal };
+  d.result = { pts: mine, prize, gross, comm, tax, champion, reached: medal ? `Médaille ${medalTxt(medal)}` : roundReached(d), medal };
   if (champion) {
     career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season, at: absWeek(career.season, career.week), dbl: d.kind === 'double' || d.kind === 'mixed' || undefined });
     career.upPoints += { challenger: 3, contender: 5, star: 8, slam: 15, worlds: 15, team: 8, olympics: 15 }[d.tier] * (d.kind === 'double' ? 0.5 : 1);
@@ -444,15 +493,27 @@ function finishTournament() {
     career.perkPts = (career.perkPts || 0) + 1;
     career.conf = clamp((career.conf ?? 50) + 15, 5, 100);
     setMoment({ type: d.kind === 'olympics' ? 'medal' : 'title', ev: d.ev.name, tier: d.tier, medal: d.kind === 'olympics' ? 'or' : null });
-    career.news.unshift(d.kind === 'team' ? `🏆 ${COUNTRIES[career.me.country].name} remporte la Coupe du monde par équipes, avec ${career.me.name} !` : d.kind === 'olympics' ? `🥇 ${career.me.name} est champion olympique !` : `🏆 ${career.me.name} remporte le ${d.ev.name} !`);
+    career.news.unshift(d.kind === 'team' ? `🏆 ${COUNTRIES[career.me.country].name} remporte les Championnats du monde par équipes, avec ${career.me.name} !` : d.kind === 'olympics' ? `🥇 ${career.me.name} est champion olympique !` : `🏆 ${career.me.name} remporte le ${d.ev.name} !`);
   } else if (d.kind === 'single' || !d.kind) aiTitle(d);
-  else if (d.kind === 'team') { const fw = finalM.w && getP(finalM.w); if (fw) career.news.unshift(`🌍 ${fw.name} remporte la Coupe du monde par équipes.`); }
+  else if (d.kind === 'team') { const fw = finalM.w && getP(finalM.w); if (fw) career.news.unshift(`🌍 ${fw.name} remporte les Championnats du monde par équipes.`); }
   else if (d.kind === 'olympics') { const fw = finalM.w && getP(finalM.w); if (fw) career.news.unshift(`🥇 ${fw.name} est champion olympique.`); }
   const S = sst(); S.money += prize; if (champion) S.titles++;
   career.results.unshift({ season: career.season, week: career.week, name: d.ev.name, tier: d.tier, reached: d.result.reached, pts: mine });
   career.news = career.news.slice(0, 12);
 }
 
+// rang final du joueur dans le tournoi : 0 vainqueur, 1 finaliste, 2 demi…
+function placeIdx(d) {
+  const n = d.rounds.length;
+  if (d.groups && !d.rounds.some(r => r.some(x => x.a === 'me' || x.b === 'me'))) return 4;
+  for (let r = n - 1; r >= 0; r--) {
+    const m = d.rounds[r].find(x => x.a === 'me' || x.b === 'me');
+    if (!m) continue;
+    if (r === n - 1 && d.rounds[r].length === 1) return m.w === 'me' ? 0 : 1;
+    return Math.round(Math.log2(d.rounds[r].length)) + 1;
+  }
+  return -1;
+}
 function roundReached(d) {
   const n = d.rounds.length;
   if (d.groups && !d.rounds.some(r => r.some(x => x.a === 'me' || x.b === 'me'))) return 'Phase de poules';
@@ -473,7 +534,8 @@ export function endWeek() {
   const evs = weekEvents(career.season, career.week);
   const playedId = career.tour && career.tour.ev.id;
   for (const ev of evs) {
-    if (ev.id === playedId) continue;
+    if (ev.id === playedId || ['double', 'mixed', 'exhib', 'team'].includes(ev.kind)) continue;
+    if (playedId && ev.id === playedId.replace(/^q:/, '')) continue;
     const d = makeDraw(ev, false);
     simRound(d);
     while (!d.done) { nextRound(d); if (!d.done) simRound(d); }
@@ -482,7 +544,10 @@ export function endWeek() {
     aiTitle(d);
   }
   const wk = absWeek(career.season, career.week);
-  for (const p of career.pool) { const inc = aiIncome(p); if (inc) { p.pts.push({ w: wk, p: inc }); (p.dpts = p.dpts || []).push({ w: wk, p: Math.round(inc * 0.3) }); } }
+  // les joueurs IA ne gagnent des points qu'en tournoi ; le double reste estimé
+  for (const p of career.pool) { const inc = aiIncome(p); if (inc) (p.dpts = p.dpts || []).push({ w: wk, p: Math.round(inc * 0.3) }); }
+  // les meilleurs jouent aussi les tournois hors calendrier visible (Coupes continentales, ligues) : petit apport
+  for (const p of career.pool) if (rnd() < 0.15) p.pts.push({ w: wk, p: Math.round(Math.max(0, p.rating - 60) * 6 * rnd()) });
   for (const p of career.pool) if (p.prodige) p.rating = Math.min(97, Math.max(p.rating, overall(career.me.stats) - 3) + 0.3);
   // le rival progresse avec toi
   const rival = career.pool.find(p => p.rival);
@@ -550,6 +615,7 @@ export function migrate() {
   for (const k in d) if (career[k] === undefined) career[k] = d[k];
   if (!career.me.prog) career.me.prog = {};
   soc();
+  if (career.sponsor) { contracts().perso = { ...career.sponsor, slot: 'perso' }; career.sponsor = null; }
   if (!career.wpool) career.wpool = REAL_WOMEN.map((r, i) => ({ id: 'w' + i, name: r[0], country: r[1], age: r[2], style: 'attaquant', hand: r[3] || 1, rating: Math.round(90 - i * 0.9), stats: makeStats(Math.round(90 - i * 0.9), 'attaquant'), pts: [], wins: {}, woman: true }));
 }
 const staminaOf = () => effStats().stamina;
@@ -592,10 +658,11 @@ export function effStats() {
   for (const k of STAT_KEYS) st[k] = Math.min(99, career.me.stats[k] + (b[k] || 0) + (pb[k] || 0) + (k === 'mental' && COACHES[career.coach] ? COACHES[career.coach].mental : 0) + (k === 'mental' && career.staff ? [0, 2, 4][career.staff.psy] : 0));
   return st;
 }
+export function gearPrice(it) { const E = contracts().equip; return E && E.brand && it.name.startsWith(E.brand) ? 0 : it.price; }
 export function buyGear(slot, i) {
   const it = GEAR[slot].items[i];
-  if (!it || i <= (career.gear[slot] || 0) || career.money < it.price) return false;
-  career.money -= it.price; career.gear[slot] = i; save();
+  if (!it || i <= (career.gear[slot] || 0) || career.money < gearPrice(it)) return false;
+  career.money -= gearPrice(it); career.gear[slot] = i; save();
   return true;
 }
 
@@ -635,37 +702,56 @@ export function train(k, quality) {
 
 // ---------- sponsors
 const SPONSORS = [
-  { id: 'decathlon', name: 'Decathlon', rank: 999, weekly: 100, goal: { t: 'rank', v: 120 }, reward: 1500, color: '#3cff8a' },
-  { id: 'joola', name: 'Joola', rank: 130, weekly: 250, goal: { t: 'title', tier: 'challenger' }, reward: 3000, color: '#3cc8ff' },
-  { id: 'xiom', name: 'Xiom', rank: 100, weekly: 500, goal: { t: 'rank', v: 50 }, reward: 6000, color: '#ff3d6b' },
-  { id: 'stiga', name: 'Stiga', rank: 60, weekly: 1100, goal: { t: 'title', tier: 'contender' }, reward: 12000, color: '#c84dff' },
-  { id: 'butterfly', name: 'Butterfly', rank: 32, weekly: 2200, goal: { t: 'rank', v: 16 }, reward: 25000, color: '#ffffff' },
-  { id: 'redbull', name: 'Red Bull', rank: 16, weekly: 4000, goal: { t: 'title', tier: 'slam' }, reward: 60000, color: '#ffc83c' },
+  // équipementiers : fournissent le matériel de la marque
+  { id: 'donic', slot: 'equip', name: 'Donic', rank: 999, weekly: 80, goal: { t: 'rank', v: 120 }, reward: 1500, color: '#3cc8ff', brand: null, min: 5 },
+  { id: 'tibhar', slot: 'equip', name: 'Tibhar', rank: 110, weekly: 250, goal: { t: 'title', tier: 'challenger' }, reward: 3000, color: '#ff3d6b', brand: 'Tibhar', min: 6 },
+  { id: 'stiga', slot: 'equip', name: 'Stiga', rank: 70, weekly: 700, goal: { t: 'title', tier: 'contender' }, reward: 10000, color: '#c84dff', brand: 'Stiga', min: 8 },
+  { id: 'dhs', slot: 'equip', name: 'DHS', rank: 40, weekly: 1400, goal: { t: 'rank', v: 20 }, reward: 20000, color: '#ff4040', brand: 'DHS', min: 8 },
+  { id: 'butterfly', slot: 'equip', name: 'Butterfly', rank: 25, weekly: 2400, goal: { t: 'rank', v: 10 }, reward: 40000, color: '#ffffff', brand: 'Butterfly', min: 9 },
+  // vêtements
+  { id: 'kipsta', slot: 'cloth', name: 'Decathlon', rank: 999, weekly: 60, goal: { t: 'rank', v: 100 }, reward: 1000, color: '#3cff8a', min: 4 },
+  { id: 'lining', slot: 'cloth', name: 'Li-Ning', rank: 80, weekly: 500, goal: { t: 'title', tier: 'contender' }, reward: 6000, color: '#ff5050', min: 6 },
+  { id: 'adidas', slot: 'cloth', name: 'Adidas', rank: 30, weekly: 1500, goal: { t: 'rank', v: 16 }, reward: 20000, color: '#eaeaea', min: 8 },
+  { id: 'nike', slot: 'cloth', name: 'Nike', rank: 10, weekly: 3500, goal: { t: 'title', tier: 'slam' }, reward: 60000, color: '#ffa23d', min: 8 },
+  // partenaires personnels
+  { id: 'bnp', slot: 'perso', name: 'BNP Paribas', rank: 90, weekly: 300, goal: { t: 'rank', v: 50 }, reward: 5000, color: '#3dd68c', min: 0 },
+  { id: 'samsung', slot: 'perso', name: 'Samsung', rank: 45, weekly: 900, goal: { t: 'title', tier: 'star' }, reward: 15000, color: '#3d8bff', min: 0 },
+  { id: 'redbull', slot: 'perso', name: 'Red Bull', rank: 16, weekly: 3000, goal: { t: 'title', tier: 'slam' }, reward: 60000, color: '#ffc83c', min: 0 },
+  { id: 'hugoboss', slot: 'perso', name: 'Hugo Boss', rank: 8, weekly: 4500, goal: { t: 'rank', v: 3 }, reward: 80000, color: '#d8d8d8', min: 0 },
 ];
+export const SLOT_NAMES = { equip: 'Équipementier', cloth: 'Vêtements', perso: 'Partenaire personnel' };
+export function contracts() { career.contracts = career.contracts || { equip: null, cloth: null, perso: null }; return career.contracts; }
+export function mainSponsor() { const K = contracts(); return K.equip || K.cloth || K.perso || null; }
 export const goalText = g => g.t === 'rank' ? `Entrer dans le top ${g.v} mondial` : `Gagner un tournoi ${TIERS[g.tier].name}`;
-export function sponsorOffers() {
-  const rk = rankOf('me');
-  return SPONSORS.filter(s => rk <= s.rank && (!career.sponsor || career.sponsor.id !== s.id) && !(career.doneSponsors || []).includes(s.id));
+export function sponsorOffers(slot) {
+  const rk = rankOf('me'), K = contracts();
+  return SPONSORS.filter(s => (!slot || s.slot === slot) && rk <= s.rank && !(K[s.slot] && K[s.slot].id === s.id) && !(career.doneSponsors || []).includes(s.id));
 }
 export function signSponsor(id) {
   const s = SPONSORS.find(x => x.id === id);
   if (!s) return false;
-  career.sponsor = { since: absWeek(career.season, career.week), id: s.id, name: s.name, weekly: s.weekly, goal: s.goal, reward: s.reward, color: s.color, left: WEEKS };
+  contracts()[s.slot] = { since: absWeek(career.season, career.week), id: s.id, slot: s.slot, name: s.name, weekly: s.weekly, goal: s.goal, reward: s.reward, color: s.color, left: WEEKS, brand: s.brand || null, min: s.min || 0, evStart: career.eventsTotal || 0 };
   career.news.unshift(`✍ ${career.me.name} signe avec ${s.name}.`);
   save();
   return true;
 }
-function checkSponsorGoal() {
-  const S = career.sponsor; if (!S || S.done) return;
+function checkSponsorGoal(S) {
+  if (!S || S.done) return;
   const g = S.goal;
   const ok = g.t === 'rank' ? rankOf('me') <= g.v : career.titles.some(t => t.tier === g.tier && t.at >= S.since);
   if (ok) { S.done = true; career.money += S.reward; career.news.unshift(`🎯 Objectif ${S.name} atteint : +${S.reward.toLocaleString('fr-FR')} € de prime !`); }
 }
 function weekEconomy() {
-  const S = career.sponsor;
-  if (S) {
-    career.money += Math.round(S.weekly * sponsorMult()); checkSponsorGoal(); S.left--;
-    if (S.left <= 0) { career.news.unshift(`Fin du contrat avec ${S.name}.`); career.doneSponsors = [...(career.doneSponsors || []), S.id]; career.sponsor = null; }
+  const K = contracts();
+  for (const slot in K) {
+    const S = K[slot]; if (!S) continue;
+    career.money += Math.round(S.weekly * sponsorMult()); checkSponsorGoal(S); S.left--;
+    if (S.left <= 0) {
+      const played = (career.eventsTotal || 0) - (S.evStart || 0);
+      if (S.min && played < S.min) { const pen = Math.round(S.weekly * WEEKS * 0.25); career.money -= pen; career.news.unshift(`⚠️ ${S.name} : obligation non tenue (${played}/${S.min} tournois), pénalité de ${pen.toLocaleString('fr-FR')} €.`); }
+      else career.news.unshift(`Fin du contrat avec ${S.name}.`);
+      career.doneSponsors = [...(career.doneSponsors || []), S.id]; K[slot] = null;
+    }
   }
   const c = COACHES[career.coach];
   if (c.cost) {
@@ -678,6 +764,7 @@ function weekEconomy() {
     if (career.money >= cost) career.money -= cost;
     else { career.news.unshift(`${STAFF[role].levels[lv].name} est parti : plus assez d'argent.`); career.staff[role] = 0; }
   }
+  if (rankOf('me') > 50 && (career.me.age || 17) < 24) { career.money += 250; }
   career.energy = clamp(career.energy + (career.tour ? 18 : 40) + [0, 6, 12][(career.staff || {}).physio || 0] + 5 * ((career.center || {}).recup || 0), 0, 100);
   injuryRoll();
 }
@@ -877,7 +964,7 @@ export const STAFF = {
   physio: { name: 'Préparateur physique', desc: 'Moins de blessures, meilleure récupération', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Préparateur physique', cost: 300 }, { name: 'Préparateur de l\'équipe nationale', cost: 1200 }] },
   kine: { name: 'Kiné', desc: 'Guérison plus rapide des blessures', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Kiné', cost: 250 }, { name: 'Kiné du circuit WTT', cost: 900 }] },
   psy: { name: 'Préparateur mental', desc: 'Confiance plus stable, +mental', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Préparateur mental', cost: 200 }, { name: 'Psychologue du sport', cost: 800 }] },
-  agent: { name: 'Agent', desc: 'Sponsors mieux payés, plus de fans', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Agent', cost: 400 }, { name: 'Agent star', cost: 1500 }] },
+  agent: { name: 'Agent', desc: 'Sponsors mieux payés, plus de fans · prend une commission sur tes gains', levels: [{ name: 'Aucun', cost: 0 }, { name: 'Agent (10 %)', cost: 0 }, { name: 'Agent star (15 %)', cost: 0 }] },
 };
 export function hireStaff(role, lv) { career.staff = career.staff || {}; career.staff[role] = lv; save(); }
 export function sponsorMult() { return (1 + Math.min(1.5, (career.fans || 0) / 150000)) * [1, 1.25, 1.5][(career.staff || {}).agent || 0]; }
@@ -1114,14 +1201,14 @@ function makeQualif(ev) {
   const opp = c[Math.floor(rnd() * c.length)] || r[need].p;
   return { ev: { ...ev, kind: undefined }, tier: ev.tier, kind: 'qualif', size: 2, rounds: [[{ a: 'me', b: opp.id, w: null, sc: null }]], round: 0, done: false, out: false };
 }
-export function enterQualif(ev) { career.tour = makeQualif(ev); save(); return career.tour; }
+export function enterQualif(ev) { career.money -= travelCost(ev); career.lastRegion = regionOf(ev); sst().events = (sst().events || 0) + 1; career.eventsTotal = (career.eventsTotal || 0) + 1; career.tour = makeQualif(ev); save(); return career.tour; }
 
 function rollWildcards() {
   career.wc = {};
   const evs = weekEvents(career.season, career.week).filter(e => !e.kind && e.tier !== 'challenger' && e.tier !== 'worlds' && e.tier !== 'finals');
   for (const ev of evs) {
     if (rankOf('me') <= TIERS[ev.tier].need) continue;
-    const ch = 0.06 + Math.min(0.2, (career.fans || 0) / 500000) + (career.sponsor ? 0.04 : 0);
+    const ch = 0.06 + Math.min(0.2, (career.fans || 0) / 500000) + (mainSponsor() ? 0.04 : 0);
     if (rnd() < ch) { career.wc[ev.id] = true; career.news.unshift(`🎟️ ${career.me.name} reçoit une wild card pour le ${ev.name} !`); break; }
   }
 }
@@ -1154,7 +1241,7 @@ export function groupTable(d, gi) {
 }
 function groupProgress(d) {
   if (d.gm.some(m => (m.a === 'me' || m.b === 'me') && !m.w)) return;
-  for (const m of d.gm) if (!m.w) { const A = getP(m.a), B = getP(m.b), aw = rnd() < winProb(A, B); m.w = aw ? m.a : m.b; m.sc = simScore(aw, 3); }
+  for (const m of d.gm) if (!m.w) { const A = getP(m.a), B = getP(m.b), aw = rnd() < winProb(A, B); m.w = aw ? m.a : m.b; m.sc = simScore(aw, 7); }
   const top = d.groups.map((g, gi) => groupTable(d, gi).slice(0, 2).map(e => e.id));
   const pairs = [[top[0][0], top[1][1]], [top[2][0], top[3][1]], [top[1][0], top[0][1]], [top[3][0], top[2][1]]];
   d.rounds = [pairs.map(([a, b]) => ({ a, b, w: null, sc: null }))]; d.round = 0; d.stage = 'ko';
@@ -1271,7 +1358,7 @@ export function postsLeft() { const S = soc(); const k = absWeek(career.season, 
 
 // idées de publications selon ce qui vient de se passer
 export function postIdeas() {
-  const S = soc(), m = S.moment, me = career.me.name, sp = career.sponsor;
+  const S = soc(), m = S.moment, me = career.me.name, sp = mainSponsor();
   const I = [];
   const ev = m ? m.ev : null;
   if (m && m.type === 'title') {
@@ -1323,7 +1410,6 @@ export function publish(id) {
   notif(PLATFORMS[idea.pl].icon, `+${fansLabel(gain)} abonnés ${PLATFORMS[idea.pl].name}`);
   let money = 0;
   if (idea.deal) { idea.deal.done = true; money = idea.deal.pay; career.money += money; career.earned = (career.earned || 0) + money; notif('💰', `${idea.deal.brand} t'a versé ${money.toLocaleString('fr-FR')} € pour le post`); }
-  if (idea.sponsor && career.sponsor) { career.sponsor.bonus = (career.sponsor.bonus || 0) + 1; }
   save();
   return { likes, comments, shares, views, gain, viral, money, pl: idea.pl };
 }

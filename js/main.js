@@ -276,8 +276,8 @@ function hooks() {
     point: (w, reason, setWon, rally) => {
       const m = game.match;
       if (m.over) banner(`${game.names[m.winner]} remporte le match`, '', 2.6);
-      else if (setWon) banner(`Set ${game.names[w]}`, '', 2.5);
-      else if (game.pressure) banner(game.pressure.type === 'match' ? 'BALLE DE MATCH' : 'BALLE DE SET', game.names[game.pressure.p], 2);
+      else if (setWon) banner(`Manche ${game.names[w]}`, '', 2.5);
+      else if (game.pressure) banner(game.pressure.type === 'match' ? 'BALLE DE MATCH' : 'BALLE DE MANCHE', game.names[game.pressure.p], 2);
       const run = game.run;
       if (run.n >= 3 && !m.over) showStreak(run.p === game.myTeam ? `${run.n} points d'affilée 🔥` : `${game.names[run.p]} enchaîne : ${run.n} points`);
       const pts = document.querySelector(`#board .row[data-p="${w}"] .pts`);
@@ -289,8 +289,8 @@ function hooks() {
       const teamOf = t => game.doubles ? [t, t + 2] : [t];
       if (hype) { teamOf(w).forEach(i => R.figures[i].celebrate(true)); if (setWon || m.over) teamOf(1 - w).forEach(i => R.figures[i].celebrate(false)); }
       // voix
-      if (m.over) announcer.say(`Jeu, set et match, ${game.names[m.winner]} !`, true);
-      else if (setWon) announcer.say(`Set, ${game.names[w]}`, true);
+      if (m.over) announcer.say(`Jeu et match, ${game.names[m.winner]} !`, true);
+      else if (setWon) announcer.say(`Manche, ${game.names[w]}`, true);
       else if (reason === 'Ace !') announcer.say('Ace !', true);
       else if (ls2.sup && reason === 'Point gagnant') announcer.say('Incroyable !', true);
       else if (rally + 1 >= 12) announcer.say('Quel échange !', true);
@@ -307,7 +307,7 @@ function hooks() {
       if (!game || tuto || setup.mode === 'training') return;
       const m = game.match;
       const a = m.score[s], b = m.score[1 - s];
-      if (game.pressure) announcer.say(`${a}, ${b}. ${game.pressure.type === 'match' ? 'Balle de match' : 'Balle de set'}`);
+      if (game.pressure) announcer.say(`${a}, ${b}. ${game.pressure.type === 'match' ? 'Balle de match' : 'Balle de manche'}`);
       else if (a === b && a >= 10) announcer.say('Égalité');
       else if (a + b > 0) announcer.say(`${a}, ${b}`);
 
@@ -524,7 +524,7 @@ function showEnd(m) {
   const me = game.myTeam, op = 1 - me;
   const win = m.winner === me;
   $('#end-title').textContent = setup.mode !== 'online' ? (win ? 'Victoire !' : 'Défaite…') : (win ? 'Tu as gagné !' : `${game.names[m.winner]} gagne`);
-  $('#end-sets').innerHTML = m.history.map((h, i) => `Set ${i + 1} : <b>${h[me]}</b> – <b>${h[op]}</b>`).join('<br>');
+  $('#end-sets').innerHTML = m.history.map((h, i) => `Manche ${i + 1} : <b>${h[me]}</b> – <b>${h[op]}</b>`).join('<br>');
   $('#end-status').textContent = '';
   const sum = game.summary();
   const setsWon = m.sets[me], setsLost = m.sets[op];
@@ -695,8 +695,8 @@ function showVS() {
     box.querySelector('.r').innerHTML = label;
   };
   side('l', me); side('r', op);
-  if (setup.mode === 'career') el.querySelector('.vsf').textContent = `${C.career.tour.ev.name.toUpperCase()} · ${setup.round.toUpperCase()} · ${game.bestOf === 1 ? '1 SET' : 'AU MEILLEUR DES ' + game.bestOf + ' SETS'}`;
-  else el.querySelector('.vsf').textContent = (game.doubles ? 'DOUBLE · ' : setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
+  if (setup.mode === 'career') el.querySelector('.vsf').textContent = `${C.career.tour.ev.name.toUpperCase()} · ${setup.round.toUpperCase()} · ${game.bestOf === 1 ? '1 MANCHE' : 'AU MEILLEUR DES ' + game.bestOf + ' MANCHES'}`;
+  else el.querySelector('.vsf').textContent = (game.doubles ? 'DOUBLE · ' : setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 MANCHE' : `AU MEILLEUR DES ${game.bestOf} MANCHES`);
   el.classList.remove('hidden');
   el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
   el.querySelectorAll('*').forEach(e => { e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; });
@@ -715,7 +715,7 @@ function updateHUD(dt) {
     row.querySelector('.srv').classList.toggle('on', srv === p);
     row.classList.toggle('serving', srv === p);
   });
-  $('#setinfo').textContent = `SET ${Math.min(m.setIdx + 1, game.bestOf)}`;
+  $('#setinfo').textContent = `MANCHE ${Math.min(m.setIdx + 1, game.bestOf)}`;
   $('#ping').textContent = net && setup.mode === 'online' ? `Ping ${Math.round(net.rtt)} ms` : '';
   if ((fbT -= dt) <= 0) $('#feedback').classList.remove('show');
   if ((banT -= dt) <= 0) $('#banner').classList.remove('show');
@@ -1039,7 +1039,7 @@ function renderCareer() {
   $('#car-head').innerHTML = `${C.flag(me.country, 54, 36)}<div><div class="big">${esc(me.name)}</div>
     <div class="meta">${C.COUNTRIES[me.country].name.toUpperCase()} · ${C.STYLE_NAMES[me.style].toUpperCase()} · ${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · NIVEAU ${C.overall(me.stats)} · ${me.age || 17} ANS · ${C.DIFFS[c.diff ?? 1].name.toUpperCase()}</div>
     <div class="meta" style="color:#c84dff">${C.peakLabel(me.age || 17).toUpperCase()}</div>
-    <div class="meta">SAISON ${c.season} · SEMAINE ${c.week} / ${C.WEEKS} · ${C.rankPoints(me)} PTS</div>
+    <div class="meta">${C.weekDate(c.season, c.week).label.toUpperCase()} · SAISON ${c.season} · SEMAINE ${c.week}/${C.WEEKS} · ${C.rankPoints(me)} PTS</div>
     ${moneyLine()}</div>
     <div class="rk"><b>${rk}e</b><span class="meta">CLASSEMENT MONDIAL</span></div>`;
   // semaine
@@ -1055,7 +1055,7 @@ function renderCareer() {
       const wc = (c.wc || {})[ev.id];
       const info = wc ? `🎟️ Wild card ! ${T.size} joueurs · ${T.pts[0]} pts au vainqueur` : ev.kind === 'exhib' ? `Cachet d'environ ${eur(3000 + Math.min(40000, (c.fans || 0) * 0.08))} · contre une star du top 20 · sans points` : ev.kind === 'mixed' ? `Double mixte · 8 paires${c.mpartner ? ' avec ' + esc(C.getP(c.mpartner).name) : ''}` : ev.tier === 'finals' ? `Les 16 meilleurs de la saison · ${T.pts[0]} pts au vainqueur` : ev.kind === 'double' ? `Double · 8 paires · ${Math.round(T.pts[0] * 0.6)} pts double au vainqueur` : ev.kind === 'team' ? `Avec ${C.COUNTRIES[c.me.country].name} · 8 nations · 25 000 € aux champions` : ev.kind === 'olympics' ? 'Médailles d\'or, d\'argent et de bronze · 2 joueurs max par pays' : `${T.size} joueurs · ${T.pts[0]} pts au vainqueur`;
       html += `<button class="mbtn evcard ${lock ? 'locked' : ''} ${ev.kind === 'olympics' || ev.kind === 'team' ? 'gold' : ''}" data-act="enter" data-ev="${ev.id}"><span><b>${esc(ev.name)}</b>
-        <small>${lock || info}</small></span>${ev.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ev.kind === 'mixed' ? '<span class="tier" style="background:#ff9ad8">MIXTE</span>' : tierTag(ev.tier)}</button>`;
+        <small>${lock || info}${!lock && ev.kind !== 'exhib' ? ` · ✈️ ${eur(C.travelCost(ev))}` : ''}</small></span>${ev.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ev.kind === 'mixed' ? '<span class="tier" style="background:#ff9ad8">MIXTE</span>' : tierTag(ev.tier)}</button>`;
       if (lock && C.qualifOpen(ev)) html += `<button class="mbtn small qualbtn" data-act="qualif" data-ev="${ev.id}"><span><b>↳ Passer par les qualifications</b><small>1 match à gagner pour entrer dans le tableau du ${esc(ev.name)}</small></span></button>`;
     }
     html += `<button class="mbtn ghost" data-act="rest"><span><b>Se reposer</b><small>Passer la semaine</small></span></button>`;
@@ -1143,13 +1143,13 @@ function renderTour() {
   let side = '';
   if (m) {
     const o = C.myOpponent(), bronze = m === d.bronze, sets = d.kind === 'exhib' || d.kind === 'qualif' ? Math.min(3, C.setsFor(d.tier, 4)) : C.setsFor(d.tier, bronze || d.stage === 'groups' ? 4 : d.rounds[d.round].length);
-    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${roundLabel(d, m)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}${d.kind === 'double' ? ' · en double' : ''}</small></span></button>
+    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${roundLabel(d, m)} · ${sets === 1 ? '1 manche' : 'au meilleur des ' + sets + ' manches'}${d.kind === 'double' ? ' · en double' : ''}</small></span></button>
       <button class="mbtn" data-act="sim"><span><b>Simuler le match</b><small>Résultat calculé selon ton niveau, ta forme et ta confiance</small></span></button>`;
   } else {
     const r = d.result || {};
     side = r.medal ? `<div class="champ">${medalSVG(r.medal, 90)}<b>Médaille ${C.medalTxt(r.medal)}</b>${esc(d.ev.name)}<br>+${eur(r.prize || 0)}</div>`
       : r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion${d.kind === 'team' ? 's' : ''} !</b>${esc(d.ev.name)}<br>${d.kind === 'team' || d.kind === 'olympics' ? '' : `+${r.pts} points · `}+${eur(r.prize || 0)}</div>`
-      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>${d.kind === 'team' || d.kind === 'olympics' ? 'Pas de points de classement sur cette épreuve.' : `+${r.pts || 0} points ${d.kind === 'double' ? 'au classement double' : 'au classement'} · +${eur(r.prize || 0)}`}</div>`;
+      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>${d.kind === 'team' || d.kind === 'olympics' ? 'Pas de points de classement sur cette épreuve.' : `+${r.pts || 0} points ${d.kind === 'double' ? 'au classement double' : 'au classement'} · +${eur(r.prize || 0)} net`}${r.gross ? `<div class="row2" style="margin-top:6px">PRIZE MONEY ${eur(r.gross)} · AGENT −${eur(r.comm)} · IMPÔTS −${eur(r.tax)}</div>` : ''}</div>`;
     side += `<button class="mbtn accent" data-act="next"><span><b>Semaine suivante</b><small>Les autres tournois sont simulés</small></span></button>`;
   }
   $('#tour-next').innerHTML = side;
@@ -1166,6 +1166,8 @@ function renderRanking() {
     <span>${C.STYLE_NAMES[e.p.style]}</span><span>niv. ${Math.round(C.rating(e.p))}</span><b>${C.rankPoints(e.p)}</b></div>`;
   let html = r.slice(0, 30).map(row).join('');
   if (meR > 30) html += `<div class="rk-gap">···</div>` + r.slice(Math.max(30, meR - 4), meR + 3).map(row).join('');
+  const cr = C.countedResults(C.career.me);
+  html += `<div class="infobox" style="margin-top:10px">📊 Classement ITTF : seuls tes <b>8 meilleurs résultats</b> de l'année comptent. ${cr.length ? 'Tes résultats comptés : ' + cr.map(e => `<b>${e.p}</b>`).join(' · ') : 'Aucun résultat pour l\'instant.'}</div>`;
   const dr = C.dRankOf('me');
   html += `<div class="infobox" style="margin-top:10px">Classement double : <b>${dr}e</b> (${C.dRankPoints(C.career.me)} pts)${C.career.partner ? ` · partenaire ${esc(C.getP(C.career.partner).name)}` : ''}</div>`;
   setTimeout(() => document.querySelectorAll('#rank-list [data-pid]').forEach(r => r.addEventListener('click', () => { if (r.dataset.pid === 'me') return; pcardId = r.dataset.pid; sfx.ui(); show('scr-pcard'); })), 0);
@@ -1230,7 +1232,7 @@ function startCareerMatch() {
   };
   R.figures[0].setColor(C.outfitColor() || NEONS[c.me.neon] || NEONS[0]); R.figures[0].setAccessory(c.me.acc || 0);
   R.figures[0].celebType = c.celeb || 0;
-  R.figures[0].setBadge(c.sponsor ? c.sponsor.name : null, c.sponsor ? c.sponsor.color : null);
+  { const ms = C.mainSponsor(); R.figures[0].setBadge(ms ? ms.name : null, ms ? ms.color : null); }
   if (d.kind !== 'double' && d.kind !== 'mixed') { R.figures[1].setColor(o.rival || o.enemy ? 0xff2a40 : o.sig ? 0xffb020 : 0xff3d6b); R.figures[1].setAccessory(o.sig ? 1 : o.rival ? 2 : 0); }
 }
 function careerEnd(win, a, b) {
@@ -1278,7 +1280,7 @@ function moneyLine() {
   const ccol = cf >= 80 ? '#ff9a3c' : cf >= 60 ? '#6ee7a8' : cf >= 40 ? '#ddd5f2' : '#ff6b7d';
   const col = e >= 75 ? '#6ee7a8' : e >= 50 ? '#ffc83c' : e >= 25 ? '#ff9a3c' : '#ff3d5a';
   return `<div class="mline"><span>💰 <b>${eur(c.money)}</b></span><span>⚡ Forme <span class="ebar"><i style="width:${e}%;background:${col}"></i></span> <b style="color:${col}">${C.formLabel(e)}</b></span><span>${cf >= 80 ? '🔥' : '🧠'} Confiance <b style="color:${ccol}">${C.confLabel(cf)}</b></span>
-    ${c.coach ? `<span>🧢 ${C.COACHES[c.coach].name}</span>` : ''}${c.sponsor ? `<span style="color:${c.sponsor.color}">★ ${esc(c.sponsor.name)}</span>` : ''}<span>👥 <b>${fansN(c.fans)}</b> fans</span>${c.injury ? `<span style="color:#ff6b7d">🩹 Blessé (${c.injury.weeks} sem.)</span>` : ''}</div>`;
+    ${c.coach ? `<span>🧢 ${C.COACHES[c.coach].name}</span>` : ''}${C.mainSponsor() ? `<span style="color:${C.mainSponsor().color}">★ ${esc(C.mainSponsor().name)}</span>` : ''}<span>👥 <b>${fansN(c.fans)}</b> fans</span>${c.injury ? `<span style="color:#ff6b7d">🩹 Blessé (${c.injury.weeks} sem.)</span>` : ''}</div>`;
 }
 function renderMoney() { document.querySelectorAll('.cmoney').forEach(el => { el.innerHTML = moneyLine(); }); }
 function myMatchStats() {
@@ -1366,14 +1368,18 @@ function renderTeam() {
   renderStaff();
   $('#team-coach').innerHTML = C.COACHES.map((co, i) => `<button class="mbtn ${i === c.coach ? 'accent' : ''}" data-coach="${i}"><span><b>${co.name}${i === c.coach ? ' ✓' : ''}</b>
     <small>${co.desc}${co.cost ? ' · ' + eur(co.cost) + ' / semaine' : ''}</small></span></button>`).join('');
-  const S = c.sponsor;
-  let h = S ? `<div class="scard" style="border-left-color:${S.color}"><div class="who" style="color:${S.color}">${esc(S.name)}</div>
-    <div class="row2">${eur(S.weekly)} / SEMAINE · ${S.left} SEMAINES RESTANTES</div>
-    <ul><li>Objectif : <b>${C.goalText(S.goal)}</b> ${S.done ? '✅' : ''}</li><li>Prime : <b>${eur(S.reward)}</b></li></ul></div>` : '<div class="infobox">Pas de sponsor. Signe un contrat pour toucher de l\'argent chaque semaine.</div>';
-  const offers = C.sponsorOffers();
-  if (offers.length) h += `<h2 style="margin-top:14px">Offres${S ? ' (remplace le contrat actuel)' : ''}</h2>` + offers.slice(-3).reverse().map(o =>
-    `<button class="mbtn" data-sp="${o.id}"><span><b style="color:${o.color}">${esc(o.name)}</b><small>${eur(o.weekly)} / semaine · objectif : ${C.goalText(o.goal)} → ${eur(o.reward)}</small></span></button>`).join('');
-  h += `<div style="font-size:12px;color:#a99cc9;margin-top:6px">Les grosses marques arrivent quand tu montes au classement.</div>`;
+  const K = C.contracts();
+  let h = '';
+  for (const slot of ['equip', 'cloth', 'perso']) {
+    const S = K[slot];
+    h += `<h3 class="slot">${C.SLOT_NAMES[slot]}</h3>`;
+    h += S ? `<div class="scard" style="border-left-color:${S.color};padding:10px 14px"><div class="who" style="color:${S.color};font-size:18px">${esc(S.name)}</div>
+      <div class="row2">${eur(S.weekly)} / SEMAINE · ${S.left} SEMAINES RESTANTES</div>
+      <ul><li>Objectif : <b>${C.goalText(S.goal)}</b> ${S.done ? '✅' : ''} → prime ${eur(S.reward)}</li>${S.min ? `<li>Obligation : jouer ${S.min} tournois pendant le contrat (${(c.eventsTotal || 0) - (S.evStart || 0)}/${S.min})</li>` : ''}${S.brand ? `<li>Matériel ${S.brand} fourni gratuitement</li>` : ''}</ul></div>` : '<div class="infobox">Aucun contrat.</div>';
+    const offers = C.sponsorOffers(slot).slice(-2).reverse();
+    h += offers.map(o => `<button class="mbtn small" data-sp="${o.id}"><span><b style="color:${o.color}">${esc(o.name)}${S ? ' (remplace)' : ''}</b><small>${eur(o.weekly)} / sem. · ${C.goalText(o.goal)} → ${eur(o.reward)}${o.min ? ' · ' + o.min + ' tournois min.' : ''}${o.brand ? ' · matériel offert' : ''}</small></span></button>`).join('');
+  }
+  h += `<div style="font-size:12px;color:#a99cc9;margin-top:6px">Les grosses marques arrivent quand tu montes au classement. Ne pas tenir une obligation coûte une pénalité.</div>`;
   $('#team-sponsor').innerHTML = h;
   document.querySelectorAll('#team-coach [data-coach]').forEach(b => b.addEventListener('click', () => { sfx.ui(); C.hireCoach(+b.dataset.coach); C.save(); renderTeam(); refreshFocus(); }));
   document.querySelectorAll('#team-sponsor [data-sp]').forEach(b => b.addEventListener('click', () => { sfx.unlock(); C.signSponsor(b.dataset.sp); renderTeam(); focusIdx = 0; refreshFocus(); }));
@@ -1390,9 +1396,9 @@ function renderShop() {
   document.querySelectorAll('#center [data-center]').forEach(b => b.addEventListener('click', () => { if (C.buyCenter(b.dataset.center)) { sfx.unlock(); toast('🏗️', 'CENTRE', C.CENTER[b.dataset.center].name, 'Amélioré !'); const k = focusIdx; renderShop(); focusIdx = k; refreshFocus(); } }));
   const c = C.career, bonus = b => Object.entries(b).map(([k, v]) => `+${v} ${C.STAT_NAMES[k].toLowerCase()}`).join(', ') || 'aucun bonus';
   $('#shop').innerHTML = Object.entries(C.GEAR).map(([slot, G]) => `<h2>${G.name}</h2><div class="shoprow">` + G.items.map((it, i) => {
-    const own = i <= (c.gear[slot] || 0), eq = i === (c.gear[slot] || 0), can = !own && c.money >= it.price;
+    const own = i <= (c.gear[slot] || 0), eq = i === (c.gear[slot] || 0), can = !own && c.money >= C.gearPrice(it);
     return `<button class="mbtn ${eq ? 'accent' : can ? '' : own ? '' : 'locked'}" data-slot="${slot}" data-i="${i}"><span><b>${it.name}${eq ? ' ✓' : ''}</b>
-      <small>${bonus(it.b)} · ${eq ? 'équipé' : own ? 'dépassé' : eur(it.price)}</small></span></button>`;
+      <small>${bonus(it.b)} · ${eq ? 'équipé' : own ? 'dépassé' : C.gearPrice(it) === 0 && it.price ? 'offert par ton équipementier' : eur(C.gearPrice(it))}</small></span></button>`;
   }).join('') + '</div>').join('');
   document.querySelectorAll('#shop [data-slot]').forEach(b => b.addEventListener('click', () => {
     if (C.buyGear(b.dataset.slot, +b.dataset.i)) { sfx.unlock(); toast('🛒', 'ACHAT', C.GEAR[b.dataset.slot].items[+b.dataset.i].name, 'Équipé automatiquement'); const k = focusIdx; renderShop(); focusIdx = k; refreshFocus(); }
@@ -1420,7 +1426,7 @@ function ceremony(d) {
   el.querySelector('.cer-k').textContent = T.name.toUpperCase() + ' · SAISON ' + C.career.season;
   const md = d.result && d.result.medal;
   el.querySelector('.cer-t').textContent = md ? `Médaille ${C.medalTxt(md)} !` : d.tier === 'worlds' ? 'Champion du monde !' : d.kind === 'team' ? 'Champions du monde !' : d.kind === 'olympics' ? 'Champion olympique !' : 'Champion !';
-  el.querySelector('.cer-s').textContent = d.kind === 'team' ? `${C.COUNTRIES[C.career.me.country].name} remporte la ${d.ev.name}` : md ? `${C.career.me.name} aux ${d.ev.name}` : `${C.career.me.name} remporte le ${d.ev.name}`;
+  el.querySelector('.cer-s').textContent = d.kind === 'team' ? `${C.COUNTRIES[C.career.me.country].name} remporte les ${d.ev.name}` : md ? `${C.career.me.name} aux ${d.ev.name}` : `${C.career.me.name} remporte le ${d.ev.name}`;
   el.style.setProperty('--tc', md ? { or: '#ffc83c', argent: '#d8e0ea', bronze: '#d08a4a' }[md] : T.color);
   el.classList.remove('hidden');
   const pod = !!game && !$('#end').classList.contains('hidden');
@@ -1488,7 +1494,7 @@ function simCareerMatch() {
   if (r.o.rival) c.news.unshift(r.won ? `⚔ ${c.me.name} bat son rival ${r.o.name} !` : `⚔ ${r.o.name} prend le dessus sur ${c.me.name}.`);
   C.save();
   r.won ? sfx.crowd(2) : sfx.ui();
-  toast(r.won ? '✅' : '❌', `MATCH SIMULÉ · ${roundName.toUpperCase()}`, `${r.won ? 'Victoire' : 'Défaite'} ${r.sets[0]}–${r.sets[1]}`, `contre ${r.o.name}`);
+  toast(r.won ? '✅' : '❌', `MATCH SIMULÉ · ${roundName.toUpperCase()}`, `${r.won ? 'Victoire' : 'Défaite'} ${r.sets[0]}–${r.sets[1]}`, `${C.gameScores(r.sets).map(g => g.join('-')).join(' · ')} · ${r.o.name}`);
   if (d.result && (d.result.champion || d.result.medal)) setTimeout(() => ceremony(d), 500);
   show('scr-tour');
   setTimeout(flushPending, 1200);
@@ -1659,13 +1665,13 @@ function coachTipFor(id) {
 }
 function renderCal() {
   const c = C.career;
-  $('#cal-title').textContent = `Calendrier · saison ${c.season}`;
+  $('#cal-title').textContent = `Calendrier ${C.yearOf(c.season)} · saison ${c.season}`;
   let h = '<div class="calg">';
   for (let w = 1; w <= C.WEEKS; w++) {
     const evs = C.weekEvents(c.season, w).filter(e => !e.kind || e.kind === 'team' || e.kind === 'olympics');
     const res = c.results.filter(r => r.season === c.season && r.week === w);
     const tgt = c.prep && evs.some(e => e.id === c.prep.ev);
-    h += `<div class="calw ${w === c.week ? 'now' : w < c.week ? 'past' : ''}"><small>SEM. ${w}${tgt ? ' · 🎯' : ''}</small>` + evs.map(e => {
+    h += `<div class="calw ${w === c.week ? 'now' : w < c.week ? 'past' : ''}"><small>${C.weekDate(c.season, w).short.toUpperCase()}${tgt ? ' · 🎯' : ''}</small>` + evs.map(e => {
       const lock = w >= c.week ? C.lockReason(e) && !C.qualifOpen(e) : false;
       return `<div class="cev" style="border-color:${C.TIERS[e.tier].color}"><b>${esc(e.name.replace('WTT ', ''))}</b><i style="color:${C.TIERS[e.tier].color}">${C.TIERS[e.tier].name}${lock ? ' · 🔒' : w >= c.week && C.qualifOpen(e) ? ' · qualifs' : ''}</i></div>`;
     }).join('') + res.map(r => `<div class="cres">${r.reached === 'Vainqueur' ? '🏆' : '·'} ${esc(r.reached)}</div>`).join('') + '</div>';
@@ -1707,7 +1713,7 @@ function renderCLocker() {
     return `<button class="mbtn small ${cur === o.id ? 'accent' : own ? '' : 'locked'}" data-outfit="${o.id}"><span><b><span class="sw" style="background:${hex(o.color)};color:${hex(o.color)}"></span>${o.name}</b><small>${own ? (cur === o.id ? 'Portée' : 'Débloquée') : '🔒 ' + o.cond}</small></span></button>`;
   }).join('');
   $('#celebs').innerHTML = C.CELEBS.map((x, i) => `<button class="mbtn small ${(c.celeb || 0) === i ? 'accent' : C.celebUnlocked(i) ? '' : 'locked'}" data-celeb="${i}"><span><b>${x.name}</b><small>${C.celebUnlocked(i) ? ((c.celeb || 0) === i ? 'Choisie' : 'Disponible') : '🔒 ' + x.cond}</small></span></button>`).join('');
-  $('#cl-sponsor').innerHTML = c.sponsor ? `Le logo <b style="color:${c.sponsor.color}">${esc(c.sponsor.name)}</b> est affiché sur ton joueur en match.` : 'Signe un sponsor pour afficher son logo sur ton joueur.';
+  $('#cl-sponsor').innerHTML = C.mainSponsor() ? `Le logo <b style="color:${C.mainSponsor().color}">${esc(C.mainSponsor().name)}</b> est affiché sur ton joueur en match.` : 'Signe un sponsor pour afficher son logo sur ton joueur.';
   document.querySelectorAll('#outfits [data-outfit]').forEach(b => b.addEventListener('click', () => { const id = b.dataset.outfit; if (id && !(c.outfits || []).includes(id)) return; C.setOutfit(id || null); sfx.ui(); const k = focusIdx; renderCLocker(); focusIdx = k; refreshFocus(); }));
   document.querySelectorAll('#celebs [data-celeb]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.celeb; if (!C.celebUnlocked(i)) return; C.setCeleb(i); sfx.ui(); const k = focusIdx; renderCLocker(); focusIdx = k; refreshFocus(); }));
 }

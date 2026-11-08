@@ -75,7 +75,7 @@ class PaddleRig {
   }
 
   // repère local joueur (x = sa droite, z = vers le filet) -> monde
-  toWorld(pl, v) { return V(pl.x + pl.side * v.x, v.y, pl.z - pl.side * v.z); }
+  toWorld(pl, v) { return V(pl.x + pl.side * (pl.hand || 1) * v.x, v.y, pl.z - pl.side * v.z); }
 
   setColor(hex, metal) {
     const m = this.obj.userData.front;
@@ -95,7 +95,7 @@ class PaddleRig {
     const p = this.toWorld(pl, this.hand);
     // axe du manche : vers le haut et vers l'extérieur
     const upL = V(this.out * 0.75, 0.55, 0.12).normalize();
-    const up = V(pl.side * upL.x, upL.y, -pl.side * upL.z).normalize();
+    const up = V(pl.side * (pl.hand || 1) * upL.x, upL.y, -pl.side * upL.z).normalize();
     const fwdL = V(0, 0, 1).applyAxisAngle(V(1, 0, 0), -this.tilt);
     const fwd = V(pl.side * fwdL.x, fwdL.y, -pl.side * fwdL.z);
     const n = fwd.addScaledVector(up, -fwd.dot(up)).normalize();
@@ -108,7 +108,7 @@ class PaddleRig {
     const pr = game.pred[i];
     const cy = THREE.MathUtils.clamp(pr && pr.y ? pr.y : 0.98, 0.8, 1.5);
     const ready = { hand: V(0.32, 0.98, 0.42), tilt: 0.25, out: 0.55 };
-    const ballSide = (game.ball.p.x - pl.x) * pl.side >= -0.05;
+    const ballSide = (game.ball.p.x - pl.x) * pl.side * (pl.hand || 1) >= -0.05;
     const poses = (fore, type) => {
       const dy = type === 'top' ? -0.16 : type === 'coupe' ? 0.14 : type === 'lob' ? -0.22 : 0;
       const tilt = type === 'top' ? 0.55 : type === 'coupe' ? -0.8 : type === 'lob' ? -0.2 : 0.15;
@@ -136,7 +136,7 @@ class PaddleRig {
     }
     // garde : suit la balle latéralement quand elle arrive
     if (pr && pr.x !== undefined) {
-      const fore = (pr.x - pl.x) * pl.side >= -0.15;
+      const fore = (pr.x - pl.x) * pl.side * (pl.hand || 1) >= -0.15;
       return { hand: V(fore ? 0.4 : 0.0, THREE.MathUtils.clamp(cy, 0.85, 1.25), 0.42), tilt: 0.25, out: fore ? 0.6 : -0.45 };
     }
     return ready;
@@ -180,6 +180,20 @@ class StickFigure {
     ring.castShadow = true;
     this.head.add(ring, disc);
     this.g.add(this.head);
+    // accessoires
+    this.acc = {
+      band: new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.03), this.mat),
+      cap: new THREE.Group(),
+      wristL: new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 20), this.mat),
+      wristR: new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 20), this.mat),
+    };
+    this.acc.band.position.set(0, 0.035, 0.01); this.head.add(this.acc.band);
+    const dome = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 10, 32, Math.PI), this.mat);
+    dome.position.y = 0.025; dome.scale.set(1.08, 0.9, 1);
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.022, 0.03), this.mat); visor.position.set(0.09, 0.03, 0.02);
+    this.acc.cap.add(dome, visor); this.head.add(this.acc.cap);
+    this.g.add(this.acc.wristL, this.acc.wristR);
+    this.setAccessory(0);
     scene.add(this.g);
     this.walk = 0; this.lx = null; this.mood = 0; this.moodT = 0; this.jump = 0;
     this.v = {}; for (const k of ['pelvis', 'neck', 'headC', 'shL', 'shR', 'haL', 'haR', 'elL', 'elR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR']) this.v[k] = new THREE.Vector3();
@@ -188,6 +202,11 @@ class StickFigure {
     const col = new THREE.Color(c);
     this.mat.color.copy(col).lerp(new THREE.Color(0xffffff), 0.22).multiplyScalar(1.5);
     this.halo.color.copy(col);
+  }
+  setAccessory(a) {
+    this.accId = a;
+    this.acc.band.visible = a === 1; this.acc.cap.visible = a === 2;
+    this.acc.wristL.visible = this.acc.wristR.visible = a === 3;
   }
   celebrate(win) { this.mood = win ? 1 : -1; this.moodT = 1.6; }
 
@@ -209,7 +228,7 @@ class StickFigure {
 
   update(dt, pl, game, i, paddleObj, camera) {
     const s = pl.side, V0 = this.v;
-    const f = new THREE.Vector3(0, 0, -s), r = new THREE.Vector3(s, 0, 0);
+    const f = new THREE.Vector3(0, 0, -s), r = new THREE.Vector3(s * (pl.hand || 1), 0, 0);
     const root = new THREE.Vector3(pl.x, 0, pl.z);
     // déplacement → pas
     if (this.lx === null) this.lx = pl.x;
@@ -268,6 +287,10 @@ class StickFigure {
     this.place(S.thR, V0.hiR, V0.knR); this.place(S.shR, V0.knR, V0.ftR);
     for (const k of Object.keys(J)) J[k].position.copy(V0[{ shL: 'shL', shR: 'shR', elL: 'elL', elR: 'elR', haL: 'haL', haR: 'haR', hiL: 'hiL', hiR: 'hiR', knL: 'knL', knR: 'knR', ftL: 'ftL', ftR: 'ftR', pelvis: 'pelvis', neck: 'neck' }[k]]);
     this.head.position.copy(V0.headC);
+    if (this.accId === 3) {
+      this.acc.wristL.position.copy(V0.elL).lerp(V0.haL, 0.85); this.acc.wristL.lookAt(V0.haL);
+      this.acc.wristR.position.copy(V0.elR).lerp(V0.haR, 0.85); this.acc.wristR.lookAt(V0.haR);
+    }
     this.head.lookAt(camera.position);
   }
 }

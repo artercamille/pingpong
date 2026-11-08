@@ -243,3 +243,68 @@
 #pause .mpanel { max-height: 92vh; overflow: auto; }
 #pause-opts .opt { height: 46px; margin-bottom: 6px; }
 #pause-opts .opt .ov { font-size: 15px; }
+
+/* ---------- carrière ---------- */
+.mside:has(.screen.xwide:not(.hidden)) { width: min(1180px, 94vw); }
+.menu:has(.screen.xwide:not(.hidden)) #daily { display: none; }
+.menu:has(.screen.xwide:not(.hidden)) { background: linear-gradient(90deg, rgba(6,4,12,.94), rgba(6,4,12,.86) 70%, rgba(6,4,12,.6)); }
+.mbtn.gold { background: linear-gradient(90deg, rgba(160,110,20,.9), rgba(255,200,60,.35)); }
+.mbtn.gold:hover, .mbtn.gold.focus { background: linear-gradient(90deg, #d9a830, rgba(255,200,60,.6)); }
+.flag { display: inline-block; vertical-align: middle; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,.25); margin-right: 6px; flex: 0 0 auto; }
+.cnew { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+#car-preview { display: flex; align-items: center; justify-content: center; min-height: 300px; font-size: 13px; color: #a99cc9; }
+.cgrid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 26px; margin-bottom: 14px; }
+.tgrid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; margin-bottom: 12px; }
+.crow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.crow .mbtn { margin: 0; }
+#car-head, #tour-head { display: flex; align-items: center; gap: 18px; padding: 14px 18px; background: rgba(28,22,44,.85); border-left: 4px solid #ffc83c; margin-bottom: 18px; }
+#car-head .big, #tour-head .big { font-size: 28px; font-weight: 900; font-style: italic; text-transform: uppercase; }
+#car-head .meta, #tour-head .meta { font-size: 13px; color: #a99cc9; font-weight: 700; letter-spacing: 1px; }
+#car-head .rk { margin-left: auto; text-align: right; }
+#car-head .rk b { font-size: 40px; font-weight: 900; font-style: italic; color: #ffc83c; display: block; line-height: 1; }
+.evcard { display: flex !important; justify-content: space-between; }
+.evcard .tier { font-size: 10px; letter-spacing: 3px; font-weight: 900; padding: 3px 8px; border-radius: 3px; color: #111; }
+.evcard.locked { opacity: .5; }
+.statrow { display: grid; grid-template-columns: 110px 1fr 34px 40px; gap: 10px; align-items: center; margin-bottom: 6px; font-size: 13px; font-weight: 800; }
+.statrow .xbar { height: 8px; }
+.statrow .xbar div { background: linear-gradient(90deg, #7a3fd6, #c84dff); }
+.statrow b { text-align: right; font-size: 15px; }
+.statrow .mbtn { height: 30px; margin: 0; padding: 0; justify-content: center; clip-path: none; }
+.statrow .mbtn b { font-size: 16px; }
+#car-up { color: #ffc83c; font-size: 12px; letter-spacing: 1px; }
+#car-news div { font-size: 13px; color: #ddd5f2; padding: 6px 10px; background: rgba(28,22,44,.6); margin-bottom: 4px; }
+.rivalbox { padding: 12px 14px; background: rgba(60,10,20,.55); border-left: 4px solid #ff3d5a; font-size: 13px; }
+.rivalbox b { font-size: 16px; text-transform: uppercase; font-style: italic; }
+#bracket { display: flex; gap: 10px; overflow-x: auto; max-height: 58vh; overflow-y: auto; padding-bottom: 6px; }
+.bcol { display: flex; flex-direction: column; justify-content: space-around; min-width: 150px; gap: 4px; }
+.bcol h4 { margin: 0 0 4px; font-size: 10px; letter-spacing: 2px; color: #a99cc9; text-align: center; }
+.bm { background: rgba(28,22,44,.85); font-size: 11px; font-weight: 700; }
+.bm div { display: flex; align-items: center; justify-content: space-between; padding: 3px 6px; white-space: nowrap; overflow: hidden; }
+.bm div span.n { overflow: hidden; text-overflow: ellipsis; max-width: 110px; display: flex; align-items: center; }
+.bm div.w { color: #fff; } .bm div.l { color: #6f6590; }
+.bm.me { box-shadow: 0 0 0 1px #ffc83c; }
+.bm div.me { color: #ffc83c; }
+.scard { padding: 14px 16px; background: rgba(28,22,44,.9); border-left: 4px solid #ff3d6b; margin-bottom: 10px; }
+.scard .who { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; display: flex; align-items: center; }
+.scard .row2 { font-size: 12px; color: #a99cc9; margin: 4px 0 10px; font-weight: 700; letter-spacing: 1px; }
+.scard ul { margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.6; }
+.scard .sig { margin-top: 8px; padding: 6px 10px; background: rgba(255,200,60,.12); color: #ffc83c; font-size: 12px; font-weight: 800; }
+.scard .rv { margin-top: 8px; color: #ff6b7d; font-weight: 900; letter-spacing: 2px; font-size: 12px; }
+.champ { text-align: center; padding: 24px; background: radial-gradient(circle, rgba(255,200,60,.25), rgba(28,22,44,.9)); }
+.champ .cup { font-size: 64px; }
+.champ b { display: block; font-size: 26px; font-weight: 900; font-style: italic; color: #ffc83c; text-transform: uppercase; }
+#rank-list, #palm { max-height: 60vh; overflow-y: auto; margin-bottom: 12px; }
+.rk-row { display: grid; grid-template-columns: 50px 1fr 120px 70px 60px; gap: 10px; align-items: center; padding: 6px 12px; font-size: 13px; font-weight: 700; background: rgba(28,22,44,.6); margin-bottom: 3px; }
+.rk-row.me { background: rgba(255,200,60,.18); color: #ffc83c; }
+.rk-row.rv { background: rgba(255,61,90,.15); }
+.rk-row .n { display: flex; align-items: center; }
+.rk-gap { text-align: center; color: #6f6590; font-size: 12px; padding: 4px; }
+.palm-t { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.palm-t div { padding: 10px; background: rgba(255,200,60,.12); border-left: 3px solid #ffc83c; font-size: 12px; font-weight: 800; }
+.endcareer { padding: 12px 14px; background: rgba(255,200,60,.12); border-left: 4px solid #ffc83c; font-size: 15px; margin-bottom: 10px; }
+.menu:has(.screen.xwide:not(.hidden)) #pcard { display: none; }
+.mside:has(.screen.xwide:not(.hidden)) { overflow-y: auto; }
+.tier { font-size: 10px; letter-spacing: 3px; font-weight: 900; padding: 3px 8px; border-radius: 3px; color: #111; }
+.bcol { justify-content: flex-start; }
+.bcol .bms { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 4px; }
+.mbtn.locked { opacity: .45; }

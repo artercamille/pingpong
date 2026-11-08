@@ -1,0 +1,382 @@
+// Mode carrière : joueur, circuit mondial (200 joueurs IA), calendrier, tournois, classement.
+const KEY = 'pingpong-career-v1';
+export const WEEKS = 24;
+
+// ------------------------------------------------------------------ pays (noms fictifs)
+export const COUNTRIES = {
+  FR: { name: 'France', flag: ['v', '#1f4bd6', '#ffffff', '#e33340'], first: ['Lucas', 'Hugo', 'Théo', 'Nathan', 'Enzo', 'Jules', 'Léa', 'Chloé', 'Manon', 'Inès'], last: ['Moreau', 'Lambert', 'Girard', 'Roux', 'Fontaine', 'Mercier', 'Lefèvre', 'Garnier', 'Chevalier', 'Morel'] },
+  DE: { name: 'Allemagne', flag: ['h', '#111111', '#dd1f1f', '#f4c400'], first: ['Felix', 'Jonas', 'Lukas', 'Paul', 'Leon', 'Emma', 'Mia', 'Lena', 'Nils', 'Timo'], last: ['Brandt', 'Weber', 'Krüger', 'Hoffmann', 'Schäfer', 'Vogel', 'Keller', 'Wolff', 'Becker', 'Richter'] },
+  CN: { name: 'Chine', flag: ['cn'], first: ['Wei', 'Hao', 'Jun', 'Lei', 'Ming', 'Yan', 'Xin', 'Bo', 'Tao', 'Lin'], last: ['Zhang', 'Liu', 'Chen', 'Wang', 'Huang', 'Zhao', 'Sun', 'Xu', 'Ma', 'Fan'] },
+  JP: { name: 'Japon', flag: ['jp'], first: ['Kenji', 'Haruto', 'Ren', 'Sota', 'Yuto', 'Aoi', 'Hina', 'Riku', 'Kaito', 'Mio'], last: ['Arata', 'Tanaka', 'Sato', 'Ito', 'Mori', 'Harimoto', 'Kato', 'Ono', 'Ishida', 'Nakamura'] },
+  KR: { name: 'Corée du Sud', flag: ['kr'], first: ['Jin-ho', 'Min-jun', 'Seo-yeon', 'Ji-woo', 'Hyun', 'Dong-hyun', 'Ye-jin', 'Tae-yang', 'Su-min', 'Woo-jin'], last: ['Park', 'Kim', 'Lee', 'Choi', 'Jung', 'Kang', 'Yoon', 'Jang', 'Lim', 'Han'] },
+  SE: { name: 'Suède', flag: ['nordic', '#2a62c9', '#f7d117'], first: ['Viktor', 'Oskar', 'Elias', 'Axel', 'Linnea', 'Elsa', 'Anton', 'Hugo', 'Maja', 'Erik'], last: ['Lindqvist', 'Karlsson', 'Nilsson', 'Berg', 'Holm', 'Sjöberg', 'Ek', 'Lund', 'Falk', 'Ström'] },
+  BR: { name: 'Brésil', flag: ['br'], first: ['Mateus', 'Gabriel', 'Rafael', 'Thiago', 'Bruno', 'Ana', 'Beatriz', 'Caio', 'Diego', 'Luana'], last: ['Silva', 'Santos', 'Costa', 'Oliveira', 'Rocha', 'Almeida', 'Lima', 'Souza', 'Ferreira', 'Barros'] },
+  US: { name: 'États-Unis', flag: ['us'], first: ['Jake', 'Ryan', 'Tyler', 'Mason', 'Logan', 'Ava', 'Madison', 'Cole', 'Evan', 'Zoe'], last: ['Miller', 'Carter', 'Brooks', 'Hayes', 'Reed', 'Parker', 'Bennett', 'Foster', 'Cooper', 'Wright'] },
+  GB: { name: 'Royaume-Uni', flag: ['gb'], first: ['Oliver', 'Harry', 'George', 'Jack', 'Alfie', 'Amelia', 'Isla', 'Freddie', 'Archie', 'Poppy'], last: ['Walker', 'Hughes', 'Clarke', 'Turner', 'Wood', 'Evans', 'Hall', 'Hill', 'Green', 'Ward'] },
+  ES: { name: 'Espagne', flag: ['h3', '#c60b1e', '#ffc400', '#c60b1e'], first: ['Mateo', 'Álvaro', 'Pablo', 'Javier', 'Sergio', 'Lucía', 'Carmen', 'Adrián', 'Marcos', 'Irene'], last: ['García', 'Rivas', 'Navarro', 'Romero', 'Torres', 'Ruiz', 'Gil', 'Serrano', 'Molina', 'Ortega'] },
+  IT: { name: 'Italie', flag: ['v', '#159447', '#ffffff', '#d4242b'], first: ['Leo', 'Marco', 'Luca', 'Andrea', 'Matteo', 'Giulia', 'Sofia', 'Davide', 'Simone', 'Chiara'], last: ['Santini', 'Rossi', 'Bianchi', 'Ricci', 'Greco', 'Conti', 'Gallo', 'Marino', 'Bruno', 'Costa'] },
+  PT: { name: 'Portugal', flag: ['v2', '#046a38', '#da291c'], first: ['João', 'Tiago', 'Diogo', 'Rui', 'Nuno', 'Inês', 'Rita', 'Duarte', 'Afonso', 'Marta'], last: ['Freitas', 'Monteiro', 'Pinto', 'Cardoso', 'Teixeira', 'Matos', 'Correia', 'Nunes', 'Faria', 'Lopes'] },
+  EG: { name: 'Égypte', flag: ['h', '#ce1126', '#ffffff', '#111111'], first: ['Omar', 'Youssef', 'Karim', 'Ahmed', 'Mostafa', 'Nour', 'Salma', 'Hassan', 'Tarek', 'Laila'], last: ['Haddad', 'Assar', 'Saleh', 'Mansour', 'Fathy', 'Nabil', 'Zaki', 'Rashed', 'Kamel', 'Farouk'] },
+  NG: { name: 'Nigéria', flag: ['v', '#008751', '#ffffff', '#008751'], first: ['Quadri', 'Emeka', 'Tunde', 'Chidi', 'Seun', 'Ada', 'Funke', 'Kunle', 'Obi', 'Ngozi'], last: ['Aruna', 'Okafor', 'Adeyemi', 'Eze', 'Bello', 'Okonkwo', 'Afolabi', 'Nwosu', 'Balogun', 'Ojo'] },
+  IN: { name: 'Inde', flag: ['h', '#ff9933', '#ffffff', '#138808'], first: ['Arjun', 'Rohan', 'Vikram', 'Aditya', 'Sathiyan', 'Manika', 'Priya', 'Kabir', 'Dev', 'Anika'], last: ['Sharma', 'Kamal', 'Gnanasekaran', 'Patel', 'Rao', 'Iyer', 'Mehta', 'Nair', 'Reddy', 'Kapoor'] },
+  MX: { name: 'Mexique', flag: ['v', '#006847', '#ffffff', '#ce1126'], first: ['Diego', 'Santiago', 'Emiliano', 'Iker', 'Marcos', 'Valeria', 'Ximena', 'Rodrigo', 'Andrés', 'Paola'], last: ['Hernández', 'Ramírez', 'Cruz', 'Flores', 'Vargas', 'Castillo', 'Mendoza', 'Ríos', 'Salinas', 'Aguilar'] },
+  PL: { name: 'Pologne', flag: ['h2', '#ffffff', '#dc143c'], first: ['Jakub', 'Kacper', 'Szymon', 'Filip', 'Mateusz', 'Zuzanna', 'Julia', 'Bartek', 'Kamil', 'Ola'], last: ['Nowak', 'Kowalski', 'Wójcik', 'Zieliński', 'Mazur', 'Krawczyk', 'Dudek', 'Wróbel', 'Pawlak', 'Sikora'] },
+  BE: { name: 'Belgique', flag: ['v', '#111111', '#fdda24', '#ef3340'], first: ['Arthur', 'Louis', 'Victor', 'Noah', 'Cédric', 'Elise', 'Lotte', 'Bram', 'Senne', 'Margaux'], last: ['Peeters', 'Janssens', 'Maes', 'Dubois', 'Lemaire', 'Claes', 'Wouters', 'Goossens', 'Lambrecht', 'Willems'] },
+};
+export const STYLE_IDS = ['attaquant', 'defenseur', 'coupeur', 'polyvalent'];
+export const STYLE_NAMES = { attaquant: 'Attaquant', defenseur: 'Défenseur', coupeur: 'Coupeur', polyvalent: 'Polyvalent' };
+export const STAT_KEYS = ['fh', 'bh', 'serve', 'spin', 'speed', 'stamina', 'mental'];
+export const STAT_NAMES = { fh: 'Coup droit', bh: 'Revers', serve: 'Service', spin: 'Effet', speed: 'Vitesse', stamina: 'Endurance', mental: 'Mental' };
+const STYLE_BIAS = {
+  attaquant: { fh: 8, bh: 0, serve: 2, spin: 2, speed: 4, stamina: -2, mental: -2 },
+  defenseur: { fh: -3, bh: 6, serve: 0, spin: 0, speed: 4, stamina: 4, mental: 4 },
+  coupeur: { fh: -2, bh: 2, serve: 4, spin: 8, speed: -2, stamina: 2, mental: 0 },
+  polyvalent: { fh: 2, bh: 2, serve: 2, spin: 2, speed: 2, stamina: 2, mental: 2 },
+};
+export const SIGNATURES = {
+  fantome: { name: 'Service fantôme', desc: 'Services avec un effet latéral énorme' },
+  eclair: { name: 'Contre éclair', desc: 'Ses contres partent très vite' },
+  mur: { name: 'Le Mur', desc: 'Presque aucune faute en défense' },
+  canon: { name: 'Coup de canon', desc: 'Coups droits surpuissants' },
+  magicien: { name: 'Coupé magique', desc: 'Effet arrière énorme' },
+  sniper: { name: 'Sniper', desc: 'Vise les lignes au millimètre' },
+  tornade: { name: 'Tornade', desc: 'Lifts avec un effet monstrueux' },
+  roc: { name: 'Mental de roc', desc: 'Ne craque jamais sur les balles décisives' },
+  feinte: { name: 'Feinte', desc: 'Change de direction au dernier moment' },
+  sprinter: { name: 'Sprinter', desc: 'Rattrape absolument tout' },
+};
+
+// ------------------------------------------------------------------ tournois
+export const TIERS = {
+  challenger: { name: 'Challenger', size: 16, need: 999, pts: [180, 110, 60, 30, 12], arena: 'glacier', color: '#3cc8ff' },
+  contender: { name: 'Contender', size: 16, need: 170, pts: [350, 210, 120, 60, 20], arena: 'jungle', color: '#3cff8a' },
+  star: { name: 'Star', size: 32, need: 64, pts: [600, 360, 200, 100, 45, 20], arena: 'inferno', color: '#ff3c3c' },
+  slam: { name: 'Grand Chelem', size: 32, need: 40, pts: [2000, 1200, 720, 360, 180, 90], arena: 'finale', color: '#d23cff' },
+  worlds: { name: 'Championnats du monde', size: 16, need: 16, pts: [1500, 1000, 600, 300, 150], arena: 'legende', color: '#ffc83c' },
+};
+const CITIES = ['Lyon', 'Porto', 'Varsovie', 'Le Caire', 'Lagos', 'Mumbai', 'Mexico', 'Bruxelles', 'Göteborg', 'Rio', 'Dallas', 'Manchester', 'Valence', 'Turin', 'Osaka', 'Busan', 'Düsseldorf', 'Marseille', 'Cracovie', 'Doha', 'Chengdu', 'Montréal', 'Lisbonne', 'Anvers'];
+const SLAMS = { 6: 'Grand Chelem de Tokyo', 12: 'Grand Chelem de Paris', 18: 'Grand Chelem de Londres', 23: 'Grand Chelem de New York' };
+const STARS = { 3: 'Star de Shanghai', 9: 'Star de Berlin', 15: 'Star de Séoul', 20: 'Star de Stockholm' };
+
+export function weekEvents(season, week) {
+  if (week === WEEKS) return [{ id: `s${season}w${week}worlds`, tier: 'worlds', name: 'Championnats du monde', city: 'Finale de saison' }];
+  if (SLAMS[week]) return [{ id: `s${season}w${week}slam`, tier: 'slam', name: SLAMS[week] }, { id: `s${season}w${week}ch`, tier: 'challenger', name: `Challenger de ${CITIES[(week * 7 + season) % CITIES.length]}` }];
+  if (STARS[week]) return [{ id: `s${season}w${week}star`, tier: 'star', name: STARS[week] }, { id: `s${season}w${week}co`, tier: 'contender', name: `Contender de ${CITIES[(week * 5 + season) % CITIES.length]}` }];
+  return [
+    { id: `s${season}w${week}ch`, tier: 'challenger', name: `Challenger de ${CITIES[(week * 7 + season) % CITIES.length]}` },
+    { id: `s${season}w${week}co`, tier: 'contender', name: `Contender de ${CITIES[(week * 5 + season + 3) % CITIES.length]}` },
+  ];
+}
+
+// ------------------------------------------------------------------ outils
+let seed = 1;
+function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+const pick = a => a[Math.floor(rnd() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+export const overall = st => Math.round(STAT_KEYS.reduce((a, k) => a + st[k], 0) / STAT_KEYS.length);
+
+function makeStats(rating, style) {
+  const st = {};
+  for (const k of STAT_KEYS) st[k] = clamp(Math.round(rating + STYLE_BIAS[style][k] + (rnd() - 0.5) * 8), 25, 99);
+  return st;
+}
+
+// ------------------------------------------------------------------ état
+export let career = null;
+export function load() {
+  try { career = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { career = null; }
+  return career;
+}
+export function save() { try { localStorage.setItem(KEY, JSON.stringify(career)); } catch (e) {} }
+export function erase() { career = null; try { localStorage.removeItem(KEY); } catch (e) {} }
+export const absWeek = (s, w) => (s - 1) * WEEKS + w;
+
+export function create(p) {
+  seed = (Date.now() & 0xffffffff) >>> 0;
+  const stats = {};
+  for (const k of STAT_KEYS) stats[k] = clamp(46 + STYLE_BIAS[p.style][k], 30, 70);
+  const me = { id: 'me', name: p.name, country: p.country, hand: p.hand, style: p.style, neon: p.neon, acc: p.acc, stats, pts: [] };
+  // 200 joueurs IA, classés de ~96 à ~42
+  const codes = Object.keys(COUNTRIES);
+  const used = new Set([p.name]);
+  const pool = [];
+  for (let i = 0; i < 200; i++) {
+    const c = pick(codes), C = COUNTRIES[c];
+    let name; do { name = `${pick(C.first)} ${pick(C.last)}`; } while (used.has(name));
+    used.add(name);
+    const rating = Math.round(96 - Math.pow(i / 199, 0.8) * 54 + (rnd() - 0.5) * 3);
+    const style = pick(STYLE_IDS);
+    pool.push({ id: 'p' + i, name, country: c, hand: rnd() < 0.15 ? -1 : 1, style, rating, stats: makeStats(rating, style), pts: [] });
+  }
+  // les 10 meilleurs : coups signature
+  const sigs = Object.keys(SIGNATURES).sort(() => rnd() - 0.5);
+  pool.slice(0, 10).forEach((pl, i) => { pl.sig = sigs[i]; });
+  // le rival : même niveau que toi au départ
+  const rc = pick(codes.filter(c => c !== p.country)), RC = COUNTRIES[rc];
+  const rival = { id: 'rival', name: `${pick(RC.first)} ${pick(RC.last)}`, country: rc, hand: 1, style: pick(STYLE_IDS), rating: overall(stats) + 3, pts: [], rival: true };
+  rival.stats = makeStats(rival.rating, rival.style);
+  pool.push(rival);
+  career = {
+    v: 1, season: 1, week: 1, me, pool, length: p.length ?? 1, upPoints: 0,
+    h2h: {}, titles: [], results: [], tour: null, news: ['Bienvenue sur le circuit ! Commence par les tournois Challenger pour grimper au classement.'],
+  };
+  // classement de départ : points fictifs de la saison précédente
+  for (const pl of pool) for (let k = 0; k < WEEKS; k++) pl.pts.push({ w: -k, p: aiIncome(pl) });
+  save();
+  return career;
+}
+
+// ------------------------------------------------------------------ classement
+export function allPlayers() { return [career.me, ...career.pool]; }
+export function getP(id) { return id === 'me' ? career.me : career.pool.find(p => p.id === id); }
+export function rating(pl) { return pl.id === 'me' ? overall(pl.stats) : pl.rating; }
+export function rankPoints(pl) {
+  const now = absWeek(career.season, career.week);
+  return pl.pts.reduce((a, e) => a + (e.w > now - WEEKS ? e.p : 0), 0);
+}
+export function ranking() {
+  const list = allPlayers().map(p => ({ p, pts: rankPoints(p) }));
+  list.sort((a, b) => b.pts - a.pts || rating(b.p) - rating(a.p));
+  list.forEach((e, i) => { e.rank = i + 1; });
+  return list;
+}
+export function rankOf(id) { const r = ranking(); const e = r.find(x => x.p.id === id); return e ? e.rank : 999; }
+
+// ------------------------------------------------------------------ tournois
+export function eligible(ev) {
+  const T = TIERS[ev.tier];
+  return rankOf('me') <= T.need;
+}
+
+function seedOrder(n) {
+  let o = [1];
+  while (o.length < n) { const m = o.length * 2 + 1; o = o.flatMap(s => [s, m - s]); }
+  return o;
+}
+
+// probabilité que a batte b (simulation)
+export function winProb(a, b) { return 1 / (1 + Math.exp(-(rating(a) - rating(b)) / 5.5)); }
+
+function entrants(ev, withMe) {
+  const T = TIERS[ev.tier];
+  const r = ranking().filter(e => e.p.id !== 'me');
+  let lo = 0, hi = r.length;
+  if (ev.tier === 'challenger') { lo = 90; hi = 201; }
+  if (ev.tier === 'contender') { lo = 45; hi = 170; }
+  if (ev.tier === 'star') { lo = 8; hi = 110; }
+  if (ev.tier === 'slam') { lo = 0; hi = 60; }
+  if (ev.tier === 'worlds') { lo = 0; hi = 16; }
+  let cands = r.slice(lo, hi).map(e => e.p);
+  const n = T.size - (withMe ? 1 : 0);
+  const sel = ev.tier === 'worlds' || ev.tier === 'slam' ? cands.slice(0, n) : cands.sort(() => rnd() - 0.5).slice(0, n);
+  // le rival est souvent dans le même tournoi
+  const rival = career.pool.find(p => p.rival);
+  if (withMe && rival && !sel.includes(rival) && rnd() < 0.55 && ev.tier !== 'worlds') sel[sel.length - 1] = rival;
+  if (withMe) sel.push(career.me);
+  return sel;
+}
+
+export function makeDraw(ev, withMe) {
+  const T = TIERS[ev.tier];
+  const ps = entrants(ev, withMe).sort((a, b) => rating(b) - rating(a));
+  const order = seedOrder(T.size);
+  const slots = new Array(T.size);
+  // têtes de série : les 4 premiers ; le reste mélangé
+  const seeds = ps.slice(0, 4), others = ps.slice(4).sort(() => rnd() - 0.5);
+  order.forEach((s, pos) => { slots[pos] = s <= 4 ? seeds[s - 1] : null; });
+  for (let i = 0; i < slots.length; i++) if (!slots[i]) slots[i] = others.pop();
+  const first = [];
+  for (let i = 0; i < slots.length; i += 2) first.push({ a: slots[i].id, b: slots[i + 1].id, w: null, sc: null });
+  return { ev, tier: ev.tier, size: T.size, rounds: [first], round: 0, done: false, out: false };
+}
+
+export const ROUND_NAMES = n => n === 1 ? 'Finale' : n === 2 ? 'Demi-finales' : n === 4 ? 'Quarts de finale' : n === 8 ? '8es de finale' : '16es de finale';
+
+// sets à jouer pour le match du joueur
+export function setsFor(tier, matchesInRound) {
+  const L = career.length; // 0 rapide, 1 normal, 2 long
+  if (L === 0) return 1;
+  const final = matchesInRound === 1, late = matchesInRound <= 4;
+  if (L === 1) return (tier === 'slam' || tier === 'worlds') && final ? 5 : 3;
+  return late && (tier === 'slam' || tier === 'worlds' || tier === 'star') ? 5 : 3;
+}
+
+function simScore(winnerA, sets) {
+  const need = Math.floor(sets / 2) + 1;
+  let a = 0, b = 0;
+  while (a < need && b < need) { if (rnd() < (winnerA ? 0.68 : 0.32)) a++; else b++; }
+  if (winnerA && a < need) a = need; if (!winnerA && b < need) b = need;
+  return [a, b];
+}
+
+// simule tous les matchs du tour en cours sauf celui du joueur
+function simRound(d) {
+  const R = d.rounds[d.round];
+  for (const m of R) {
+    if (m.w) continue;
+    if (m.a === 'me' || m.b === 'me') continue;
+    const A = getP(m.a), B = getP(m.b);
+    const aw = rnd() < winProb(A, B);
+    m.w = aw ? m.a : m.b;
+    m.sc = simScore(aw, 3);
+  }
+}
+
+function nextRound(d) {
+  const R = d.rounds[d.round];
+  if (R.length === 1) { d.done = true; return; }
+  const nx = [];
+  for (let i = 0; i < R.length; i += 2) nx.push({ a: R[i].w, b: R[i + 1].w, w: null, sc: null });
+  d.rounds.push(nx); d.round++;
+}
+
+export function myMatch() {
+  const d = career.tour;
+  if (!d || d.done || d.out) return null;
+  return d.rounds[d.round].find(m => m.a === 'me' || m.b === 'me') || null;
+}
+
+export function enterTournament(ev) {
+  career.tour = makeDraw(ev, true);
+  save();
+  return career.tour;
+}
+
+// résultat du match du joueur
+export function reportMatch(won, sets) {
+  const d = career.tour, m = myMatch();
+  if (!m) return;
+  const oppId = m.a === 'me' ? m.b : m.a;
+  m.w = won ? 'me' : oppId;
+  m.sc = m.a === 'me' ? sets : [sets[1], sets[0]];
+  const h = career.h2h[oppId] || { w: 0, l: 0 };
+  won ? h.w++ : h.l++;
+  career.h2h[oppId] = h;
+  career.upPoints += won ? 3 : 1;
+  simRound(d);
+  if (!won) {
+    d.out = true;
+    // on termine le tournoi en simulation
+    while (!d.done) { nextRound(d); if (!d.done) simRound(d); }
+  } else {
+    nextRound(d);
+    if (!d.done) simRound(d);
+  }
+  if (d.done || d.out) finishTournament();
+  save();
+}
+
+// points selon le tour atteint
+function award(d) {
+  const T = TIERS[d.tier], n = d.rounds.length;
+  const res = {};
+  const final = d.rounds[n - 1][0];
+  if (final && final.w) { res[final.w] = T.pts[0]; res[final.w === final.a ? final.b : final.a] = T.pts[1]; }
+  for (let r = n - 2; r >= 0; r--) {
+    const idx = n - 1 - r + 1; // demi = 2, quart = 3...
+    for (const m of d.rounds[r]) {
+      const loser = m.w === m.a ? m.b : m.a;
+      if (loser && res[loser] === undefined) res[loser] = T.pts[idx] || 0;
+    }
+  }
+  return res;
+}
+
+function finishTournament() {
+  const d = career.tour;
+  if (d.awarded) return;
+  d.awarded = true;
+  const w = absWeek(career.season, career.week);
+  const res = award(d);
+  for (const [id, p] of Object.entries(res)) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
+  const mine = res.me || 0;
+  const final = d.rounds[d.rounds.length - 1][0];
+  const champion = final && final.w === 'me';
+  d.result = { pts: mine, champion, reached: roundReached(d) };
+  if (champion) {
+    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season });
+    career.upPoints += { challenger: 3, contender: 5, star: 8, slam: 15, worlds: 15 }[d.tier];
+    career.news.unshift(`🏆 ${career.me.name} remporte le ${d.ev.name} !`);
+  } else {
+    const fw = final && final.w ? getP(final.w) : null;
+    if (fw) career.news.unshift(`${fw.name} remporte le ${d.ev.name}.`);
+  }
+  career.results.unshift({ season: career.season, week: career.week, name: d.ev.name, tier: d.tier, reached: d.result.reached, pts: mine });
+  career.news = career.news.slice(0, 12);
+}
+
+function roundReached(d) {
+  const n = d.rounds.length;
+  for (let r = n - 1; r >= 0; r--) {
+    const m = d.rounds[r].find(x => x.a === 'me' || x.b === 'me');
+    if (!m) continue;
+    if (r === n - 1 && m.w === 'me' && d.done) return 'Vainqueur';
+    return ROUND_NAMES(d.rounds[r].length);
+  }
+  return '—';
+}
+
+// points « hors écran » gagnés chaque semaine par les joueurs IA sur le reste du circuit
+function aiIncome(pl) { const d = Math.max(0, pl.rating - 40); return Math.round(d * d * 0.06 * (0.5 + rnd())); }
+
+// fin de semaine : les autres tournois de la semaine sont simulés, la semaine avance
+export function endWeek() {
+  const evs = weekEvents(career.season, career.week);
+  const playedId = career.tour && career.tour.ev.id;
+  for (const ev of evs) {
+    if (ev.id === playedId) continue;
+    const d = makeDraw(ev, false);
+    simRound(d);
+    while (!d.done) { nextRound(d); if (!d.done) simRound(d); }
+    const w = absWeek(career.season, career.week);
+    for (const [id, p] of Object.entries(award(d))) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
+  }
+  const wk = absWeek(career.season, career.week);
+  for (const p of career.pool) { const inc = aiIncome(p); if (inc) p.pts.push({ w: wk, p: inc }); }
+  // le rival progresse avec toi
+  const rival = career.pool.find(p => p.rival);
+  if (rival) rival.rating = Math.min(97, Math.max(rival.rating, overall(career.me.stats) + 2) + 0.15);
+  // petite évolution des autres joueurs
+  for (const p of career.pool) if (!p.rival) p.rating = clamp(p.rating + (rnd() - 0.5) * 0.4, 38, 98);
+  career.tour = null;
+  career.week++;
+  if (career.week > WEEKS) { career.week = 1; career.season++; career.news.unshift(`Nouvelle saison ${career.season} !`); }
+  // nettoyage des vieux points
+  const now = absWeek(career.season, career.week);
+  for (const p of allPlayers()) p.pts = p.pts.filter(e => e.w > now - WEEKS - 1);
+  save();
+}
+
+export function upgradeCost(v) { return v < 70 ? 1 : v < 85 ? 2 : 3; }
+export function upgrade(k) {
+  const v = career.me.stats[k], c = upgradeCost(v);
+  if (v >= 99 || career.upPoints < c) return false;
+  career.me.stats[k]++; career.upPoints -= c; save();
+  return true;
+}
+
+// fiche de repérage : forces et faiblesses
+export function scout(pl) {
+  const st = pl.id === 'me' ? pl.stats : pl.stats;
+  const sorted = [...STAT_KEYS].sort((a, b) => st[b] - st[a]);
+  return { best: sorted.slice(0, 2).map(k => STAT_NAMES[k]), worst: sorted.slice(-2).map(k => STAT_NAMES[k]) };
+}
+
+// drapeau en CSS
+export function flag(code, w = 24, h = 16) {
+  const f = COUNTRIES[code] ? COUNTRIES[code].flag : ['v', '#888', '#aaa', '#888'];
+  let bg;
+  if (f[0] === 'v') bg = `linear-gradient(90deg, ${f[1]} 33.3%, ${f[2]} 33.3% 66.6%, ${f[3]} 66.6%)`;
+  else if (f[0] === 'v2') bg = `linear-gradient(90deg, ${f[1]} 40%, ${f[2]} 40%)`;
+  else if (f[0] === 'h') bg = `linear-gradient(180deg, ${f[1]} 33.3%, ${f[2]} 33.3% 66.6%, ${f[3]} 66.6%)`;
+  else if (f[0] === 'h2') bg = `linear-gradient(180deg, ${f[1]} 50%, ${f[2]} 50%)`;
+  else if (f[0] === 'h3') bg = `linear-gradient(180deg, ${f[1]} 25%, ${f[2]} 25% 75%, ${f[3]} 75%)`;
+  else if (f[0] === 'nordic') bg = `linear-gradient(90deg, transparent 30%, ${f[2]} 30% 42%, transparent 42%), linear-gradient(180deg, ${f[1]} 42%, ${f[2]} 42% 58%, ${f[1]} 58%)`;
+  else if (f[0] === 'jp') bg = 'radial-gradient(circle at 50% 50%, #bc002d 28%, #fff 29%)';
+  else if (f[0] === 'cn') bg = 'radial-gradient(circle at 22% 30%, #ffde00 12%, transparent 13%), #de2910';
+  else if (f[0] === 'kr') bg = 'radial-gradient(circle at 50% 50%, #cd2e3a 0 14%, #0047a0 14% 24%, #fff 25%)';
+  else if (f[0] === 'br') bg = 'radial-gradient(circle at 50% 50%, #002776 18%, transparent 19%), linear-gradient(45deg, transparent 30%, #fedf00 30% 70%, transparent 70%), linear-gradient(-45deg, transparent 30%, #fedf00 30% 70%, transparent 70%), #009c3b';
+  else if (f[0] === 'us') bg = 'linear-gradient(90deg, #3c3b6e 40%, transparent 40%) top left / 100% 54% no-repeat, repeating-linear-gradient(180deg, #b22234 0 7.7%, #fff 7.7% 15.4%)';
+  else if (f[0] === 'gb') bg = 'linear-gradient(90deg, transparent 42%, #c8102e 42% 58%, transparent 58%), linear-gradient(180deg, transparent 38%, #c8102e 38% 62%, transparent 62%), linear-gradient(90deg, transparent 38%, #fff 38% 62%, transparent 62%), linear-gradient(180deg, transparent 32%, #fff 32% 68%, transparent 68%), #012169';
+  return `<span class="flag" style="width:${w}px;height:${h}px;background:${bg}"></span>`;
+}

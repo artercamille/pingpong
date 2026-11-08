@@ -9,6 +9,7 @@ import { Net } from './net.js';
 import { initAudio, sfx, setMuted, setCrowd, setMuffle, setVolumes } from './audio.js';
 import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMETICS, ACHIEVEMENTS, unlock, recordMatch, isUnlocked, daily, dailyProgress } from './profile.js';
 import { Recorder, Player, recordCanvas } from './replay.js';
+import * as C from './career.js';
 
 const $ = s => document.querySelector(s);
 const R = new Renderer($('#c'));
@@ -43,6 +44,11 @@ function show(id) {
   renderDaily(id === 'scr-main');
   if (id === 'scr-profile') renderProfile();
   if (id === 'scr-locker') renderLocker();
+  if (id === 'scr-career') renderCareer();
+  if (id === 'scr-tour') renderTour();
+  if (id === 'scr-rank') renderRanking();
+  if (id === 'scr-palmares') renderPalmares();
+  if (id === 'scr-career-new') renderCreate();
   focusIdx = 0; refreshFocus();
 }
 
@@ -130,6 +136,7 @@ function optRender(o) { o.querySelector('.ov').textContent = o.dataset.values.sp
 function optStep(o, d) {
   const n = o.dataset.values.split('|').length;
   o.dataset.i = (+o.dataset.i + d + n) % n; optRender(o); sfx.ui();
+  if (o.closest('#scr-career-new')) renderCreate();
 }
 document.querySelectorAll('.opt').forEach(o => {
   optRender(o);
@@ -344,6 +351,7 @@ function startOnline(me, bestOf, firstServer, names, dbl = null) {
 function enterGame(oppPaddle, oppTrail) {
   initAudio();
   applyCosmetics(oppPaddle, oppTrail);
+  [0x3d8bff, 0xff3d6b, 0x3de8ff, 0xffa23d].forEach((c, i) => { R.figures[i].setColor(c); R.figures[i].setAccessory(0); });
   recorder.reset(); bestClip = null; replay = null; postPoint = null; replayDone = {};
   if (!tuto && setup.mode !== 'training') { game.stateT = 3.4; R.intro = 3.2; showVS(); } else { R.intro = 0; game.stateT = 1; }
   music.stop();
@@ -355,7 +363,7 @@ function enterGame(oppPaddle, oppTrail) {
 
 }
 
-function quitToMenu() {
+function quitToMenu(scr = 'scr-main') {
   game = null; tuto = null;
   $('#tuto').classList.add('hidden'); $('#board').classList.remove('hidden');
   $('#vs').classList.add('hidden'); R.intro = 0;
@@ -366,7 +374,7 @@ function quitToMenu() {
   $('#end').classList.add('hidden');
   $('#pause').classList.add('hidden');
   $('#menu').classList.remove('hidden');
-  show('scr-main');
+  show(scr);
   applyCosmetics();
 }
 
@@ -489,13 +497,13 @@ function showEnd(m) {
   setTimeout(() => music.start(0.4), 1500);
   const me = game.myTeam, op = 1 - me;
   const win = m.winner === me;
-  $('#end-title').textContent = setup.mode === 'ai' ? (win ? 'Victoire !' : 'Défaite…') : (win ? 'Tu as gagné !' : `${game.names[m.winner]} gagne`);
+  $('#end-title').textContent = setup.mode !== 'online' ? (win ? 'Victoire !' : 'Défaite…') : (win ? 'Tu as gagné !' : `${game.names[m.winner]} gagne`);
   $('#end-sets').innerHTML = m.history.map((h, i) => `Set ${i + 1} : <b>${h[me]}</b> – <b>${h[op]}</b>`).join('<br>');
   $('#end-status').textContent = '';
   const sum = game.summary();
   const setsWon = m.sets[me], setsLost = m.sets[op];
   const ranked = setup.mode === 'online' && !game.doubles;
-  const res = recordMatch({ won: win, mode: setup.mode, oppName: game.names[op], oppLp: opp.lp, ranked, aiLevel: setup.level,
+  const res = recordMatch({ won: win, mode: setup.mode === 'career' ? 'ai' : setup.mode, oppName: game.names[op], oppLp: opp.lp, ranked, aiLevel: setup.level,
     setsWon, setsLost, stats: { longest: sum.longest, maxSpeed: sum.stats[me].maxSpeed, ach: sum.ach } });
   // rang
   if (ranked) {
@@ -503,7 +511,8 @@ function showEnd(m) {
     const promo = ra.tier > rb.tier || (ra.tier === rb.tier && ra.div !== rb.div && res.lpDelta > 0) ? 'PROMOTION !' : (ra.tier < rb.tier || (ra.tier === rb.tier && ra.div !== rb.div && res.lpDelta < 0)) ? 'RÉTROGRADATION' : 'CLASSÉ';
     $('#end-rank').innerHTML = `<div class="rankbox">${emblem(res.lpAfter, 64)}<div><div class="promo">${promo}</div><div class="rl" style="color:${ra.glow}">${ra.label}</div><div>${ra.lp} LP</div></div>
       <div style="margin-left:auto" class="rd ${res.lpDelta >= 0 ? 'up' : 'down'}">${res.lpDelta >= 0 ? '+' : ''}${res.lpDelta} LP</div></div>`;
-  } else $('#end-rank').innerHTML = `<div class="infobox">Match amical contre l'IA : pas de LP en jeu. <b>Les matchs en ligne sont classés.</b></div>`;
+  } else if (setup.mode === 'career') $('#end-rank').innerHTML = careerEnd(win, setsWon, setsLost);
+  else $('#end-rank').innerHTML = `<div class="infobox">Match amical contre l'IA : pas de LP en jeu. <b>Les matchs en ligne sont classés.</b></div>`;
   // face-à-face
   const h = res.h2h;
   const streak = h.streak > 1 ? `<br>Série : <b>${h.streak} victoires d'affilée</b> 🔥` : h.streak < -1 ? `<br>Série : <b>${-h.streak} défaites d'affilée</b>, il faut se venger !` : '';
@@ -528,6 +537,8 @@ function showEnd(m) {
     ${row('Vitesse max', Math.round(S[me].maxSpeed) + ' km/h', Math.round(S[op].maxSpeed) + ' km/h')}
     <tr><td colspan="3">Plus long échange : <b>${sum.longest} coups</b></td></tr></table>`;
   $('#bestpt').classList.toggle('hidden', !bestClip);
+  $('#again').innerHTML = setup.mode === 'career' ? '<span><b>Continuer</b><small>Retour au tableau du tournoi</small></span>' : '<span><b>Revanche</b><small>On remet ça tout de suite</small></span>';
+  $('#tomenu').classList.toggle('hidden', setup.mode === 'career');
   for (const u of res.unlocks) toast('🎁', 'DÉBLOQUÉ', u.name, u.kind === 'paddle' ? 'Nouvelle raquette' : u.kind === 'trail' ? 'Nouvelle traînée' : 'Nouvelle salle');
   const dd = dailyProgress({ wins: win ? 1 : 0, aces: S[me].aces, smashes: S[me].smashes, superWins: S[me].superWins, longest: sum.longest,
     points: S[me].points, winners: S[me].winners, online: setup.mode === 'online' ? 1 : 0 });
@@ -539,6 +550,7 @@ function again() {
   sfx.ui();
   if (!game) return;
   if (setup.mode === 'ai') { startAI(); return; }
+  if (setup.mode === 'career') { quitToMenu(C.career.tour ? 'scr-tour' : 'scr-career'); return; }
   if (setup.me === 0) { const fs = Math.random() < 0.5 ? 0 : 1; net.send({ t: 'rematch', firstServer: fs }); restartOnline(fs); }
   else { net.send({ t: 'rematchReq' }); $('#end-status').textContent = 'Demande envoyée…'; }
 }
@@ -578,7 +590,7 @@ function syncPauseOptions() {
 }
 $('#pause-opt-btn').addEventListener('click', () => { syncPauseOptions(); $('#pause-opts').classList.toggle('hidden'); sfx.ui(); });
 $('#resume').addEventListener('click', () => { if (timeout) endTimeout(true); else togglePause(false); });
-$('#quit').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(); });
+$('#quit').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(setup && setup.mode === 'career' ? 'scr-tour' : 'scr-main'); });
 // temps mort en ligne (1 par joueur et par match, 30 s max)
 let timeout = null;
 function requestTimeout() {
@@ -610,7 +622,7 @@ function endTimeout(send) {
 }
 function togglePause(v) {
   if (game && setup.mode === 'online') { if (timeout && !timeout.pending) endTimeout(true); else requestTimeout(); return; }
-  if (!game || (setup.mode !== 'ai' && setup.mode !== 'training')) return;
+  if (!game || (setup.mode !== 'ai' && setup.mode !== 'training' && setup.mode !== 'career')) return;
   game.paused = v ?? !game.paused;
   $('#pause').classList.toggle('hidden', !game.paused);
   focusIdx = 0; refreshFocus();
@@ -639,13 +651,18 @@ function showVS() {
     if (game.doubles) lp = null;
     else if (p === me) lp = profile.lp;
     else if (setup.mode === 'online') lp = opp.lp || 0;
-    if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
+    if (setup.mode === 'career') {
+      const pl = p === me ? C.career.me : C.getP(setup.oppId);
+      box.querySelector('.emb').innerHTML = C.flag(pl.country, 84, 56);
+      label = `${C.rankOf(pl.id)}e mondial · ${C.STYLE_NAMES[pl.style]}${pl.rival ? ' · <span style="color:#ff6b7d">RIVAL</span>' : pl.sig ? ' · <span style="color:#ffc83c">BOSS</span>' : ''}`;
+    } else if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
     else if (game.doubles) { label = 'Équipe ' + (p === 0 ? 'bleue' : 'rouge'); box.querySelector('.emb').innerHTML = ''; }
     else { label = `${['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'} · ${setup.aiStyle || ''}`; box.querySelector('.emb').innerHTML = ''; }
     box.querySelector('.r').innerHTML = label;
   };
   side('l', me); side('r', op);
-  el.querySelector('.vsf').textContent = (game.doubles ? 'DOUBLE · ' : setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
+  if (setup.mode === 'career') el.querySelector('.vsf').textContent = `${C.career.tour.ev.name.toUpperCase()} · ${C.ROUND_NAMES(C.career.tour.rounds[C.career.tour.round].length).toUpperCase()} · ${game.bestOf === 1 ? '1 SET' : 'AU MEILLEUR DES ' + game.bestOf + ' SETS'}`;
+  else el.querySelector('.vsf').textContent = (game.doubles ? 'DOUBLE · ' : setup.mode === 'online' ? 'MATCH CLASSÉ · ' : 'MATCH AMICAL · ') + (game.bestOf === 1 ? '1 SET' : `AU MEILLEUR DES ${game.bestOf} SETS`);
   el.classList.remove('hidden');
   el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
   el.querySelectorAll('*').forEach(e => { e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; });
@@ -894,3 +911,203 @@ applyCosmetics();
 applySettings();
 addEventListener('pointerdown', () => { initAudio(); applySettings(); }, { once: true });
 addEventListener('keydown', () => { initAudio(); applySettings(); }, { once: true });
+
+// ------------------------------------------------------------------ carrière
+const NEONS = [0x3d8bff, 0x3de8ff, 0x3dff8a, 0xb04dff, 0xff4dc8, 0xffc83c];
+const hex = c => '#' + c.toString(16).padStart(6, '0');
+const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const pname = pl => `${C.flag(pl.country, 20, 13)}${esc(pl.name)}`;
+const tierTag = t => `<span class="tier" style="background:${C.TIERS[t].color}">${C.TIERS[t].name.toUpperCase()}</span>`;
+(function initCreate() {
+  const o = $('#car-country'), codes = Object.keys(C.COUNTRIES);
+  o.dataset.values = codes.map(c => C.COUNTRIES[c].name).join('|');
+  o.dataset.v = codes.join('|'); o.dataset.i = '0';
+  document.querySelectorAll('#scr-career-new .opt').forEach(x => {
+    optRender(x);
+  });
+})();
+function renderCreate() {
+  const code = choice('car-country'), neon = NEONS[choice('car-neon')];
+  $('#car-country .ov').innerHTML = `${C.flag(code, 22, 15)}${C.COUNTRIES[code].name}`;
+  if (!$('#car-name').value) $('#car-name').value = myName();
+  $('#car-preview').innerHTML = `<div style="text-align:center">
+    <svg width="160" height="230" viewBox="0 0 160 230" style="filter:drop-shadow(0 0 10px ${hex(neon)})">
+      <g stroke="${hex(neon)}" stroke-width="7" stroke-linecap="round" fill="none">
+        <circle cx="80" cy="38" r="20"/><path d="M80 60v70M80 75l-34 28M80 75l34-18 18-22M80 130l-26 70M80 130l26 70"/>
+      </g>
+      ${choice('car-acc') === 1 ? `<path d="M60 32h40" stroke="#fff" stroke-width="6"/>` : choice('car-acc') === 2 ? `<path d="M58 28q22-26 44 0zM100 28h20" stroke="#fff" stroke-width="5" fill="#fff"/>` : choice('car-acc') === 3 ? `<path d="M41 99l8 8M128 31l8 8" stroke="#fff" stroke-width="9"/>` : ''}
+      <circle cx="${choice('car-hand') === 1 ? 135 : 25}" cy="30" r="11" fill="#e33340"/>
+    </svg>
+    <div style="margin-top:10px;font-weight:900;font-size:20px;font-style:italic;text-transform:uppercase;color:#fff">${C.flag(code, 30, 20)}${esc($('#car-name').value || 'Joueur')}</div>
+    <div>${C.STYLE_NAMES[choice('car-style')]} · ${choice('car-hand') === 1 ? 'Droitier' : 'Gaucher'}</div></div>`;
+}
+$('#car-name').addEventListener('input', renderCreate);
+$('#btn-career').addEventListener('click', () => { initAudio(); sfx.ui(); show(C.load() ? 'scr-career' : 'scr-career-new'); });
+$('#car-create').addEventListener('click', () => {
+  sfx.ui();
+  C.create({ name: ($('#car-name').value.trim() || myName()).slice(0, 16), country: choice('car-country'), hand: choice('car-hand'),
+    style: choice('car-style'), neon: choice('car-neon'), acc: choice('car-acc'), length: choice('car-len') });
+  show('scr-career');
+});
+$('#car-reset-btn').addEventListener('click', () => {
+  if (!confirmReset) { confirmReset = true; $('#car-reset-btn small').textContent = 'Clique encore pour confirmer'; return; }
+  confirmReset = false; C.erase(); show('scr-career-new');
+});
+let confirmReset = false;
+
+function bindCareerButtons(root) {
+  root.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+    initAudio(); sfx.ui();
+    const a = b.dataset.act, c = C.career;
+    if (a === 'enter') { const ev = C.weekEvents(c.season, c.week).find(e => e.id === b.dataset.ev); if (ev && C.eligible(ev)) { C.enterTournament(ev); show('scr-tour'); } return; }
+    if (a === 'tour') { show('scr-tour'); return; }
+    if (a === 'rest') { C.endWeek(); show('scr-career'); return; }
+    if (a === 'up') { if (C.upgrade(b.dataset.k)) { sfx.unlock(); renderCareer(); const k = navItems().findIndex(x => x.dataset.k === b.dataset.k); if (k >= 0) { focusIdx = k; refreshFocus(); } } return; }
+    if (a === 'play') { startCareerMatch(); return; }
+    if (a === 'next') { C.endWeek(); show('scr-career'); return; }
+  }));
+}
+
+function renderCareer() {
+  const c = C.career; if (!c) return;
+  const me = c.me, rk = C.rankOf('me');
+  $('#car-head').innerHTML = `${C.flag(me.country, 54, 36)}<div><div class="big">${esc(me.name)}</div>
+    <div class="meta">${C.COUNTRIES[me.country].name.toUpperCase()} · ${C.STYLE_NAMES[me.style].toUpperCase()} · ${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · NIVEAU ${C.overall(me.stats)}</div>
+    <div class="meta">SAISON ${c.season} · SEMAINE ${c.week} / ${C.WEEKS} · ${C.rankPoints(me)} PTS</div></div>
+    <div class="rk"><b>${rk}e</b><span class="meta">CLASSEMENT MONDIAL</span></div>`;
+  // semaine
+  const evs = C.weekEvents(c.season, c.week);
+  let html = '';
+  if (c.tour) {
+    html = `<button class="mbtn accent" data-act="tour"><span><b>Reprendre : ${esc(c.tour.ev.name)}</b><small>${c.tour.done || c.tour.out ? 'Tournoi terminé, voir le tableau' : C.ROUND_NAMES(c.tour.rounds[c.tour.round].length)}</small></span></button>`;
+  } else {
+    for (const ev of evs) {
+      const T = C.TIERS[ev.tier], ok = C.eligible(ev);
+      html += `<button class="mbtn evcard ${ok ? '' : 'locked'}" data-act="enter" data-ev="${ev.id}"><span><b>${esc(ev.name)}</b>
+        <small>${ok ? `${T.size} joueurs · ${T.pts[0]} pts au vainqueur` : `🔒 Réservé au top ${T.need} mondial`}</small></span>${tierTag(ev.tier)}</button>`;
+    }
+    html += `<button class="mbtn ghost" data-act="rest"><span><b>Se reposer</b><small>Passer la semaine</small></span></button>`;
+  }
+  $('#car-week-title').textContent = c.week === C.WEEKS ? 'Semaine finale' : 'Cette semaine';
+  $('#car-week').innerHTML = html;
+  // prochains gros tournois
+  const up = [];
+  for (let w = c.week + 1; w <= C.WEEKS && up.length < 2; w++) {
+    const big = C.weekEvents(c.season, w).find(e => e.tier === 'slam' || e.tier === 'star' || e.tier === 'worlds');
+    if (big) up.push(`<div>Semaine ${w} · <b>${esc(big.name)}</b> <span style="color:${C.TIERS[big.tier].color}">(top ${C.TIERS[big.tier].need})</span></div>`);
+  }
+  $('#car-news').innerHTML = up.join('') + c.news.slice(0, 3).map(n => `<div>${esc(n)}</div>`).join('');
+  // stats
+  $('#car-up').textContent = c.upPoints ? `${c.upPoints} POINT${c.upPoints > 1 ? 'S' : ''} À DÉPENSER` : '';
+  $('#car-stats').innerHTML = C.STAT_KEYS.map(k => {
+    const v = me.stats[k], cost = C.upgradeCost(v), can = c.upPoints >= cost && v < 99;
+    return `<div class="statrow"><span>${C.STAT_NAMES[k]}</span><div class="xbar"><div style="width:${v}%"></div></div><b>${v}</b>
+      <button class="mbtn small ${can ? 'accent' : 'locked'}" data-act="up" data-k="${k}" title="Coût : ${cost}"><b>+</b></button></div>`;
+  }).join('') + `<div style="font-size:12px;color:#a99cc9;margin-top:4px">Chaque match gagné rapporte 3 points (1 si perdu), un titre jusqu'à 15.</div>`;
+  // rival
+  const rv = c.pool.find(p => p.rival);
+  if (rv) { const h = c.h2h[rv.id] || { w: 0, l: 0 };
+    $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TON RIVAL</small><br>
+      <b>${pname(rv)}</b> · ${C.rankOf(rv.id)}e mondial · niveau ${Math.round(rv.rating)}<br>Face-à-face : <b>${h.w} – ${h.l}</b></div>`; }
+  bindCareerButtons($('#scr-career'));
+  refreshFocus();
+}
+
+function scoutCard(o) {
+  const c = C.career, h = c.h2h[o.id] || { w: 0, l: 0 }, sc = C.scout(o);
+  return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">PROCHAIN ADVERSAIRE</small>
+    <div class="who">${C.flag(o.country, 36, 24)}${esc(o.name)}</div>
+    <div class="row2">${C.rankOf(o.id)}E MONDIAL · NIVEAU ${Math.round(C.rating(o))} · ${C.STYLE_NAMES[o.style].toUpperCase()} · ${o.hand === 1 ? 'DROITIER' : 'GAUCHER'}</div>
+    <ul><li>Points forts : <b>${sc.best.join(', ')}</b></li><li>Points faibles : <b>${sc.worst.join(', ')}</b></li>
+    <li>Face-à-face : <b>${h.w} – ${h.l}</b></li><li>Toi : niveau <b>${C.overall(c.me.stats)}</b></li></ul>
+    ${o.sig ? `<div class="sig">⚡ BOSS · ${C.SIGNATURES[o.sig].name} : ${C.SIGNATURES[o.sig].desc}</div>` : ''}
+    ${o.rival ? '<div class="rv">⚔ C\'EST TON RIVAL</div>' : ''}</div>`;
+}
+
+function renderTour() {
+  const c = C.career, d = c && c.tour;
+  if (!d) { show('scr-career'); return; }
+  const T = C.TIERS[d.tier];
+  $('#tour-head').innerHTML = `${tierTag(d.tier)}<div><div class="big">${esc(d.ev.name)}</div><div class="meta">${T.size} JOUEURS · SAISON ${c.season} · SEMAINE ${c.week}</div></div>`;
+  $('#tour-head').style.borderLeftColor = T.color;
+  // tableau : tous les tours, les suivants vides
+  const nR = Math.log2(d.size);
+  let cols = '';
+  for (let r = 0; r < nR; r++) {
+    const ms = d.rounds[r] || new Array(d.size >> (r + 1)).fill({});
+    cols += `<div class="bcol"><h4>${C.ROUND_NAMES(d.size >> (r + 1)).toUpperCase()}</h4><div class="bms">` + ms.map(m => {
+      const line = (id, k) => { if (!id) return `<div class="l"><span class="n">—</span></div>`; const pl = C.getP(id);
+        const cls = (m.w ? (m.w === id ? 'w' : 'l') : '') + (id === 'me' ? ' me' : '');
+        return `<div class="${cls}"><span class="n">${C.flag(pl.country, 14, 10)}${esc(pl.name.split(' ').slice(-1)[0])}${pl.rival ? ' ⚔' : pl.sig ? ' ⚡' : ''}</span><b>${m.sc ? m.sc[k] : ''}</b></div>`; };
+      return `<div class="bm ${m.a === 'me' || m.b === 'me' ? 'me' : ''}">${line(m.a, 0)}${line(m.b, 1)}</div>`;
+    }).join('') + '</div></div>';
+  }
+  $('#bracket').innerHTML = cols;
+  const m = C.myMatch();
+  let side = '';
+  if (m) {
+    const o = C.getP(m.a === 'me' ? m.b : m.a), sets = C.setsFor(d.tier, d.rounds[d.round].length);
+    side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${C.ROUND_NAMES(d.rounds[d.round].length)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}</small></span></button>`;
+  } else {
+    const r = d.result || {};
+    side = r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion !</b>${esc(d.ev.name)}<br>+${r.pts} points au classement</div>`
+      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>+${r.pts || 0} points au classement</div>`;
+    side += `<button class="mbtn accent" data-act="next"><span><b>Semaine suivante</b><small>Les autres tournois sont simulés</small></span></button>`;
+  }
+  $('#tour-next').innerHTML = side;
+  bindCareerButtons($('#scr-tour'));
+  // centrer le tableau sur mon match
+  const mine = $('#bracket .bm.me:last-of-type') || $('#bracket .bm.me');
+  if (mine) mine.scrollIntoView({ block: 'center', inline: 'nearest' });
+  refreshFocus();
+}
+
+function renderRanking() {
+  const r = C.ranking(), meR = r.find(e => e.p.id === 'me').rank;
+  const row = e => `<div class="rk-row ${e.p.id === 'me' ? 'me' : ''} ${e.p.rival ? 'rv' : ''}"><b>${e.rank}</b><span class="n">${pname(e.p)}${e.p.rival ? ' ⚔' : e.p.sig ? ' ⚡' : ''}</span>
+    <span>${C.STYLE_NAMES[e.p.style]}</span><span>niv. ${Math.round(C.rating(e.p))}</span><b>${C.rankPoints(e.p)}</b></div>`;
+  let html = r.slice(0, 30).map(row).join('');
+  if (meR > 30) html += `<div class="rk-gap">···</div>` + r.slice(Math.max(30, meR - 4), meR + 3).map(row).join('');
+  $('#rank-list').innerHTML = `<div class="rk-row" style="background:none;color:#a99cc9;font-size:11px"><b>#</b><span>JOUEUR</span><span>STYLE</span><span>NIVEAU</span><b>PTS</b></div>` + html;
+}
+
+function renderPalmares() {
+  const c = C.career; if (!c) return;
+  const t = c.titles.length ? `<div class="palm-t">${c.titles.map(x => `<div>🏆 ${esc(x.name)}<br><small style="color:#a99cc9">Saison ${x.season}</small></div>`).join('')}</div>` : '<div class="infobox">Aucun titre pour l\'instant. Le premier arrive bientôt.</div>';
+  const res = c.results.slice(0, 20).map(x => `<div class="rk-row" style="grid-template-columns:110px 1fr 140px 70px"><span>S${x.season} · sem. ${x.week}</span><span>${esc(x.name)}</span><span>${x.reached}</span><b>+${x.pts}</b></div>`).join('');
+  $('#palm').innerHTML = `<h2>Titres</h2>${t}<h2>Derniers résultats</h2>${res || '<div class="infobox">Aucun tournoi joué.</div>'}`;
+  confirmReset = false; $('#car-reset-btn small').textContent = 'Efface la carrière actuelle';
+}
+
+const toMods = (st, sig) => ({ fh: st.fh / 100, bh: st.bh / 100, serve: st.serve / 100, spin: st.spin / 100, speed: st.speed / 100, mental: st.mental / 100, sig });
+function startCareerMatch() {
+  const c = C.career, d = c.tour, m = C.myMatch();
+  if (!m) return;
+  const o = C.getP(m.a === 'me' ? m.b : m.a);
+  const bestOf = C.setsFor(d.tier, d.rounds[d.round].length);
+  setup = { mode: 'career', level: 2, bestOf, oppId: o.id, aiName: o.name, aiStyle: C.STYLE_NAMES[o.style] };
+  game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf,
+    firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [toMods(c.me.stats), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
+  game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style, sig: o.sig });
+  enterGame();
+  R.setTheme(COSMETICS.arena.find(a => a.id === C.TIERS[d.tier].arena));
+  R.figures[0].setColor(NEONS[c.me.neon] || NEONS[0]); R.figures[0].setAccessory(c.me.acc || 0);
+  R.figures[1].setColor(o.rival ? 0xff2a40 : o.sig ? 0xffb020 : 0xff3d6b); R.figures[1].setAccessory(o.sig ? 1 : o.rival ? 2 : 0);
+}
+function careerEnd(win, a, b) {
+  const c = C.career, d = c.tour, o = C.getP(setup.oppId);
+  const roundName = C.ROUND_NAMES(d.rounds[d.round].length);
+  const before = C.rankOf('me');
+  C.reportMatch(win, [a, b]);
+  if (o.rival) c.news.unshift(win ? `⚔ ${c.me.name} bat son rival ${o.name} !` : `⚔ ${o.name} prend le dessus sur ${c.me.name}.`);
+  if (win && o.sig) c.news.unshift(`⚡ ${c.me.name} fait tomber ${o.name}, ${C.rankOf(o.id)}e mondial !`);
+  C.save();
+  const r = d.result;
+  let txt;
+  if (r && r.champion) txt = `🏆 <b>CHAMPION du ${esc(d.ev.name)} !</b> +${r.pts} points au classement.`;
+  else if (!win) txt = `Éliminé en ${roundName.toLowerCase()} par <b>${esc(o.name)}</b>. +${r ? r.pts : 0} points.`;
+  else txt = `Qualifié ! Prochain tour : <b>${C.ROUND_NAMES(d.rounds[d.round].length).toLowerCase()}</b>.`;
+  const after = C.rankOf('me');
+  const mv = after < before ? ` · Classement : <b style="color:#6ee7a8">${before}e → ${after}e</b>` : '';
+  return `<div class="endcareer">${txt}<br><small>+${win ? 3 : 1} point${win ? 's' : ''} de progression${mv}</small></div>`;
+}

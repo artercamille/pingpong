@@ -21,10 +21,17 @@ const gauss = () => (Math.random() + Math.random() + Math.random() + Math.random
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export class AI {
-  constructor(game, i, level = 1) {
+  constructor(game, i, level = 1, opts = null) {
     this.g = game; this.i = i; this.L = LEVELS[level];
+    if (opts && opts.rating) {
+      // carrière : niveau calculé depuis la note du joueur (40 à 99)
+      const t = Math.max(0, Math.min(1, (opts.rating - 40) / 56));
+      const l = (a, b) => a + (b - a) * t;
+      this.L = { name: 'Pro', noise: l(0.1, 0.022), slip: l(0.16, 0.03), react: l(0.3, 0.09), speed: l(0.72, 1), power: l(0.5, 0.86), aim: l(0.6, 1) };
+    }
+    this.sig = opts && opts.sig;
     const keys = Object.keys(STYLES);
-    this.styleId = keys[Math.floor(Math.random() * keys.length)];
+    this.styleId = opts && opts.style && STYLES[opts.style] ? opts.style : keys[Math.floor(Math.random() * keys.length)];
     this.style = STYLES[this.styleId];
     this.recent = [];
     this.plan = null; this.planId = -1;
@@ -99,7 +106,7 @@ export class AI {
     if (tot >= 3 && Math.random() < 0.6) {
       const weakBack = e[1] > e[0];
       // côté revers de l'adversaire = sa gauche ; vu par l'IA (face à lui), c'est sa droite à elle
-      const sgn = weakBack ? 1 : -1;
+      const sgn = (weakBack ? 1 : -1) * (g.players[op] ? g.players[op].hand : 1);
       return clamp(sgn * (0.5 + Math.random() * 0.5) * aim, -1, 1);
     }
     return clamp((Math.random() * 2 - 1) * aim, -1, 1);
@@ -124,8 +131,9 @@ export class AI {
     });
     if (!res || bad || !bounced) return; // balle faute : on laisse
     const C = res.ball.p, tC = g.simTime + res.t;
-    const back = C.x * s < -0.4 && Math.random() < 0.7;
-    const px = back ? C.x + s * 0.38 : C.x - s * 0.42;
+    const sh = s * pl.hand;
+    const back = (C.x - pl.x) * sh < -0.4 && Math.random() < 0.7;
+    const px = back ? C.x + sh * 0.38 : C.x - sh * 0.42;
     let pzd = Math.max(1.5, s * C.z + PLANE_OFF);
     // incoming spin
     const hv = Math.hypot(res.ball.v.x, res.ball.v.z) || 1;
@@ -147,7 +155,7 @@ export class AI {
       if (g.coachMode === 'short') { type = 'coupe'; power = 0.15; }
       if (g.coachMode === 'fast') { type = 'top'; power = 0.85; }
     }
-    let tErr = gauss() * this.L.noise * st.noise;
+    let tErr = gauss() * this.L.noise * st.noise * (g.pressure && this.sig !== 'roc' && this.L.name === 'Pro' ? 1.25 : 1);
     if (Math.random() < this.L.slip) tErr += (Math.random() < 0.5 ? -1 : 1) * (0.12 + Math.random() * 0.15); // grosse erreur
     const tRelease = tC - IDEAL_REL + tErr;
     const tPress = Math.max(g.simTime + this.L.react * 0.5, tRelease - power * MAX_CHARGE);

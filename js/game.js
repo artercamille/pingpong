@@ -6,8 +6,8 @@ import { emptyInput, SHOTS } from './input.js';
 export const SHOT_LABEL = { top: 'LIFT', plat: 'FRAPPE', coupe: 'COUPÉ', lob: 'LOB', flip: 'FLIP', contre: 'CONTRE', bloc: 'BLOC' };
 export const RING_T = 0.9;     // le cercle de timing apparaît 0,9 s avant la frappe
 // timing à l'appui (cercle) : err > 0 = trop tôt, err < 0 = trop tard
-export function gradePress(err) {
-  const a = Math.abs(err);
+export function gradePress(err, scale = 1) {
+  const a = Math.abs(err) / scale;
   if (a <= 0.05) return { q: 1, label: 'PARFAIT', grade: 3 };
   if (a <= 0.11) return { q: 0.82, label: 'BIEN', grade: 2 };
   if (a <= 0.2) return { q: 0.58, label: err > 0 ? 'TÔT' : 'TARD', grade: 1 };
@@ -51,6 +51,9 @@ export class Game {
     this.hooks = o.hooks || {};
     this.ball = makeBall();
     this.players = this.ctrl.map((_, i) => this.makePlayer(i));
+    // carrière : stats (0-1) et main forte de chaque joueur
+    (o.mods || []).forEach((m, i) => { if (m && this.players[i]) this.players[i].mods = m; });
+    (o.hands || []).forEach((h, i) => { if (h && this.players[i]) this.players[i].hand = h; });
     this.order = [0, 1];
     this.match = { score: [0, 0], sets: [0, 0], setIdx: 0, firstServer: o.firstServer ?? 0, history: [], over: false, winner: -1 };
     this.state = 'between';
@@ -86,7 +89,7 @@ export class Game {
     const side = i % 2 === 0 ? 1 : -1;
     const x0 = this.doubles ? side * (i < 2 ? 0.55 : -0.55) : 0;
     return {
-      i, side, x: x0, z: side * 2.1, vx: 0, vz: 0, netX: x0, netZ: side * 2.1,
+      i, side, hand: 1, mods: null, x: x0, z: side * 2.1, vx: 0, vz: 0, netX: x0, netZ: side * 2.1,
       charging: false, chargeType: null, chargeT: 0,
       releaseType: null, releaseT: -99, releasePower: 0,
       aimX: 0, aimY: 0, sideSpin: 0,
@@ -130,7 +133,7 @@ export class Game {
 
   handPos(i) {
     const pl = this.players[i];
-    return { x: pl.x + pl.side * 0.08, y: HAND_Y, z: pl.z - pl.side * 0.17 };
+    return { x: pl.x + pl.side * pl.hand * 0.08, y: HAND_Y, z: pl.z - pl.side * 0.17 };
   }
 
   // ------------------------------------------------------------------ boucle
@@ -256,8 +259,9 @@ export class Game {
     if (!res || bad) return;
     // point de frappe idéal : on recalcule où il faudrait se placer
     const C = res.ball.p;
-    const back = (C.x - pl.x) * s < -0.15;
-    const idealX = back ? C.x + s * 0.4 : C.x - s * 0.42;
+    const sh = s * pl.hand;
+    const back = (C.x - pl.x) * sh < -0.15;
+    const idealX = back ? C.x + sh * 0.4 : C.x - sh * 0.42;
     // balle courte : il faut avancer
     let idealZ = pl.z;
     let b2 = this.rally.phase === 'inPlay';
@@ -274,7 +278,8 @@ export class Game {
   movePlayer(i, dt) {
     const pl = this.players[i], inp = this.inputs[i];
     const serving = (this.state === 'serve' || this.state === 'toss') && this.server() === i;
-    let speed = MOVE_SPEED * (pl.charging ? 0.35 : 1);
+    const M = pl.mods;
+    let speed = MOVE_SPEED * (pl.charging ? 0.35 : 1) * (M ? 0.85 + 0.3 * M.speed + (M.sig === 'sprinter' ? 0.2 : 0) : 1);
     if (serving && this.state === 'toss') speed = 0;
     let wx = inp.mx * pl.side * speed, wz = -inp.my * pl.side * speed;
     // aide au placement (joueur humain) : attire doucement vers la bonne position de frappe
@@ -350,7 +355,7 @@ export class Game {
       if (b.v.y < 0 && b.p.y <= SERVE_Y) err = -(SERVE_Y - b.p.y) / Math.max(0.5, -b.v.y);
       else { const r = predict(b, 1.2, bb => bb.v.y < 0 && bb.p.y <= SERVE_Y); err = r ? r.t : 0.5; }
       if (err > RING_T) return;
-      const g = gradePress(err);
+      const g = gradePress(err, this.pressScale(i));
       this.lastPress = { i, grade: g.grade, t: this.simTime };
       this.serveHit(i, pl.chargeType || t, 0.4 + 0.4 * g.q, g.q, g.grade === 3 ? 'SERVICE PARFAIT' : 'SERVICE ' + g.label);
       pl.charging = false;
@@ -363,10 +368,17 @@ export class Game {
     const err = pr.t - this.simTime;
     if (err > RING_T) return; // le cercle n'est pas encore là : on ignore
     pl.pressType = t; pl.pressT = this.simTime; pl.pressErr = err;
-    pl.pressFore = (pr.x - pl.x) * pl.side >= -0.05;
-    this.lastPress = { i, grade: gradePress(err).grade, t: this.simTime };
+    pl.pressFore = (pr.x - pl.x) * pl.side * pl.hand >= -0.05;
+    this.lastPress = { i, grade: gradePress(err, this.pressScale(i)).grade, t: this.simTime };
     if (err > 0.1) pl.swingAt = pr.t - 0.08; else this.startSwing(i, pl.pressFore, t);
     this.net && this.net.send({ t: 'swing', i, fore: pl.pressFore, type: t });
+  }
+
+  // mental : sur les balles décisives, la fenêtre de timing dépend du mental
+  pressScale(i) {
+    const M = this.players[i].mods;
+    if (!M || !this.pressure) return 1;
+    return 0.75 + 0.5 * M.mental;
   }
 
   armSuper(i) {
@@ -404,7 +416,7 @@ export class Game {
     // le timing est jugé par rapport à la jauge affichée au moment du relâchement
     const pr = this.pred[i];
     pl.releaseErr = pr && !pr.serve ? (pr.t - IDEAL_REL) - this.simTime : null;
-    const fore = (this.ball.p.x - pl.x) * pl.side >= -0.05;
+    const fore = (this.ball.p.x - pl.x) * pl.side * pl.hand >= -0.05;
     this.startSwing(i, fore, pl.chargeType);
     this.net && this.net.send({ t: 'swing', i, fore, type: pl.chargeType });
   }
@@ -492,8 +504,10 @@ export class Game {
     if (!contact) return;
     r.contactTried = true;
 
-    const dx = (b.x - pl.x) * pl.side;   // > 0 : coup droit
-    if (Math.abs(dx) > REACH || b.y < 0.45 || b.y > 2.3) {
+    const dx = (b.x - pl.x) * pl.side * pl.hand;   // > 0 : coup droit
+    const M = pl.mods;
+    const reach = REACH * (M ? 0.9 + 0.2 * M.speed + (M.sig === 'sprinter' ? 0.15 : 0) : 1);
+    if (Math.abs(dx) > reach || b.y < 0.45 || b.y > 2.3) {
       this.hooks.feedback && this.hooks.feedback(p, 'HORS DE PORTÉE', 0);
       pl.releaseType = null;
       return;
@@ -507,7 +521,7 @@ export class Game {
         return;
       }
       const err = pl.pressErr != null ? pl.pressErr : -(this.simTime - r.pending);
-      const g = gradePress(err);
+      const g = gradePress(err, this.pressScale(p));
       if (pl.pressErr == null) { this.lastPress = { i: p, grade: g.grade, t: this.simTime }; this.startSwing(p, dx >= 0, pl.pressType); }
       type = pl.pressType; q = g.q; label = g.label; power = 0.4 + 0.4 * g.q;
       pl.pressType = null; pl.swingAt = 0; r.pending = 0;
@@ -579,7 +593,7 @@ export class Game {
     const late = this.simTime - r.pending;
     if (this.ctrl[p] === 'human') {
       if (pl.pressType) { r.contactTried = false; this.checkContact(p, b.z - pl.side * 1, true); r.pending = 0; return; }
-      if (late > 0.2 || b.y < 0.42) { r.contactTried = true; r.pending = 0; this.missed(p, (b.x - pl.x) * pl.side); }
+      if (late > 0.2 || b.y < 0.42) { r.contactTried = true; r.pending = 0; this.missed(p, (b.x - pl.x) * pl.side * pl.hand); }
       return;
     }
     const behind = pl.side * (b.z - (pl.z - pl.side * PLANE_OFF));
@@ -642,6 +656,23 @@ export class Game {
       else if (type === 'plat') { speed = 5.8 + 6 * power; top = 25; if (b.p.y > 1.15) { speed += 3.5; smash = true; } }
       else if (type === 'coupe') { speed = 3.6 + 2 * power; top = -(60 + 100 * power); }
       else { speed = 3.2 + 1.4 * power; top = 45 + 45 * power; }
+    }
+    // carrière : stats et coups signature
+    const M = pl.mods;
+    if (M) {
+      top *= 0.8 + 0.4 * M.spin;
+      if (serve) speed *= 0.92 + 0.16 * M.serve;
+      const sig = M.sig;
+      if (sig === 'canon' && pl.swingFore && (type === 'plat' || type === 'top') && !variant) speed += 2;
+      if (sig === 'tornade' && type === 'top') top *= 1.5;
+      if (sig === 'magicien' && type === 'coupe') top *= 1.6;
+      if (sig === 'fantome' && serve) side += 220 * (Math.random() < 0.5 ? 1 : -1);
+      if (sig === 'eclair' && variant === 'contre') speed += 3;
+      if (sig === 'sniper') { eMul *= 0.6; tx *= 1.12; }
+      if (sig === 'mur' && (variant === 'bloc' || type === 'coupe' || type === 'lob')) eMul *= 0.4;
+      if (sig === 'feinte' && !serve && Math.random() < 0.35) tx = -tx;
+      const sideQ = serve ? M.serve : (pl.swingFore ? M.fh : M.bh);
+      eMul *= 1.45 - 0.85 * sideQ;
     }
     if (sup) { speed += 5; top = Math.abs(top) + 120; }
     if (pl.sideSpin && !(serve && type === 'lob')) side += pl.sideSpin * (70 + 60 * power);
@@ -765,7 +796,7 @@ export class Game {
         if (ls.sup) this.addAch('super');
       }
       const lp = this.players[this.rally && this.team(this.nextHitter()) === l ? this.nextHitter() : l];
-      this.errSide[l][(this.ball.p.x - lp.x) * lp.side >= 0 ? 0 : 1]++;
+      this.errSide[l][(this.ball.p.x - lp.x) * lp.side * lp.hand >= 0 ? 0 : 1]++;
     } else if (reason !== 'Temps') { st[l].errors++; const lp = this.players[this.lastHit && this.team(this.lastHit.p) === l ? this.lastHit.p : l]; this.errSide[l][lp.lastSide || 0]++; }
     this.longest = Math.max(this.longest, this.rallyCount + 1);
     if (this.run.p === w) this.run.n++; else this.run = { p: w, n: 1 };

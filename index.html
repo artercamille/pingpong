@@ -60,6 +60,10 @@
 
     <div id="pcard"></div>
     <section class="screen" id="scr-main">
+      <button class="mbtn big gold" id="btn-career">
+        <i><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0z"/><path d="M7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4M12 14v4M8 21h8M9 18h6"/></svg></i>
+        <span><b>Carrière</b><small>Du 200e mondial au titre de champion du monde</small></span>
+      </button>
       <button class="mbtn big" data-go="scr-ai">
         <i><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="6.5"/><path d="M13.5 13.5l6 6"/><circle cx="19" cy="5" r="2"/></svg></i>
         <span><b>Jouer contre l'IA</b><small>Match rapide en solo</small></span>
@@ -147,6 +151,68 @@
       <h2>Succès</h2>
       <div id="achgrid"></div>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-career-new">
+      <h2>Crée ton joueur</h2>
+      <div class="cnew">
+        <div>
+          <label class="field">Nom du joueur<input id="car-name" maxlength="16" placeholder="Camille" data-nav></label>
+          <div class="opt" id="car-country" data-values="France" data-v="FR" data-i="0"><span class="ol">Pays</span><span class="ov"></span></div>
+          <div class="opt" id="car-hand" data-values="Droitier|Gaucher" data-v="1|-1" data-i="0"><span class="ol">Main forte</span><span class="ov"></span></div>
+          <div class="opt" id="car-style" data-values="Attaquant|Défenseur|Coupeur|Polyvalent" data-v="attaquant|defenseur|coupeur|polyvalent" data-i="0"><span class="ol">Style</span><span class="ov"></span></div>
+          <div class="opt" id="car-neon" data-values="Bleu|Cyan|Vert|Violet|Rose|Or" data-v="0|1|2|3|4|5" data-i="0"><span class="ol">Couleur néon</span><span class="ov"></span></div>
+          <div class="opt" id="car-acc" data-values="Aucun|Bandeau|Casquette|Bracelets" data-v="0|1|2|3" data-i="0"><span class="ol">Accessoire</span><span class="ov"></span></div>
+          <div class="opt" id="car-len" data-values="Rapide (1 set)|Normale (3 sets)|Longue (jusqu'à 5)" data-v="0|1|2" data-i="1"><span class="ol">Durée des matchs</span><span class="ov"></span></div>
+          <button class="mbtn accent" id="car-create"><span><b>Commencer la carrière</b><small>Tu démarres 200e mondial</small></span></button>
+          <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
+        </div>
+        <div id="car-preview"></div>
+      </div>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-career">
+      <div id="car-head"></div>
+      <div class="cgrid">
+        <div>
+          <h2 id="car-week-title">Cette semaine</h2>
+          <div id="car-week"></div>
+          <h2>Actualités</h2>
+          <div id="car-news"></div>
+        </div>
+        <div>
+          <h2>Ton joueur <span id="car-up"></span></h2>
+          <div id="car-stats"></div>
+          <div class="crow">
+            <button class="mbtn small" data-go="scr-rank"><span><b>Classement mondial</b></span></button>
+            <button class="mbtn small" data-go="scr-palmares"><span><b>Palmarès</b></span></button>
+          </div>
+          <div id="car-rival"></div>
+        </div>
+      </div>
+      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour au menu</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-tour">
+      <div id="tour-head"></div>
+      <div class="tgrid">
+        <div id="bracket"></div>
+        <div id="tour-next"></div>
+      </div>
+      <button class="mbtn ghost" data-go="scr-career" id="tour-back"><span><b>Retour au QG</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-rank">
+      <h2>Classement mondial</h2>
+      <div id="rank-list"></div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-palmares">
+      <h2>Palmarès</h2>
+      <div id="palm"></div>
+      <button class="mbtn ghost" id="car-reset-btn"><span><b>Recommencer une carrière</b><small>Efface la carrière actuelle</small></span></button>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour</b></span></button>
     </section>
 
     <section class="screen hidden" id="scr-train">

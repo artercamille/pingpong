@@ -10,6 +10,7 @@ import { initAudio, sfx, setMuted, setCrowd, setMuffle, setVolumes } from './aud
 import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMETICS, ACHIEVEMENTS, unlock, recordMatch, isUnlocked, daily, dailyProgress } from './profile.js';
 import { Recorder, Player, recordCanvas } from './replay.js';
 import * as C from './career.js';
+import { venueFor, defaultVenue, TRAINING_VENUE, JUBILE_VENUE } from './venues.js';
 
 const $ = s => document.querySelector(s);
 const R = new Renderer($('#c'));
@@ -117,7 +118,7 @@ document.querySelectorAll('.opt.cos').forEach(o => {
 });
 function applyCosmetics(oppPaddle, oppTrail) {
   const me = game ? game.me : 0;
-  R.setTheme(cosmetic('arena'));
+  R.setVenue(defaultVenue(cosmetic('arena')));
   const pad = cosmetic('paddle');
   const op = oppPaddle ? COSMETICS.paddle.find(c => c.id === oppPaddle) : null;
   const opp = op || (pad.id === 'bleu' ? COSMETICS.paddle[0] : COSMETICS.paddle[1]);
@@ -344,6 +345,7 @@ function startAI() {
 function startTraining(cfgIn, career) {
   const cfg = cfgIn || { type: choice('tr-type'), zone: choice('tr-zone'), speed: choice('tr-speed') };
   setup = { mode: 'training', level: 0, bestOf: 99, career };
+  setTimeout(() => { if (career && game) { R.setVenue(TRAINING_VENUE); setup.crowdMul = 0.1; } }, 0);
   game = new Game({ mode: 'ai', ctrl: ['human', 'robot'], me: 0, names: [myName(), 'Robot'], bestOf: 99, assist: profile.settings.assist,
     training: cfg, hooks: { ...hooks(), point: () => {}, train: (ok, T) => { renderTrain(ok, T); if (setup.career && T.total >= 20) finishCareerTraining(T); } } });
   enterGame();
@@ -1208,8 +1210,7 @@ function startCareerMatch() {
     game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o) + C.diffAI(), style: o.style, sig: o.sig });
   }
   enterGame();
-  const venue = C.VENUES[d.ev.name];
-  R.setTheme(COSMETICS.arena.find(a => a.id === (venue ? venue.arena : C.TIERS[d.tier].arena)));
+  R.setVenue(venueFor(d));
   const dens = { challenger: 0.22, contender: 0.45, star: 0.75, slam: 1, worlds: 1, team: 0.9, olympics: 1 }[d.tier] * (d.kind === 'double' ? 0.8 : 1);
   R.setCrowdDensity(dens * (d.rounds[d.round] && d.rounds[d.round].length <= 2 ? 1.25 : 1));
   R.setEventTitle(d.ev.name);
@@ -1625,7 +1626,7 @@ $('#jub-match').addEventListener('click', () => {
     firstServer: 0, hooks: hooks(), mods: [toMods(C.effStats()), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
   game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style });
   enterGame();
-  R.setTheme(COSMETICS.arena.find(a => a.id === 'legende'));
+  R.setVenue(JUBILE_VENUE);
   R.setEventTitle(`Jubilé de ${c.me.name}`);
   setup.crowdMul = 1.4;
   R.figures[0].setColor(NEONS[c.me.neon] || NEONS[0]); R.figures[0].setAccessory(c.me.acc || 0);
@@ -1740,7 +1741,7 @@ function startSparring(k) {
     mods: [toMods(C.effStats()), toMods(o.stats)], hands: [c.me.hand, 1] });
   game.ai[1] = new AI(game, 1, 2, { rating: ov - 2, style: 'polyvalent' });
   enterGame();
-  R.setCrowdDensity(0.05); R.setEventTitle('Entraînement'); setup.crowdMul = 0.2;
+  R.setVenue(TRAINING_VENUE); R.setCrowdDensity(0.05); R.setEventTitle('Entraînement'); setup.crowdMul = 0.2;
   R.figures[0].setColor(C.outfitColor() || NEONS[c.me.neon] || NEONS[0]);
 }
 // export / import des sauvegardes

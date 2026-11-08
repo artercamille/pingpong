@@ -183,8 +183,11 @@
         <div>
           <h2>Ton joueur <span id="car-up"></span></h2>
           <div id="car-stats"></div>
-          <div class="crow">
-            <button class="mbtn small" data-go="scr-rank"><span><b>Classement mondial</b></span></button>
+          <div class="crow c3">
+            <button class="mbtn small" data-go="scr-ctrain"><span><b>Entraînement</b></span></button>
+            <button class="mbtn small" data-go="scr-team"><span><b>Coach & sponsors</b></span></button>
+            <button class="mbtn small" data-go="scr-shop"><span><b>Matériel</b></span></button>
+            <button class="mbtn small" data-go="scr-rank"><span><b>Classement</b></span></button>
             <button class="mbtn small" data-go="scr-palmares"><span><b>Palmarès</b></span></button>
           </div>
           <div id="car-rival"></div>
@@ -200,6 +203,36 @@
         <div id="tour-next"></div>
       </div>
       <button class="mbtn ghost" data-go="scr-career" id="tour-back"><span><b>Retour au QG</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-ctrain">
+      <div class="cmoney"></div>
+      <h2>Séance d'entraînement de la semaine</h2>
+      <div class="cgrid">
+        <div>
+          <div class="opt" id="ct-stat" data-values="Coup droit|Revers|Service|Effet|Vitesse|Endurance|Mental" data-v="fh|bh|serve|spin|speed|stamina|mental" data-i="0"><span class="ol">Travailler</span><span class="ov"></span></div>
+          <button class="mbtn accent" id="ct-robot"><span><b>Séance au robot</b><small>20 balles · plus tu en réussis, plus tu progresses</small></span></button>
+          <button class="mbtn" id="ct-quick"><span><b>Séance rapide</b><small>Simulée, gain moyen</small></span></button>
+          <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
+        </div>
+        <div id="ct-info"></div>
+      </div>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-team">
+      <div class="cmoney"></div>
+      <div class="cgrid">
+        <div><h2>Coach</h2><div id="team-coach"></div></div>
+        <div><h2>Sponsor</h2><div id="team-sponsor"></div></div>
+      </div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-shop">
+      <div class="cmoney"></div>
+      <h2>Matériel</h2>
+      <div id="shop"></div>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
     </section>
 
     <section class="screen hidden xwide" id="scr-rank">

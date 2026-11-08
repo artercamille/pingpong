@@ -49,6 +49,9 @@ function show(id) {
   if (id === 'scr-rank') renderRanking();
   if (id === 'scr-palmares') renderPalmares();
   if (id === 'scr-career-new') renderCreate();
+  if (id === 'scr-ctrain') renderCTrain();
+  if (id === 'scr-team') renderTeam();
+  if (id === 'scr-shop') renderShop();
   focusIdx = 0; refreshFocus();
 }
 
@@ -137,6 +140,7 @@ function optStep(o, d) {
   const n = o.dataset.values.split('|').length;
   o.dataset.i = (+o.dataset.i + d + n) % n; optRender(o); sfx.ui();
   if (o.closest('#scr-career-new')) renderCreate();
+  if (o.closest('#scr-ctrain')) renderCTrain();
 }
 document.querySelectorAll('.opt').forEach(o => {
   optRender(o);
@@ -316,18 +320,18 @@ function startAI() {
   enterGame();
 }
 
-function startTraining() {
-  const cfg = { type: choice('tr-type'), zone: choice('tr-zone'), speed: choice('tr-speed') };
-  setup = { mode: 'training', level: 0, bestOf: 99 };
+function startTraining(cfgIn, career) {
+  const cfg = cfgIn || { type: choice('tr-type'), zone: choice('tr-zone'), speed: choice('tr-speed') };
+  setup = { mode: 'training', level: 0, bestOf: 99, career };
   game = new Game({ mode: 'ai', ctrl: ['human', 'robot'], me: 0, names: [myName(), 'Robot'], bestOf: 99, assist: profile.settings.assist,
-    training: cfg, hooks: { ...hooks(), point: () => {}, train: (ok, T) => renderTrain(ok, T) } });
+    training: cfg, hooks: { ...hooks(), point: () => {}, train: (ok, T) => { renderTrain(ok, T); if (setup.career && T.total >= 20) finishCareerTraining(T); } } });
   enterGame();
   document.body.classList.add('training');
   $('#trainhud').classList.remove('hidden');
   renderTrain(null, game.train);
 }
 function renderTrain(ok, T) {
-  $('#trainhud').innerHTML = `<div><b>${T.ok} / ${T.total}</b><small>RÉUSSIS</small></div><div><b>${T.streak}</b><small>SÉRIE</small></div><div><b>${T.best}</b><small>RECORD</small></div>`;
+  $('#trainhud').innerHTML = (setup.career ? `<div><b>${C.STAT_NAMES[setup.career]}</b><small>BALLE ${Math.min(20, T.total + 1)} / 20</small></div>` : '') + `<div><b>${T.ok} / ${T.total}</b><small>RÉUSSIS</small></div><div><b>${T.streak}</b><small>SÉRIE</small></div><div><b>${T.best}</b><small>RECORD</small></div>`;
   if (ok && T.streak > 0 && T.streak % 10 === 0) { showStreak(`${T.streak} d'affilée 🔥`); sfx.crowd(2); }
 }
 $('#tr-go').addEventListener('click', () => { initAudio(); sfx.ui(); startTraining(); });
@@ -590,7 +594,7 @@ function syncPauseOptions() {
 }
 $('#pause-opt-btn').addEventListener('click', () => { syncPauseOptions(); $('#pause-opts').classList.toggle('hidden'); sfx.ui(); });
 $('#resume').addEventListener('click', () => { if (timeout) endTimeout(true); else togglePause(false); });
-$('#quit').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(setup && setup.mode === 'career' ? 'scr-tour' : 'scr-main'); });
+$('#quit').addEventListener('click', () => { net && net.send({ t: 'quit' }); quitToMenu(setup && setup.mode === 'career' ? 'scr-tour' : setup && setup.career ? 'scr-ctrain' : 'scr-main'); });
 // temps mort en ligne (1 par joueur et par match, 30 s max)
 let timeout = null;
 function requestTimeout() {
@@ -973,11 +977,13 @@ function renderCareer() {
   const me = c.me, rk = C.rankOf('me');
   $('#car-head').innerHTML = `${C.flag(me.country, 54, 36)}<div><div class="big">${esc(me.name)}</div>
     <div class="meta">${C.COUNTRIES[me.country].name.toUpperCase()} · ${C.STYLE_NAMES[me.style].toUpperCase()} · ${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · NIVEAU ${C.overall(me.stats)}</div>
-    <div class="meta">SAISON ${c.season} · SEMAINE ${c.week} / ${C.WEEKS} · ${C.rankPoints(me)} PTS</div></div>
+    <div class="meta">SAISON ${c.season} · SEMAINE ${c.week} / ${C.WEEKS} · ${C.rankPoints(me)} PTS</div>
+    ${moneyLine()}</div>
     <div class="rk"><b>${rk}e</b><span class="meta">CLASSEMENT MONDIAL</span></div>`;
   // semaine
   const evs = C.weekEvents(c.season, c.week);
   let html = '';
+  if (!c.tour && C.canTrain()) html += `<button class="mbtn" data-go2="scr-ctrain"><span><b>🏋 Séance d'entraînement dispo</b><small>Une par semaine${c.coach ? ' · ' + C.COACHES[c.coach].name : ''}</small></span></button>`;
   if (c.tour) {
     html = `<button class="mbtn accent" data-act="tour"><span><b>Reprendre : ${esc(c.tour.ev.name)}</b><small>${c.tour.done || c.tour.out ? 'Tournoi terminé, voir le tableau' : C.ROUND_NAMES(c.tour.rounds[c.tour.round].length)}</small></span></button>`;
   } else {
@@ -990,6 +996,7 @@ function renderCareer() {
   }
   $('#car-week-title').textContent = c.week === C.WEEKS ? 'Semaine finale' : 'Cette semaine';
   $('#car-week').innerHTML = html;
+  if (c.energy < 35 && !c.tour) $('#car-week').insertAdjacentHTML('afterbegin', `<div class="warnbox">⚠ Tu es ${C.formLabel(c.energy).toLowerCase()} : tes stats baissent en match. Une semaine de repos te remet en forme.</div>`);
   // prochains gros tournois
   const up = [];
   for (let w = c.week + 1; w <= C.WEEKS && up.length < 2; w++) {
@@ -1010,6 +1017,7 @@ function renderCareer() {
     $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TON RIVAL</small><br>
       <b>${pname(rv)}</b> · ${C.rankOf(rv.id)}e mondial · niveau ${Math.round(rv.rating)}<br>Face-à-face : <b>${h.w} – ${h.l}</b></div>`; }
   bindCareerButtons($('#scr-career'));
+  $('#scr-career').querySelectorAll('[data-go2]').forEach(b => b.addEventListener('click', () => { sfx.ui(); show(b.dataset.go2); }));
   refreshFocus();
 }
 
@@ -1019,7 +1027,8 @@ function scoutCard(o) {
     <div class="who">${C.flag(o.country, 36, 24)}${esc(o.name)}</div>
     <div class="row2">${C.rankOf(o.id)}E MONDIAL · NIVEAU ${Math.round(C.rating(o))} · ${C.STYLE_NAMES[o.style].toUpperCase()} · ${o.hand === 1 ? 'DROITIER' : 'GAUCHER'}</div>
     <ul><li>Points forts : <b>${sc.best.join(', ')}</b></li><li>Points faibles : <b>${sc.worst.join(', ')}</b></li>
-    <li>Face-à-face : <b>${h.w} – ${h.l}</b></li><li>Toi : niveau <b>${C.overall(c.me.stats)}</b></li></ul>
+    <li>Face-à-face : <b>${h.w} – ${h.l}</b></li><li>Toi : niveau <b>${C.rating(c.me)}</b> · forme <b>${C.formLabel(c.energy).toLowerCase()}</b> (${c.energy} %)</li></ul>
+    ${c.coach >= 2 ? `<div class="sig" style="color:#6ee7a8;background:rgba(110,231,168,.1)">🧢 Coach : ${coachTip(o, sc)}</div>` : ''}
     ${o.sig ? `<div class="sig">⚡ BOSS · ${C.SIGNATURES[o.sig].name} : ${C.SIGNATURES[o.sig].desc}</div>` : ''}
     ${o.rival ? '<div class="rv">⚔ C\'EST TON RIVAL</div>' : ''}</div>`;
 }
@@ -1050,8 +1059,8 @@ function renderTour() {
     side = scoutCard(o) + `<button class="mbtn accent" data-act="play"><span><b>Jouer le match</b><small>${C.ROUND_NAMES(d.rounds[d.round].length)} · ${sets === 1 ? '1 set' : 'au meilleur des ' + sets + ' sets'}</small></span></button>`;
   } else {
     const r = d.result || {};
-    side = r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion !</b>${esc(d.ev.name)}<br>+${r.pts} points au classement</div>`
-      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>+${r.pts || 0} points au classement</div>`;
+    side = r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion !</b>${esc(d.ev.name)}<br>+${r.pts} points au classement · +${eur(r.prize || 0)}</div>`
+      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>+${r.pts || 0} points au classement · +${eur(r.prize || 0)}</div>`;
     side += `<button class="mbtn accent" data-act="next"><span><b>Semaine suivante</b><small>Les autres tournois sont simulés</small></span></button>`;
   }
   $('#tour-next').innerHTML = side;
@@ -1087,7 +1096,7 @@ function startCareerMatch() {
   const bestOf = C.setsFor(d.tier, d.rounds[d.round].length);
   setup = { mode: 'career', level: 2, bestOf, oppId: o.id, aiName: o.name, aiStyle: C.STYLE_NAMES[o.style] };
   game = new Game({ mode: 'ai', ctrl: ['human', 'ai'], me: 0, names: [c.me.name, o.name], assist: profile.settings.assist, bestOf,
-    firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [toMods(c.me.stats), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
+    firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks(), mods: [toMods(myMatchStats()), toMods(o.stats, o.sig)], hands: [c.me.hand, o.hand] });
   game.ai[1] = new AI(game, 1, 2, { rating: C.rating(o), style: o.style, sig: o.sig });
   enterGame();
   R.setTheme(COSMETICS.arena.find(a => a.id === C.TIERS[d.tier].arena));
@@ -1104,10 +1113,104 @@ function careerEnd(win, a, b) {
   C.save();
   const r = d.result;
   let txt;
-  if (r && r.champion) txt = `🏆 <b>CHAMPION du ${esc(d.ev.name)} !</b> +${r.pts} points au classement.`;
-  else if (!win) txt = `Éliminé en ${roundName.toLowerCase()} par <b>${esc(o.name)}</b>. +${r ? r.pts : 0} points.`;
+  if (r && r.champion) txt = `🏆 <b>CHAMPION du ${esc(d.ev.name)} !</b> +${r.pts} points au classement, +${eur(r.prize)} de prize money.`;
+  else if (!win) txt = `Éliminé en ${roundName.toLowerCase()} par <b>${esc(o.name)}</b>. +${r ? r.pts : 0} points, +${eur(r ? r.prize : 0)}.`;
   else txt = `Qualifié ! Prochain tour : <b>${C.ROUND_NAMES(d.rounds[d.round].length).toLowerCase()}</b>.`;
   const after = C.rankOf('me');
   const mv = after < before ? ` · Classement : <b style="color:#6ee7a8">${before}e → ${after}e</b>` : '';
   return `<div class="endcareer">${txt}<br><small>+${win ? 3 : 1} point${win ? 's' : ''} de progression${mv}</small></div>`;
+}
+
+// ------------------------------------------------------------------ carrière partie 2
+const eur = n => `${Math.round(n || 0).toLocaleString('fr-FR')} €`;
+function moneyLine() {
+  const c = C.career, e = c.energy;
+  const col = e >= 75 ? '#6ee7a8' : e >= 50 ? '#ffc83c' : e >= 25 ? '#ff9a3c' : '#ff3d5a';
+  return `<div class="mline"><span>💰 <b>${eur(c.money)}</b></span><span>⚡ Forme <span class="ebar"><i style="width:${e}%;background:${col}"></i></span> <b style="color:${col}">${C.formLabel(e)}</b></span>
+    ${c.coach ? `<span>🧢 ${C.COACHES[c.coach].name}</span>` : ''}${c.sponsor ? `<span style="color:${c.sponsor.color}">★ ${esc(c.sponsor.name)}</span>` : ''}</div>`;
+}
+function renderMoney() { document.querySelectorAll('.cmoney').forEach(el => { el.innerHTML = moneyLine(); }); }
+function myMatchStats() {
+  const st = C.effStats(), f = C.formOf(), out = {};
+  for (const k in st) out[k] = st[k] * f;
+  return out;
+}
+function coachTip(o, sc) {
+  const w = sc.worst[0];
+  if (w === 'Revers') return 'joue sur son revers, il souffre de ce côté.';
+  if (w === 'Coup droit') return 'insiste côté coup droit, c\'est son point faible.';
+  if (w === 'Vitesse') return 'déplace-le d\'un coin à l\'autre, il est lent.';
+  if (w === 'Effet') return 'varie les effets, il les lit mal.';
+  if (w === 'Service') return 'attaque son service dès le retour.';
+  if (w === 'Mental') return 'reste solide sur les points serrés, il craque sous la pression.';
+  return 'allonge les échanges, il fatigue vite.';
+}
+
+// --- entraînement
+const ROBOT_CFG = { fh: { type: 'top', zone: 'fh' }, bh: { type: 'top', zone: 'bh' }, serve: { type: 'mix', zone: 'rand' }, spin: { type: 'coupe', zone: 'rand' },
+  speed: { type: 'mix', zone: 'rand' }, stamina: { type: 'plat', zone: 'rand' }, mental: { type: 'mix', zone: 'rand' } };
+function renderCTrain() {
+  renderMoney();
+  const c = C.career, k = choice('ct-stat'), v = c.me.stats[k], pr = (c.me.prog && c.me.prog[k]) || 0;
+  const can = C.canTrain();
+  $('#ct-robot').classList.toggle('locked', !can); $('#ct-quick').classList.toggle('locked', !can);
+  $('#ct-info').innerHTML = `<div class="scard" style="border-left-color:#6ee7a8"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">${C.STAT_NAMES[k].toUpperCase()}</small>
+    <div class="who">${v}<span style="font-size:14px;margin-left:10px;color:#a99cc9">/ 99</span></div>
+    <div class="xbar" style="margin:6px 0 12px"><div style="width:${pr * 100}%;background:#6ee7a8"></div></div>
+    <ul><li>Coach : <b>${C.COACHES[c.coach].name}</b> (×${C.COACHES[c.coach].mult})</li><li>Une séance coûte un peu de forme.</li>
+    <li>${can ? 'Séance disponible cette semaine.' : '<b>Déjà entraîné cette semaine.</b> Reviens la semaine prochaine.'}</li></ul></div>`;
+}
+$('#ct-quick').addEventListener('click', () => {
+  if (!C.canTrain()) return;
+  sfx.ui(); const k = choice('ct-stat'), r = C.train(k, 0.45);
+  toast('🏋', 'ENTRAÎNEMENT', C.STAT_NAMES[k], r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Tu progresses, continue.');
+  renderCTrain();
+});
+$('#ct-robot').addEventListener('click', () => {
+  if (!C.canTrain()) return;
+  initAudio(); sfx.ui();
+  const k = choice('ct-stat'), ov = C.overall(C.career.me.stats);
+  startTraining({ ...ROBOT_CFG[k], speed: ov < 60 ? 0 : ov < 78 ? 1 : 2 }, k);
+});
+function finishCareerTraining(T) {
+  const k = setup.career, q = T.ok / Math.max(1, T.total);
+  setup.career = null;
+  const r = C.train(k, q);
+  setTimeout(() => {
+    quitToMenu('scr-ctrain');
+    toast('🏋', `SÉANCE TERMINÉE · ${T.ok}/${T.total}`, C.STAT_NAMES[k], r && r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Bonne séance, la progression continue.');
+  }, 900);
+}
+
+// --- coach & sponsors
+function renderTeam() {
+  renderMoney();
+  const c = C.career;
+  $('#team-coach').innerHTML = C.COACHES.map((co, i) => `<button class="mbtn ${i === c.coach ? 'accent' : ''}" data-coach="${i}"><span><b>${co.name}${i === c.coach ? ' ✓' : ''}</b>
+    <small>${co.desc}${co.cost ? ' · ' + eur(co.cost) + ' / semaine' : ''}</small></span></button>`).join('');
+  const S = c.sponsor;
+  let h = S ? `<div class="scard" style="border-left-color:${S.color}"><div class="who" style="color:${S.color}">${esc(S.name)}</div>
+    <div class="row2">${eur(S.weekly)} / SEMAINE · ${S.left} SEMAINES RESTANTES</div>
+    <ul><li>Objectif : <b>${C.goalText(S.goal)}</b> ${S.done ? '✅' : ''}</li><li>Prime : <b>${eur(S.reward)}</b></li></ul></div>` : '<div class="infobox">Pas de sponsor. Signe un contrat pour toucher de l\'argent chaque semaine.</div>';
+  const offers = C.sponsorOffers();
+  if (offers.length) h += `<h2 style="margin-top:14px">Offres${S ? ' (remplace le contrat actuel)' : ''}</h2>` + offers.slice(-3).reverse().map(o =>
+    `<button class="mbtn" data-sp="${o.id}"><span><b style="color:${o.color}">${esc(o.name)}</b><small>${eur(o.weekly)} / semaine · objectif : ${C.goalText(o.goal)} → ${eur(o.reward)}</small></span></button>`).join('');
+  h += `<div style="font-size:12px;color:#a99cc9;margin-top:6px">Les grosses marques arrivent quand tu montes au classement.</div>`;
+  $('#team-sponsor').innerHTML = h;
+  document.querySelectorAll('#team-coach [data-coach]').forEach(b => b.addEventListener('click', () => { sfx.ui(); C.hireCoach(+b.dataset.coach); C.save(); renderTeam(); refreshFocus(); }));
+  document.querySelectorAll('#team-sponsor [data-sp]').forEach(b => b.addEventListener('click', () => { sfx.unlock(); C.signSponsor(b.dataset.sp); renderTeam(); focusIdx = 0; refreshFocus(); }));
+}
+
+// --- matériel
+function renderShop() {
+  renderMoney();
+  const c = C.career, bonus = b => Object.entries(b).map(([k, v]) => `+${v} ${C.STAT_NAMES[k].toLowerCase()}`).join(', ') || 'aucun bonus';
+  $('#shop').innerHTML = Object.entries(C.GEAR).map(([slot, G]) => `<h2>${G.name}</h2><div class="shoprow">` + G.items.map((it, i) => {
+    const own = i <= (c.gear[slot] || 0), eq = i === (c.gear[slot] || 0), can = !own && c.money >= it.price;
+    return `<button class="mbtn ${eq ? 'accent' : can ? '' : own ? '' : 'locked'}" data-slot="${slot}" data-i="${i}"><span><b>${it.name}${eq ? ' ✓' : ''}</b>
+      <small>${bonus(it.b)} · ${eq ? 'équipé' : own ? 'dépassé' : eur(it.price)}</small></span></button>`;
+  }).join('') + '</div>').join('');
+  document.querySelectorAll('#shop [data-slot]').forEach(b => b.addEventListener('click', () => {
+    if (C.buyGear(b.dataset.slot, +b.dataset.i)) { sfx.unlock(); toast('🛒', 'ACHAT', C.GEAR[b.dataset.slot].items[+b.dataset.i].name, 'Équipé automatiquement'); const k = focusIdx; renderShop(); focusIdx = k; refreshFocus(); }
+  }));
 }

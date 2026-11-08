@@ -308,3 +308,16 @@
 .bcol { justify-content: flex-start; }
 .bcol .bms { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 4px; }
 .mbtn.locked { opacity: .45; }
+.crow.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.mline { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 13px; font-weight: 700; color: #ddd5f2; margin-top: 6px; }
+.cmoney { padding: 10px 16px; background: rgba(28,22,44,.85); border-left: 4px solid #ffc83c; margin-bottom: 14px; }
+.cmoney .mline { margin: 0; }
+.ebar { display: inline-block; width: 70px; height: 7px; background: rgba(255,255,255,.12); vertical-align: middle; margin: 0 4px; }
+.ebar i { display: block; height: 100%; }
+.warnbox { padding: 8px 12px; background: rgba(255,154,60,.15); border-left: 3px solid #ff9a3c; font-size: 13px; margin-bottom: 8px; }
+.shoprow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+.shoprow .mbtn { margin: 0; }
+.shoprow .mbtn { height: auto; min-height: 58px; padding-top: 8px; padding-bottom: 8px; }
+.shoprow .mbtn b { font-size: 14px; }
+.shoprow .mbtn small { font-size: 11px; white-space: normal; }
+#shop h2 { margin: 10px 0 6px; }

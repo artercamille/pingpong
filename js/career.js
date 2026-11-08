@@ -58,13 +58,14 @@ const CITIES = ['Lyon', 'Porto', 'Varsovie', 'Le Caire', 'Lagos', 'Mumbai', 'Mex
 const SLAMS = { 6: 'Grand Chelem de Tokyo', 12: 'Grand Chelem de Paris', 18: 'Grand Chelem de Londres', 23: 'Grand Chelem de New York' };
 const STARS = { 3: 'Star de Shanghai', 9: 'Star de Berlin', 15: 'Star de Séoul', 20: 'Star de Stockholm' };
 
+const de = c => /^[AEIOUÉÈ]/.test(c) ? `d'${c}` : `de ${c}`;
 export function weekEvents(season, week) {
   if (week === WEEKS) return [{ id: `s${season}w${week}worlds`, tier: 'worlds', name: 'Championnats du monde', city: 'Finale de saison' }];
-  if (SLAMS[week]) return [{ id: `s${season}w${week}slam`, tier: 'slam', name: SLAMS[week] }, { id: `s${season}w${week}ch`, tier: 'challenger', name: `Challenger de ${CITIES[(week * 7 + season) % CITIES.length]}` }];
-  if (STARS[week]) return [{ id: `s${season}w${week}star`, tier: 'star', name: STARS[week] }, { id: `s${season}w${week}co`, tier: 'contender', name: `Contender de ${CITIES[(week * 5 + season) % CITIES.length]}` }];
+  if (SLAMS[week]) return [{ id: `s${season}w${week}slam`, tier: 'slam', name: SLAMS[week] }, { id: `s${season}w${week}ch`, tier: 'challenger', name: `Challenger ${de(CITIES[(week * 7 + season) % CITIES.length])}` }];
+  if (STARS[week]) return [{ id: `s${season}w${week}star`, tier: 'star', name: STARS[week] }, { id: `s${season}w${week}co`, tier: 'contender', name: `Contender ${de(CITIES[(week * 5 + season) % CITIES.length])}` }];
   return [
-    { id: `s${season}w${week}ch`, tier: 'challenger', name: `Challenger de ${CITIES[(week * 7 + season) % CITIES.length]}` },
-    { id: `s${season}w${week}co`, tier: 'contender', name: `Contender de ${CITIES[(week * 5 + season + 3) % CITIES.length]}` },
+    { id: `s${season}w${week}ch`, tier: 'challenger', name: `Challenger ${de(CITIES[(week * 7 + season) % CITIES.length])}` },
+    { id: `s${season}w${week}co`, tier: 'contender', name: `Contender ${de(CITIES[(week * 5 + season + 3) % CITIES.length])}` },
   ];
 }
 
@@ -85,6 +86,7 @@ function makeStats(rating, style) {
 export let career = null;
 export function load() {
   try { career = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { career = null; }
+  migrate();
   return career;
 }
 export function save() { try { localStorage.setItem(KEY, JSON.stringify(career)); } catch (e) {} }
@@ -118,7 +120,7 @@ export function create(p) {
   pool.push(rival);
   career = {
     v: 1, season: 1, week: 1, me, pool, length: p.length ?? 1, upPoints: 0,
-    h2h: {}, titles: [], results: [], tour: null, news: ['Bienvenue sur le circuit ! Commence par les tournois Challenger pour grimper au classement.'],
+    h2h: {}, titles: [], results: [], tour: null, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0, news: ['Bienvenue sur le circuit ! Commence par les tournois Challenger pour grimper au classement.'],
   };
   // classement de départ : points fictifs de la saison précédente
   for (const pl of pool) for (let k = 0; k < WEEKS; k++) pl.pts.push({ w: -k, p: aiIncome(pl) });
@@ -129,7 +131,7 @@ export function create(p) {
 // ------------------------------------------------------------------ classement
 export function allPlayers() { return [career.me, ...career.pool]; }
 export function getP(id) { return id === 'me' ? career.me : career.pool.find(p => p.id === id); }
-export function rating(pl) { return pl.id === 'me' ? overall(pl.stats) : pl.rating; }
+export function rating(pl) { return pl.id === 'me' ? overall(effStats()) : pl.rating; }
 export function rankPoints(pl) {
   const now = absWeek(career.season, career.week);
   return pl.pts.reduce((a, e) => a + (e.w > now - WEEKS ? e.p : 0), 0);
@@ -253,6 +255,7 @@ export function reportMatch(won, sets) {
   won ? h.w++ : h.l++;
   career.h2h[oppId] = h;
   career.upPoints += won ? 3 : 1;
+  spendEnergy(10);
   simRound(d);
   if (!won) {
     d.out = true;
@@ -290,11 +293,13 @@ function finishTournament() {
   const res = award(d);
   for (const [id, p] of Object.entries(res)) { const pl = getP(id); if (pl && p) pl.pts.push({ w, p }); }
   const mine = res.me || 0;
+  const prize = mine * 10;
+  if (prize) { career.money += prize; career.earned = (career.earned || 0) + prize; }
   const final = d.rounds[d.rounds.length - 1][0];
   const champion = final && final.w === 'me';
-  d.result = { pts: mine, champion, reached: roundReached(d) };
+  d.result = { pts: mine, prize, champion, reached: roundReached(d) };
   if (champion) {
-    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season });
+    career.titles.push({ name: d.ev.name, tier: d.tier, season: career.season, at: absWeek(career.season, career.week) });
     career.upPoints += { challenger: 3, contender: 5, star: 8, slam: 15, worlds: 15 }[d.tier];
     career.news.unshift(`🏆 ${career.me.name} remporte le ${d.ev.name} !`);
   } else {
@@ -338,6 +343,7 @@ export function endWeek() {
   if (rival) rival.rating = Math.min(97, Math.max(rival.rating, overall(career.me.stats) + 2) + 0.15);
   // petite évolution des autres joueurs
   for (const p of career.pool) if (!p.rival) p.rating = clamp(p.rating + (rnd() - 0.5) * 0.4, 38, 98);
+  weekEconomy();
   career.tour = null;
   career.week++;
   if (career.week > WEEKS) { career.week = 1; career.season++; career.news.unshift(`Nouvelle saison ${career.season} !`); }
@@ -379,4 +385,122 @@ export function flag(code, w = 24, h = 16) {
   else if (f[0] === 'us') bg = 'linear-gradient(90deg, #3c3b6e 40%, transparent 40%) top left / 100% 54% no-repeat, repeating-linear-gradient(180deg, #b22234 0 7.7%, #fff 7.7% 15.4%)';
   else if (f[0] === 'gb') bg = 'linear-gradient(90deg, transparent 42%, #c8102e 42% 58%, transparent 58%), linear-gradient(180deg, transparent 38%, #c8102e 38% 62%, transparent 62%), linear-gradient(90deg, transparent 38%, #fff 38% 62%, transparent 62%), linear-gradient(180deg, transparent 32%, #fff 32% 68%, transparent 68%), #012169';
   return `<span class="flag" style="width:${w}px;height:${h}px;background:${bg}"></span>`;
+}
+
+
+// ================================================================== partie 2 : énergie, entraînement, coach, sponsors, matériel
+export function migrate() {
+  if (!career) return;
+  const d = { money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0 };
+  for (const k in d) if (career[k] === undefined) career[k] = d[k];
+  if (!career.me.prog) career.me.prog = {};
+}
+const staminaOf = () => effStats().stamina;
+export function spendEnergy(n) {
+  career.energy = clamp(Math.round(career.energy - n * (1.3 - staminaOf() / 100)), 0, 100);
+}
+// forme : multiplie les stats en match
+export const formOf = () => 0.82 + 0.18 * (career.energy / 100);
+export const formLabel = e => e >= 75 ? 'En pleine forme' : e >= 50 ? 'Correct' : e >= 25 ? 'Fatigué' : 'Épuisé';
+
+// ---------- matériel
+export const GEAR = {
+  bois: { name: 'Bois', items: [
+    { name: 'Bois Allround', price: 0, b: {} },
+    { name: 'Bois Carbone', price: 1500, b: { fh: 2, bh: 2 } },
+    { name: 'Bois Hinoki', price: 6000, b: { fh: 4, bh: 4 } },
+    { name: 'Bois ZLC Pro', price: 18000, b: { fh: 6, bh: 6, serve: 1 } } ] },
+  rev: { name: 'Revêtements', items: [
+    { name: 'Revêtements de base', price: 0, b: {} },
+    { name: 'Tensor rapide', price: 1200, b: { spin: 3 } },
+    { name: 'Chinois collant', price: 5000, b: { spin: 5, serve: 2 } },
+    { name: 'Tensor Pro Max', price: 15000, b: { spin: 7, serve: 3, fh: 1 } } ] },
+  shoes: { name: 'Chaussures', items: [
+    { name: 'Baskets', price: 0, b: {} },
+    { name: 'Chaussures Grip', price: 1000, b: { speed: 3 } },
+    { name: 'Chaussures Aéro', price: 4000, b: { speed: 5, stamina: 2 } },
+    { name: 'Chaussures Élite', price: 12000, b: { speed: 7, stamina: 4 } } ] },
+};
+export function gearBonus() {
+  const b = {};
+  for (const slot in GEAR) { const it = GEAR[slot].items[career.gear[slot] || 0]; for (const k in it.b) b[k] = (b[k] || 0) + it.b[k]; }
+  return b;
+}
+export function effStats() {
+  const b = gearBonus(), st = {};
+  for (const k of STAT_KEYS) st[k] = Math.min(99, career.me.stats[k] + (b[k] || 0) + (k === 'mental' && COACHES[career.coach] ? COACHES[career.coach].mental : 0));
+  return st;
+}
+export function buyGear(slot, i) {
+  const it = GEAR[slot].items[i];
+  if (!it || i <= (career.gear[slot] || 0) || career.money < it.price) return false;
+  career.money -= it.price; career.gear[slot] = i; save();
+  return true;
+}
+
+// ---------- coach
+export const COACHES = [
+  { name: 'Pas de coach', cost: 0, mult: 1, mental: 0, desc: 'Tu t\'entraînes seul.' },
+  { name: 'Coach du club', cost: 150, mult: 1.4, mental: 0, desc: 'Entraînement +40 %.' },
+  { name: 'Coach national', cost: 600, mult: 1.8, mental: 2, desc: 'Entraînement +80 %, +2 en mental.' },
+  { name: 'Coach légendaire', cost: 2200, mult: 2.5, mental: 5, desc: 'Entraînement +150 %, +5 en mental, conseils tactiques.' },
+];
+export function hireCoach(i) { if (!COACHES[i]) return false; career.coach = i; save(); return true; }
+
+// ---------- entraînement (une séance par semaine)
+export const canTrain = () => career.trained !== absWeek(career.season, career.week);
+export function train(k, quality) {
+  if (!canTrain()) return null;
+  const v = career.me.stats[k];
+  const gain = (0.6 + 1.6 * quality) * COACHES[career.coach].mult / (v < 70 ? 1 : v < 85 ? 1.6 : 2.4);
+  career.me.prog = career.me.prog || {};
+  let pr = (career.me.prog[k] || 0) + gain, up = 0;
+  while (pr >= 1 && career.me.stats[k] < 99) { pr -= 1; career.me.stats[k]++; up++; }
+  career.me.prog[k] = pr;
+  career.trained = absWeek(career.season, career.week);
+  spendEnergy(12);
+  save();
+  return { up, gain };
+}
+
+// ---------- sponsors
+const SPONSORS = [
+  { id: 'pulse', name: 'Pulse Energy', rank: 999, weekly: 100, goal: { t: 'rank', v: 150 }, reward: 1500, color: '#3cff8a' },
+  { id: 'kairo', name: 'Kairo Sport', rank: 160, weekly: 250, goal: { t: 'title', tier: 'challenger' }, reward: 3000, color: '#3cc8ff' },
+  { id: 'neon', name: 'Néon Cola', rank: 110, weekly: 500, goal: { t: 'rank', v: 64 }, reward: 6000, color: '#ff3d6b' },
+  { id: 'vortex', name: 'Vortex Rackets', rank: 70, weekly: 1100, goal: { t: 'title', tier: 'contender' }, reward: 12000, color: '#c84dff' },
+  { id: 'stratos', name: 'Stratos Air', rank: 40, weekly: 2200, goal: { t: 'rank', v: 16 }, reward: 25000, color: '#ffffff' },
+  { id: 'aurum', name: 'Aurum Watches', rank: 16, weekly: 4000, goal: { t: 'title', tier: 'slam' }, reward: 60000, color: '#ffc83c' },
+];
+export const goalText = g => g.t === 'rank' ? `Entrer dans le top ${g.v} mondial` : `Gagner un tournoi ${TIERS[g.tier].name}`;
+export function sponsorOffers() {
+  const rk = rankOf('me');
+  return SPONSORS.filter(s => rk <= s.rank && (!career.sponsor || career.sponsor.id !== s.id) && !(career.doneSponsors || []).includes(s.id));
+}
+export function signSponsor(id) {
+  const s = SPONSORS.find(x => x.id === id);
+  if (!s) return false;
+  career.sponsor = { since: absWeek(career.season, career.week), id: s.id, name: s.name, weekly: s.weekly, goal: s.goal, reward: s.reward, color: s.color, left: WEEKS };
+  career.news.unshift(`✍ ${career.me.name} signe avec ${s.name}.`);
+  save();
+  return true;
+}
+function checkSponsorGoal() {
+  const S = career.sponsor; if (!S || S.done) return;
+  const g = S.goal;
+  const ok = g.t === 'rank' ? rankOf('me') <= g.v : career.titles.some(t => t.tier === g.tier && t.at >= S.since);
+  if (ok) { S.done = true; career.money += S.reward; career.news.unshift(`🎯 Objectif ${S.name} atteint : +${S.reward.toLocaleString('fr-FR')} € de prime !`); }
+}
+function weekEconomy() {
+  const S = career.sponsor;
+  if (S) {
+    career.money += S.weekly; checkSponsorGoal(); S.left--;
+    if (S.left <= 0) { career.news.unshift(`Fin du contrat avec ${S.name}.`); career.doneSponsors = [...(career.doneSponsors || []), S.id]; career.sponsor = null; }
+  }
+  const c = COACHES[career.coach];
+  if (c.cost) {
+    if (career.money >= c.cost) career.money -= c.cost;
+    else { career.news.unshift(`${c.name} est parti : plus assez d'argent pour le payer.`); career.coach = 0; }
+  }
+  career.energy = clamp(career.energy + (career.tour ? 18 : 40), 0, 100);
 }

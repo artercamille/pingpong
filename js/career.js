@@ -430,7 +430,7 @@ function finishTournament() {
   let medal = null;
   if (d.kind === 'olympics') {
     medal = finalM.w === 'me' ? 'or' : (finalM.a === 'me' || finalM.b === 'me') ? 'argent' : d.bronze && d.bronze.w === 'me' ? 'bronze' : null;
-    if (medal) { prize = { or: 60000, argent: 30000, bronze: 15000 }[medal]; (career.medals = career.medals || []).push({ medal, name: d.ev.name, season: career.season }); career.news.unshift(`🏅 ${career.me.name} décroche la médaille ${medalTxt(medal)} aux ${d.ev.name} !`); addFans({ or: 60000, argent: 30000, bronze: 18000 }[medal]); }
+    if (medal) { setMoment({ type: 'medal', ev: d.ev.name, tier: d.tier, medal }); prize = { or: 60000, argent: 30000, bronze: 15000 }[medal]; (career.medals = career.medals || []).push({ medal, name: d.ev.name, season: career.season }); career.news.unshift(`🏅 ${career.me.name} décroche la médaille ${medalTxt(medal)} aux ${d.ev.name} !`); addFans({ or: 60000, argent: 30000, bronze: 18000 }[medal]); }
   }
   if (d.kind === 'team' && finalM.w === 'me') prize = 25000;
   if (prize) { career.money += prize; career.earned = (career.earned || 0) + prize; }
@@ -443,6 +443,7 @@ function finishTournament() {
     addFans(4000 * (TW[d.tier] || 1) * (d.kind === 'double' ? 0.4 : 1));
     career.perkPts = (career.perkPts || 0) + 1;
     career.conf = clamp((career.conf ?? 50) + 15, 5, 100);
+    setMoment({ type: d.kind === 'olympics' ? 'medal' : 'title', ev: d.ev.name, tier: d.tier, medal: d.kind === 'olympics' ? 'or' : null });
     career.news.unshift(d.kind === 'team' ? `🏆 ${COUNTRIES[career.me.country].name} remporte la Coupe du monde par équipes, avec ${career.me.name} !` : d.kind === 'olympics' ? `🥇 ${career.me.name} est champion olympique !` : `🏆 ${career.me.name} remporte le ${d.ev.name} !`);
   } else if (d.kind === 'single' || !d.kind) aiTitle(d);
   else if (d.kind === 'team') { const fw = finalM.w && getP(finalM.w); if (fw) career.news.unshift(`🌍 ${fw.name} remporte la Coupe du monde par équipes.`); }
@@ -492,6 +493,7 @@ export function endWeek() {
   career.tour = null;
   career.week++;
   rollWildcards();
+  socialWeek();
   const rv = career.pool.find(p => p.rival);
   if (rv && rnd() < 0.04) { rv.rating = Math.min(97, rv.rating + 1); career.news.unshift(`🔧 Ton rival ${rv.name} a changé de matériel et travaille avec un nouveau coach.`); }
   trackRank();
@@ -547,6 +549,7 @@ export function migrate() {
   const d = { wc: {}, center: { salle: 0, robot: 0, recup: 0 }, prep: null, mpartner: null, feed: [], outfits: [], celeb: 0, tips: {}, fans: 1500, staff: { physio: 0, kine: 0, psy: 0, agent: 0 }, partner: null, chem: 0, injury: null, press: null, medals: [], conf: 50, perks: [], perkPts: 1, money: 500, energy: 100, coach: 0, sponsor: null, offers: [], gear: { bois: 0, rev: 0, shoes: 0 }, trained: 0, earned: 0 };
   for (const k in d) if (career[k] === undefined) career[k] = d[k];
   if (!career.me.prog) career.me.prog = {};
+  soc();
   if (!career.wpool) career.wpool = REAL_WOMEN.map((r, i) => ({ id: 'w' + i, name: r[0], country: r[1], age: r[2], style: 'attaquant', hand: r[3] || 1, rating: Math.round(90 - i * 0.9), stats: makeStats(Math.round(90 - i * 0.9), 'attaquant'), pts: [], wins: {}, woman: true }));
 }
 const staminaOf = () => effStats().stamina;
@@ -878,7 +881,12 @@ export const STAFF = {
 };
 export function hireStaff(role, lv) { career.staff = career.staff || {}; career.staff[role] = lv; save(); }
 export function sponsorMult() { return (1 + Math.min(1.5, (career.fans || 0) / 150000)) * [1, 1.25, 1.5][(career.staff || {}).agent || 0]; }
-export function addFans(n) { career.fans = Math.round((career.fans || 0) + n * [1, 1.2, 1.4][(career.staff || {}).agent || 0]); }
+export function addFans(n) {
+  const k = n * [1, 1.2, 1.4][(career.staff || {}).agent || 0];
+  const S = soc();
+  for (const pl in PLATFORMS) S[pl].f = Math.max(0, Math.round(S[pl].f + k * PLATFORMS[pl].share * (0.8 + rnd() * 0.4)));
+  syncFans();
+}
 export const fansLabel = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' M' : n >= 1000 ? Math.round(n / 1000) + ' k' : String(n);
 
 // ---------- blessures
@@ -1221,15 +1229,142 @@ export function outfitColor() { const o = OUTFITS.find(x => x.id === career.me.o
 const HANDLES = ['@pingfan_93', '@topspin_addict', '@coupdroit_lourd', '@TTLegends', '@la_raquette_dor', '@spinmaster', '@pongcity', '@tabletennis_daily', '@ping_ultras', '@team_revers'];
 const MEDIA = [['WTT', '@WTTGlobal'], ['ITTF', '@ittfworld'], ["L'Équipe", '@lequipe'], ['Eurosport', '@eurosport_fr'], ['Ping Pong Mag', '@pingpongmag']];
 function post(who, handle, text, likes, media) {
-  career.feed = career.feed || [];
-  career.feed.unshift({ who, handle, text, likes: Math.round(likes), media: !!media, s: career.season, w: career.week });
-  career.feed = career.feed.slice(0, 40);
+  feedPush(media ? 'x' : pick(['x', 'ig', 'x', 'tt']), { who, handle, text, likes, media: !!media, emoji: media ? '📰' : '💬', kind: media ? 'Article' : 'Post' });
 }
 function socialAfter(d, won, indiv) {
   const me = career.me.name, op = indiv ? getP(indiv) : null, f = career.fans || 1000;
+  setMoment({ type: won ? 'win' : 'loss', ev: d.ev.name, tier: d.tier, opp: op && !op.ent ? op.name : null, oppRank: op && !op.ent ? rankOf(op.id) : null, big: won && op && !op.ent && rankOf(op.id) <= 20 });
+  if (won && op && !op.ent && rankOf(op.id) <= 10) feedPush('x', { who: 'Fan', handle: pick(HANDLES), text: `${me} vient de battre ${op.name} 😱 #${tag(d.ev.name)}`, likes: f * 0.06, rt: f * 0.01 });
   const fan = () => pick(HANDLES);
   if (won && op && rankOf(op.id) <= 20) { const M = pick(MEDIA); post(M[0], M[1], `${me} s'offre ${op.name} (${rankOf(op.id)}e mondial) au ${d.ev.name} ! 🔥`, f * 0.08, true); }
   if (won) post('Fan', fan(), pick([`${me} est en feu 🔥🔥`, `Ce coup droit de ${me}... irréel`, `Allez ${me} !! On y croit`, `${me} au sommet bientôt, je l'avais dit`]), f * 0.02);
   else post('Fan', fan(), pick([`Dur ce soir pour ${me}, on reste derrière toi 💪`, `${me} reviendra plus fort`, `Pas grave ${me}, la saison est longue`]), f * 0.01);
   if (op && (op.rival || op.enemy)) post('Fan', fan(), `Le choc ${me} vs ${op.name}, c'est la meilleure rivalité du circuit ⚔️`, f * 0.05);
+}
+
+
+// ================================================================== réseaux sociaux
+export const PLATFORMS = {
+  ig: { name: 'Instagram', color: '#e1306c', icon: '📸', share: 0.42, unit: 'abonnés' },
+  x: { name: 'X', color: '#e7e9ea', icon: '𝕏', share: 0.18, unit: 'abonnés' },
+  tt: { name: 'TikTok', color: '#25f4ee', icon: '🎵', share: 0.28, unit: 'abonnés' },
+  yt: { name: 'YouTube', color: '#ff0033', icon: '▶', share: 0.12, unit: 'abonnés' },
+};
+export function soc() {
+  if (!career.social) {
+    const f = career.fans || 1500, S = { posts: 0, week: 0, notifs: [], deals: [], trend: [], verified: false, moment: null };
+    for (const p in PLATFORMS) S[p] = { f: Math.round(f * PLATFORMS[p].share), feed: [] };
+    career.social = S;
+  }
+  return career.social;
+}
+function syncFans() { const S = soc(); career.fans = Object.keys(PLATFORMS).reduce((a, p) => a + S[p].f, 0); if (!S.verified && career.fans >= 100000) { S.verified = true; notif('✔', 'Ton compte est maintenant certifié sur toutes les plateformes'); } }
+const tag = n => n.replace(/^WTT /, 'WTT').replace(/[^A-Za-zÀ-ÿ0-9]/g, '');
+function notif(icon, text) { const S = soc(); S.notifs.unshift({ icon, text, s: career.season, w: career.week }); S.notifs = S.notifs.slice(0, 25); }
+function feedPush(pl, post) {
+  const S = soc(); post.s = career.season; post.w = career.week; post.likes = Math.round(post.likes || 0);
+  S[pl].feed.unshift(post); S[pl].feed = S[pl].feed.slice(0, 30);
+}
+function setMoment(m) { const S = soc(); m.s = career.season; m.w = career.week; S.moment = m; S.used = {}; }
+export const POSTS_PER_WEEK = 3;
+export function postsLeft() { const S = soc(); const k = absWeek(career.season, career.week); if (S.week !== k) { S.week = k; S.posts = 0; } return POSTS_PER_WEEK - S.posts; }
+
+// idées de publications selon ce qui vient de se passer
+export function postIdeas() {
+  const S = soc(), m = S.moment, me = career.me.name, sp = career.sponsor;
+  const I = [];
+  const ev = m ? m.ev : null;
+  if (m && m.type === 'title') {
+    I.push({ id: 'ig_troph', pl: 'ig', kind: 'Photo', emoji: '🏆', text: `${ev.toUpperCase()} 🏆 Merci à mon équipe, merci au public. On continue !`, base: 3.2 });
+    I.push({ id: 'tt_cele', pl: 'tt', kind: 'Clip', emoji: '🎉', text: `Le moment où j'ai gagné le ${ev} 😭🔥 #pingpong #tabletennis`, base: 3.6, viral: 0.25 });
+    I.push({ id: 'x_thx', pl: 'x', kind: 'Tweet', emoji: '🐦', text: `Champion du ${ev} !!! Je n'ai pas les mots. Merci pour tous vos messages 🙏 #${tag(ev)}`, base: 2.4 });
+    I.push({ id: 'yt_vlog', pl: 'yt', kind: 'Vlog', emoji: '🎬', text: `Dans les coulisses de ma victoire au ${ev} (VLOG)`, base: 2.8 });
+  } else if (m && m.type === 'medal') {
+    I.push({ id: 'ig_medal', pl: 'ig', kind: 'Photo', emoji: m.medal === 'or' ? '🥇' : m.medal === 'argent' ? '🥈' : '🥉', text: `Médaille ${medalTxt(m.medal)} olympique. Un rêve d'enfant. ${COUNTRIES[career.me.country].name} ❤️`, base: 4.5 });
+    I.push({ id: 'tt_medal', pl: 'tt', kind: 'Clip', emoji: '🏅', text: `Le podium olympique vu de l'intérieur 🥹 #Olympics #pingpong`, base: 4.8, viral: 0.35 });
+    I.push({ id: 'x_medal', pl: 'x', kind: 'Tweet', emoji: '🐦', text: `Médaillé olympique. Je réalise toujours pas. #${tag(ev)}`, base: 3.5 });
+  } else if (m && m.type === 'win') {
+    I.push({ id: 'ig_win', pl: 'ig', kind: 'Photo', emoji: '💪', text: m.opp ? `Victoire contre ${m.opp} au ${ev} ✅ On avance.` : `Victoire au ${ev} ✅`, base: m.big ? 2 : 1.1 });
+    I.push({ id: 'tt_point', pl: 'tt', kind: 'Clip', emoji: '🔥', text: `Ce point contre ${m.opp || 'mon adversaire'}... dites-moi en commentaire 👇 #tabletennis`, base: m.big ? 2.6 : 1.3, viral: m.big ? 0.2 : 0.08 });
+    I.push({ id: 'x_win', pl: 'x', kind: 'Tweet', emoji: '🐦', text: m.big ? `Battre un top ${m.oppRank <= 10 ? 10 : 20} mondial. Gros jour. #${tag(ev)}` : `Un tour de plus au ${ev}. Focus sur le prochain match.`, base: m.big ? 1.8 : 0.8 });
+  } else if (m && m.type === 'loss') {
+    I.push({ id: 'ig_loss', pl: 'ig', kind: 'Photo', emoji: '🙏', text: `Pas le résultat voulu au ${ev}. On apprend, on bosse, on revient.`, base: 0.9 });
+    I.push({ id: 'x_loss', pl: 'x', kind: 'Tweet', emoji: '🐦', text: `Bravo ${m.opp || 'à mon adversaire'}. Je reviendrai plus fort.`, base: 0.7 });
+    I.push({ id: 'x_rant', pl: 'x', kind: 'Tweet', emoji: '😤', text: `L'arbitrage aujourd'hui... je préfère ne rien dire. #${tag(ev)}`, base: 1.6, risky: true });
+  }
+  I.push({ id: 'tt_train', pl: 'tt', kind: 'Clip', emoji: '🏓', text: `Mon exercice préféré au robot 🤖🏓 essayez ça #pingpong #training`, base: 1.1, viral: 0.06 });
+  I.push({ id: 'ig_story', pl: 'ig', kind: 'Story', emoji: '📍', text: `Arrivé pour la semaine ${career.week} du circuit ✈️`, base: 0.6 });
+  I.push({ id: 'yt_gear', pl: 'yt', kind: 'Vidéo', emoji: '🎥', text: `Mon matériel de pro : bois, revêtements, chaussures (tout expliqué)`, base: 1.2 });
+  I.push({ id: 'x_qa', pl: 'x', kind: 'Tweet', emoji: '💬', text: `Posez-moi vos questions, je réponds ce soir 👇 #AskMe`, base: 0.9 });
+  if (sp) I.push({ id: 'ig_spon', pl: 'ig', kind: 'Partenariat', emoji: '🤝', text: `Fier de représenter ${sp.name} sur le circuit 💪 #${tag(sp.name)} #partenariat`, base: 0.8, sponsor: true });
+  for (const d of S.deals) if (!d.done) I.push({ id: 'deal_' + d.id, pl: d.pl, kind: 'Post sponsorisé', emoji: '💰', text: d.text, base: 0.7, deal: d });
+  return I.filter(x => !(S.used || {})[x.id]);
+}
+
+// publier : engagement, nouveaux abonnés, buzz possible
+export function publish(id) {
+  if (postsLeft() <= 0) return null;
+  const idea = postIdeas().find(x => x.id === id); if (!idea) return null;
+  const S = soc(), P = S[idea.pl];
+  S.posts++; S.used = S.used || {}; S.used[id] = true;
+  const perso = career.me.perso === 'showman' ? 1.35 : career.me.perso === 'froid' ? 0.85 : 1;
+  const reach = Math.max(300, P.f) * (0.04 + 0.05 * rnd()) * idea.base * perso;
+  let viral = idea.viral && rnd() < idea.viral;
+  if (idea.risky) viral = rnd() < 0.5;
+  const mult = viral ? 6 + rnd() * 10 : 1;
+  const likes = Math.round(reach * mult), comments = Math.round(likes * (0.02 + rnd() * 0.03)), shares = Math.round(likes * (idea.pl === 'tt' ? 0.08 : 0.03));
+  const views = idea.pl === 'tt' || idea.pl === 'yt' ? Math.round(likes * (8 + rnd() * 8)) : null;
+  let gain = Math.round(likes * (idea.pl === 'tt' ? 0.18 : idea.pl === 'yt' ? 0.25 : 0.1) * (idea.sponsor || idea.deal ? 0.5 : 1));
+  if (idea.risky) { career.conf = clamp((career.conf ?? 50) + (viral ? -3 : 0), 5, 100); if (viral) notif('🔥', 'Ton tweet sur l\'arbitrage fait polémique : buzz, mais certains sponsors n\'aiment pas'); }
+  P.f += gain; syncFans();
+  const comms = commentsFor(idea, viral);
+  feedPush(idea.pl, { mine: true, who: career.me.name, handle: handleOf(), text: idea.text, emoji: idea.emoji, kind: idea.kind, likes, comments, shares, views, viral, comms });
+  if (viral) { notif('🚀', `Ton ${idea.kind.toLowerCase()} ${PLATFORMS[idea.pl].name} explose : ${fansLabel(views || likes)} ${views ? 'vues' : 'j\'aime'} !`); S.trend.unshift(`#${tag(career.me.name)}`); S.trend = [...new Set(S.trend)].slice(0, 5); }
+  notif(PLATFORMS[idea.pl].icon, `+${fansLabel(gain)} abonnés ${PLATFORMS[idea.pl].name}`);
+  let money = 0;
+  if (idea.deal) { idea.deal.done = true; money = idea.deal.pay; career.money += money; career.earned = (career.earned || 0) + money; notif('💰', `${idea.deal.brand} t'a versé ${money.toLocaleString('fr-FR')} € pour le post`); }
+  if (idea.sponsor && career.sponsor) { career.sponsor.bonus = (career.sponsor.bonus || 0) + 1; }
+  save();
+  return { likes, comments, shares, views, gain, viral, money, pl: idea.pl };
+}
+export const handleOf = () => '@' + career.me.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '') + (soc().verified ? '' : '.tt');
+function commentsFor(idea, viral) {
+  const me = career.me.name.split(' ')[0];
+  const base = [`Allez ${me} 🔥`, `Trop fort 👏👏`, `Le goat du ping ?? 🐐`, `On est derrière toi !!`, `${me} > tout le monde`, `Ce revers 😮‍💨`, `Quand est-ce que tu viens jouer en France ?`, `Légende`, `J'ai commencé le ping grâce à toi 🏓`];
+  const neg = [`Surcoté 🤡`, `Il a eu de la chance`, `Rentre chez toi`];
+  const out = [];
+  for (let k = 0; k < 3; k++) out.push({ h: pick(HANDLES), t: idea.risky && rnd() < 0.5 ? pick(neg) : pick(base) });
+  if (viral) out.unshift({ h: '@ping_ultras', t: 'Ce post est partout 😂🔥' });
+  return out;
+}
+// semaine : croissance naturelle, contenus des médias, offres de marques
+function socialWeek() {
+  const S = soc(), rk = rankOf('me'), me = career.me.name;
+  const g = Math.max(0, (200 - rk)) * 0.4 + (career.conf ?? 50) * 0.5;
+  for (const p in PLATFORMS) S[p].f = Math.round(S[p].f * (1 + 0.004) + g * PLATFORMS[p].share);
+  if (S.posts === 0 && S.week) for (const p in PLATFORMS) S[p].f = Math.round(S[p].f * 0.997);
+  syncFans();
+  // médias et fans
+  if (S.moment && S.moment.w === career.week && S.moment.s === career.season) {
+    const m = S.moment;
+    if (m.type === 'title' || m.type === 'medal') {
+      feedPush('ig', { who: 'WTT', handle: '@wtt', text: `🏆 ${me} remporte le ${m.ev} !`, emoji: '🏆', kind: 'Photo', likes: career.fans * 0.15, media: true });
+      feedPush('x', { who: "L'Équipe", handle: '@lequipe', text: `Tennis de table : ${me} s'impose au ${m.ev}.`, likes: career.fans * 0.03, media: true });
+      feedPush('yt', { who: 'WTT', handle: '@WTTGlobal', text: `HIGHLIGHTS | ${me} - Finale ${m.ev}`, emoji: '▶', kind: 'Vidéo', likes: career.fans * 0.08, views: career.fans * 1.2, media: true });
+    }
+    if (m.big) feedPush('tt', { who: 'Ping Pong Mag', handle: '@pingpongmag', text: `${me} vs ${m.opp} : le point de l'année ? 🤯`, emoji: '🤯', kind: 'Clip', likes: career.fans * 0.1, views: career.fans * 2, media: true });
+  }
+  // offres de partenariat selon l'audience
+  const brands = [['Nike', 'ig', 'Ma nouvelle paire Nike pour la saison 👟 #nike #ad'], ['Red Bull', 'tt', 'Mon rituel d\'avant match 🪽 #redbull #ad'], ['Adidas', 'ig', 'Prêt pour le prochain tournoi avec Adidas ⚡ #adidas #ad'], ['Decathlon', 'yt', 'Je teste les raquettes Decathlon à 10 € vs à 300 € 😳 #ad'], ['Samsung', 'tt', 'Mon setup pour analyser mes matchs 📱 #ad'], ['Butterfly', 'ig', 'Nouveau revêtement, nouvelles sensations 🦋 #butterfly #ad'], ['Hugo Boss', 'ig', 'Soirée de gala du circuit 🖤 #ad']];
+  if (career.fans >= 20000 && rnd() < 0.3 && S.deals.filter(d => !d.done).length < 2) {
+    const [brand, pl, text] = pick(brands);
+    const pay = Math.round(Math.min(150000, career.fans * (0.04 + rnd() * 0.04)) / 100) * 100;
+    const id = 'd' + absWeek(career.season, career.week);
+    S.deals.unshift({ id, brand, pl, text, pay, done: false });
+    S.deals = S.deals.slice(0, 6);
+    notif('💼', `${brand} te propose un post sponsorisé ${PLATFORMS[pl].name} : ${pay.toLocaleString('fr-FR')} €`);
+  }
+  // tendances
+  const tr = ['#pingpong', '#tabletennis', '#WTT', `#${tag(career.me.name)}`, '#ITTF'];
+  if (rnd() < 0.5) S.trend = [...new Set([...S.trend, pick(tr)])].slice(-5);
 }

@@ -1084,6 +1084,7 @@ function renderCareer() {
     return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${pname(p)}</b> <small>${type}</small></span><span>${C.rankOf(p.id)}e · <b>${h.w} – ${h.l}</b></span></div>`;
   }).join('') + '</div>';
   $('#perk-badge').textContent = c.perkPts ? `· ${c.perkPts}` : '';
+  $('#soc-badge').textContent = C.postIdeas().some(x => x.deal) ? '· 💰' : C.soc().moment && C.soc().moment.w === c.week && C.postsLeft() > 0 ? '· !' : '';
   bindCareerButtons($('#scr-career'));
   $('#scr-career').querySelectorAll('[data-go2]').forEach(b => b.addEventListener('click', () => { sfx.ui(); show(b.dataset.go2); }));
   refreshFocus();
@@ -1671,11 +1672,32 @@ function renderCal() {
   }
   $('#cal').innerHTML = h + '</div>';
 }
+let socTab = 'ig';
 function renderSocial() {
-  const c = C.career;
-  $('#soc-fans').textContent = `· 👥 ${fansN(c.fans)} abonnés`;
-  const f = c.feed || [];
-  $('#social').innerHTML = f.length ? f.map(p => `<div class="post ${p.media ? 'media' : ''}"><div class="ph"><b>${esc(p.who)}</b> <span>${esc(p.handle)}</span><small>S${p.s} · sem. ${p.w}</small></div><div>${esc(p.text)}</div><small>❤ ${fansN(p.likes)}</small></div>`).join('') : '<div class="infobox">Rien pour l\'instant. Joue des matchs pour faire parler de toi.</div>';
+  const c = C.career, S = C.soc();
+  $('#soc-fans').textContent = `· ${fansN(c.fans)} abonnés au total${S.verified ? ' · ✔ certifié' : ''}`;
+  const tabs = Object.entries(C.PLATFORMS).map(([k, P]) => `<button class="mbtn small soctab ${socTab === k ? 'accent' : ''}" data-soctab="${k}" style="--pc:${P.color}"><span><b>${P.icon} ${P.name}</b><small>${fansN(S[k].f)} abonnés</small></span></button>`).join('');
+  const P = C.PLATFORMS[socTab], feed = S[socTab].feed;
+  const card = x => {
+    const stats = `❤ ${fansN(x.likes)}${x.comments ? ' · 💬 ' + fansN(x.comments) : ''}${x.shares ? ' · ↻ ' + fansN(x.shares) : ''}${x.views ? ' · 👁 ' + fansN(x.views) + ' vues' : ''}${x.rt ? ' · ↻ ' + fansN(x.rt) : ''}`;
+    if (socTab === 'ig' || socTab === 'tt' || socTab === 'yt') return `<div class="spost ${socTab} ${x.mine ? 'mine' : ''} ${x.viral ? 'viral' : ''}">
+      <div class="simg" style="background:linear-gradient(135deg, ${P.color}55, #120d22 70%)"><span>${x.emoji || '🏓'}</span>${x.viral ? '<i>🚀 VIRAL</i>' : ''}${x.kind ? `<em>${esc(x.kind)}</em>` : ''}</div>
+      <div class="stxt"><b>${esc(x.who)}</b> <small>${esc(x.handle)}${x.mine && S.verified ? ' ✔' : ''}</small><div>${esc(x.text)}</div><small class="st">${stats}</small>
+      ${(x.comms || []).slice(0, 3).map(cm => `<div class="cm"><b>${esc(cm.h)}</b> ${esc(cm.t)}</div>`).join('')}</div></div>`;
+    return `<div class="spost x ${x.mine ? 'mine' : ''} ${x.viral ? 'viral' : ''}"><div class="stxt"><b>${esc(x.who)}</b> <small>${esc(x.handle)}${x.mine && S.verified ? ' ✔' : ''} · S${x.s} sem. ${x.w}</small><div>${esc(x.text)}</div><small class="st">${stats}</small>
+      ${(x.comms || []).slice(0, 2).map(cm => `<div class="cm"><b>${esc(cm.h)}</b> ${esc(cm.t)}</div>`).join('')}</div></div>`;
+  };
+  const ideas = C.postIdeas(), left = C.postsLeft();
+  const comp = `<div class="scomp"><h3>Publier <small>${left} / ${C.POSTS_PER_WEEK} cette semaine</small></h3>${ideas.slice(0, 7).map(x => `<button class="mbtn small ${left > 0 ? '' : 'locked'} ${x.deal ? 'gold' : ''}" data-post="${x.id}" style="--pc:${C.PLATFORMS[x.pl].color}"><span><b>${C.PLATFORMS[x.pl].icon} ${x.kind}${x.deal ? ' · ' + x.deal.pay.toLocaleString('fr-FR') + ' €' : ''}</b><small>${esc(x.text)}</small></span></button>`).join('')}</div>`;
+  const side = `<div class="sside">${comp}<h3>Notifications</h3><div class="snot">${S.notifs.slice(0, 8).map(n => `<div>${n.icon} ${esc(n.text)}</div>`).join('') || '<div>Rien de neuf</div>'}</div>${S.trend.length ? `<h3>Tendances</h3><div class="strend">${S.trend.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}</div>`;
+  $('#social').innerHTML = `<div class="stabs">${tabs}</div><div class="sgrid"><div class="sfeed">${feed.length ? feed.map(card).join('') : `<div class="infobox">Rien sur ${P.name} pour l'instant. Publie quelque chose !</div>`}</div>${side}</div>`;
+  document.querySelectorAll('#social [data-soctab]').forEach(b => b.addEventListener('click', () => { socTab = b.dataset.soctab; sfx.ui(); const k = focusIdx; renderSocial(); focusIdx = k; refreshFocus(); }));
+  document.querySelectorAll('#social [data-post]').forEach(b => b.addEventListener('click', () => {
+    const r = C.publish(b.dataset.post); if (!r) return;
+    socTab = r.pl; r.viral ? sfx.crowd(2) : sfx.unlock();
+    toast(C.PLATFORMS[r.pl].icon, r.viral ? 'C\'EST VIRAL !' : 'PUBLIÉ', `+${fansN(r.gain)} abonnés`, `❤ ${fansN(r.likes)}${r.views ? ' · 👁 ' + fansN(r.views) : ''}${r.money ? ' · +' + eur(r.money) : ''}`);
+    renderSocial(); focusIdx = 0; refreshFocus();
+  }));
 }
 function renderCLocker() {
   const c = C.career;

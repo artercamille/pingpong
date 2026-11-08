@@ -38,6 +38,18 @@ $('#name').addEventListener('input', () => { profile.name = $('#name').value.tri
 const myName = () => ($('#name').value.trim() || 'Joueur').slice(0, 14);
 
 // ------------------------------------------------------------------ navigation
+let curScreen = '';
+const CTABS = [
+  { label: 'Accueil', go: () => 'scr-career', group: ['scr-career'] },
+  { label: 'Tournois', go: () => C.career.tour ? 'scr-tour' : 'scr-cal', group: ['scr-tour', 'scr-cal'] },
+  { label: 'Joueur', go: () => 'scr-cplayer', group: ['scr-cplayer', 'scr-perks', 'scr-ctrain', 'scr-clocker'] },
+  { label: 'Équipe', go: () => 'scr-team', group: ['scr-team', 'scr-shop'] },
+  { label: 'Médias', go: () => 'scr-social', group: ['scr-social'] },
+  { label: 'Classement', go: () => 'scr-rank', group: ['scr-rank', 'scr-pcard'] },
+  { label: 'Palmarès', go: () => 'scr-palmares', group: ['scr-palmares', 'scr-hof'] },
+];
+
+const tabIdx = id => CTABS.findIndex(t => t.group.includes(id));
 function show(id) {
   document.querySelectorAll('#menu .screen').forEach(p => p.classList.toggle('hidden', p.id !== id));
   $('#profile-name').textContent = myName();
@@ -45,7 +57,9 @@ function show(id) {
   renderDaily(id === 'scr-main');
   if (id === 'scr-profile') renderProfile();
   if (id === 'scr-locker') renderLocker();
+  curScreen = id;
   if (id === 'scr-career') renderCareer();
+  if (id === 'scr-cplayer') renderCPlayer();
   if (id === 'scr-tour') renderTour();
   if (id === 'scr-rank') renderRanking();
   if (id === 'scr-palmares') renderPalmares();
@@ -64,6 +78,7 @@ function show(id) {
   if (id === 'scr-season') renderSeason();
   if (id === 'scr-team') renderTeam();
   if (id === 'scr-shop') renderShop();
+  renderCNav(id);
   focusIdx = 0; refreshFocus();
   const sc = document.querySelector('#menu .screen:not(.hidden)'); if (sc) sc.closest('.mside') && (sc.closest('.mside').scrollTop = 0);
 }
@@ -217,6 +232,21 @@ function navBack() {
   const back = L.querySelector('.mbtn.ghost[data-go]');
   if (back) back.click();
 }
+// navigation spatiale : choisit l'élément le plus proche dans la direction demandée
+function spatialPick(items, i, dx, dy) {
+  const r0 = items[i].getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+  let best = -1, bs = 1e9;
+  items.forEach((el, k) => {
+    if (k === i) return;
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    let main, off;
+    if (dy) { main = dy > 0 ? r.top - r0.bottom + 2 : r0.top - r.bottom + 2; off = Math.max(0, Math.max(r.left, r0.left) > Math.min(r.right, r0.right) ? Math.abs(x - cx) : 0); if (dy > 0 ? r.top < r0.bottom - 6 : r.bottom > r0.top + 6) return; }
+    else { main = dx > 0 ? r.left - r0.right + 2 : r0.left - r.right + 2; if (Math.max(r.top, r0.top) > Math.min(r.bottom, r0.bottom) - 8) return; off = Math.abs(y - cy) * 0.3; if (dx > 0 ? x <= cx + 2 : x >= cx - 2) return; }
+    const sc = Math.max(0, main) + off * 3;
+    if (sc < bs) { bs = sc; best = k; }
+  });
+  return best;
+}
 function navInput(inp, dt) {
   const items = navItems();
   if (!items.length) return;
@@ -226,9 +256,16 @@ function navInput(inp, dt) {
   const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
   if ((v || h) && navCool <= 0 && !(typing && h)) {
     navCool = 0.2;
-    if (v) { focusIdx = (focusIdx + v + items.length) % items.length; refreshFocus(); sfx.ui(); }
-    else if (items[focusIdx].classList.contains('opt')) { optStep(items[focusIdx], h); if (items[focusIdx].classList.contains('cos')) renderLocker(); settingStep(items[focusIdx]); }
+    const cur = items[focusIdx];
+    if (h && cur.classList.contains('opt')) { optStep(cur, h); if (cur.classList.contains('cos')) renderLocker(); settingStep(cur); }
+    else {
+      const j = spatialPick(items, focusIdx, v ? 0 : h, v);
+      if (j >= 0) { focusIdx = j; refreshFocus(); sfx.ui(); }
+      else if (v) { focusIdx = (focusIdx + v + items.length) % items.length; refreshFocus(); sfx.ui(); }
+    }
   }
+  if (inp.pressed.sideL && !typing && cycleTab(-1)) return;
+  if (inp.pressed.sideR && !typing && cycleTab(1)) return;
   if (!v && !h) navCool = 0;
   if (inp.pressed.top && !typing) { initAudio(); const el = items[focusIdx]; if (el.classList.contains('opt')) { optStep(el, 1); if (el.classList.contains('cos')) renderLocker(); settingStep(el); } else el.click(); }
   if (inp.pressed.plat && !typing) navBack();
@@ -1024,12 +1061,23 @@ function bindCareerButtons(root) {
     if (a === 'tour') { show('scr-tour'); return; }
     if (a === 'rest') { C.endWeek(); show('scr-career'); return; }
     if (a === 'retire') { if (!confirmRetire) { confirmRetire = true; renderCareer(); return; } confirmRetire = false; C.retire(); show('scr-jubile'); return; }
-    if (a === 'up') { if (C.upgrade(b.dataset.k)) { sfx.unlock(); renderCareer(); const k = navItems().findIndex(x => x.dataset.k === b.dataset.k); if (k >= 0) { focusIdx = k; refreshFocus(); } } return; }
+    if (a === 'up') { if (C.upgrade(b.dataset.k)) { sfx.unlock(); renderCPlayer(); renderCNav(curScreen); const k = navItems().findIndex(x => x.dataset.k === b.dataset.k); if (k >= 0) { focusIdx = k; refreshFocus(); } } return; }
     if (a === 'play') { startCareerMatch(); return; }
     if (a === 'sim') { simCareerMatch(); return; }
     if (a === 'next') { C.endWeek(); show('scr-career'); return; }
   }));
 }
+
+function rankMove() {
+  const c = C.career, k = c.season * 100 + c.week, rk = C.rankOf('me');
+  if (c.rkSeen !== k) { c.rkPrev = c.rkCur ?? rk; c.rkCur = rk; c.rkSeen = k; }
+  return (c.rkPrev ?? rk) - rk;
+}
+function gauge(v, col, label, sub) {
+  const r = 34, L = 2 * Math.PI * r;
+  return `<div class="gauge"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="${r}" class="gb"/><circle cx="42" cy="42" r="${r}" class="gf" style="stroke:${col};stroke-dasharray:${(L * v / 100).toFixed(1)} ${L.toFixed(1)}"/></svg><b>${Math.round(v)}</b><span>${label}</span><small style="color:${col}">${sub}</small></div>`;
+}
+function evAccent(ev) { try { return venueFor({ tier: ev.tier, kind: ev.kind, ev, name: ev.name }).accent || C.TIERS[ev.tier].color; } catch (e) { return C.TIERS[ev.tier].color; } }
 
 function renderCareer() {
   const c = C.career; if (!c) return;
@@ -1037,59 +1085,100 @@ function renderCareer() {
   if (c.review) { show('scr-season'); return; }
   if (c.press) { show('scr-press'); return; }
   flushPending();
-  const me = c.me, rk = C.rankOf('me');
-  $('#car-head').innerHTML = `${C.flag(me.country, 54, 36)}<div><div class="big">${esc(me.name)}</div>
-    <div class="meta">${C.COUNTRIES[me.country].name.toUpperCase()} · ${C.STYLE_NAMES[me.style].toUpperCase()} · ${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · NIVEAU ${C.overall(me.stats)} · ${me.age || 17} ANS · ${C.DIFFS[c.diff ?? 1].name.toUpperCase()}</div>
-    <div class="meta" style="color:#c84dff">${C.peakLabel(me.age || 17).toUpperCase()}</div>
-    <div class="meta">${C.weekDate(c.season, c.week).label.toUpperCase()} · SAISON ${c.season} · SEMAINE ${c.week}/${C.WEEKS} · ${C.rankPoints(me)} PTS</div>
-    ${moneyLine()}</div>
-    <div class="rk"><b>${rk}e</b><span class="meta">CLASSEMENT MONDIAL</span></div>`;
-  // semaine
+  const me = c.me, rk = C.rankOf('me'), mv = rankMove();
   const evs = C.weekEvents(c.season, c.week);
-  let html = '';
-  if (!c.tour && C.canTrain()) html += `<button class="mbtn" data-go2="scr-ctrain"><span><b>🏋 Séance d'entraînement dispo</b><small>Une par semaine${c.coach ? ' · ' + C.COACHES[c.coach].name : ''}</small></span></button>`;
+  // --- tuile héros : cette semaine
+  let hero = '', acc = '#c84dff';
   if (c.tour) {
-    html = `<button class="mbtn accent" data-act="tour"><span><b>Reprendre : ${esc(c.tour.ev.name)}</b><small>${c.tour.done || c.tour.out ? 'Tournoi terminé, voir le tableau' : roundLabel(c.tour, C.myMatch())}</small></span></button>`;
+    acc = evAccent(c.tour.ev);
+    hero = `<div class="hk">EN COURS</div><div class="ht">${esc(c.tour.ev.name)}</div><div class="hs">${c.tour.done || c.tour.out ? 'Tournoi terminé' : roundLabel(c.tour, C.myMatch())}</div>
+      <button class="mbtn accent" data-act="tour"><span><b>${c.tour.done || c.tour.out ? 'Voir le tableau' : 'Reprendre le tournoi'}</b><small>Tableau, adversaire, jouer ou simuler</small></span></button>`;
   } else {
-    if (c.injury) html += `<div class="warnbox">🩹 <b>Blessé : ${esc(c.injury.name)}</b>, encore ${c.injury.weeks} semaine${c.injury.weeks > 1 ? 's' : ''} d'arrêt. Un kiné accélère la guérison.</div>`;
-    for (const ev of evs) {
-      const T = C.TIERS[ev.tier], lock = C.lockReason(ev);
-      const wc = (c.wc || {})[ev.id];
-      const info = wc ? `🎟️ Wild card ! ${T.size} joueurs · ${T.pts[0]} pts au vainqueur` : ev.kind === 'exhib' ? `Cachet d'environ ${eur(3000 + Math.min(40000, (c.fans || 0) * 0.08))} · contre une star du top 20 · sans points` : ev.kind === 'mixed' ? `Double mixte · 8 paires${c.mpartner ? ' avec ' + esc(C.getP(c.mpartner).name) : ''}` : ev.tier === 'finals' ? `Les 16 meilleurs de la saison · ${T.pts[0]} pts au vainqueur` : ev.kind === 'double' ? `Double · 8 paires · ${Math.round(T.pts[0] * 0.6)} pts double au vainqueur` : ev.kind === 'team' ? `Avec ${C.COUNTRIES[c.me.country].name} · 8 nations · 25 000 € aux champions` : ev.kind === 'olympics' ? 'Médailles d\'or, d\'argent et de bronze · 2 joueurs max par pays' : `${T.size} joueurs · ${T.pts[0]} pts au vainqueur`;
-      html += `<button class="mbtn evcard ${lock ? 'locked' : ''} ${ev.kind === 'olympics' || ev.kind === 'team' ? 'gold' : ''}" data-act="enter" data-ev="${ev.id}"><span><b>${esc(ev.name)}</b>
-        <small>${lock || info}${!lock && ev.kind !== 'exhib' ? ` · ✈️ ${eur(C.travelCost(ev))}` : ''}</small></span>${ev.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ev.kind === 'mixed' ? '<span class="tier" style="background:#ff9ad8">MIXTE</span>' : tierTag(ev.tier)}</button>`;
-      if (lock && C.qualifOpen(ev)) html += `<button class="mbtn small qualbtn" data-act="qualif" data-ev="${ev.id}"><span><b>↳ Passer par les qualifications</b><small>1 match à gagner pour entrer dans le tableau du ${esc(ev.name)}</small></span></button>`;
+    const main = evs.find(e => !C.lockReason(e) && !e.kind) || evs.find(e => !C.lockReason(e)) || evs[0];
+    if (main) acc = evAccent(main);
+    hero = `<div class="hk">${c.week === C.WEEKS ? 'SEMAINE FINALE' : 'CETTE SEMAINE'} · ${C.weekDate(c.season, c.week).label.toUpperCase()}</div>`;
+    if (c.injury) hero += `<div class="warnbox">🩹 <b>Blessé : ${esc(c.injury.name)}</b>, encore ${c.injury.weeks} sem. d'arrêt.</div>`;
+    if (c.energy < 35) hero += `<div class="warnbox">⚠ ${C.formLabel(c.energy)} : une semaine de repos te remet en forme.</div>`;
+    const sorted = [...evs].sort((a, b) => (!!C.lockReason(a) - !!C.lockReason(b)));
+    for (const ev of sorted) {
+      const T = C.TIERS[ev.tier], lock = C.lockReason(ev), wc = (c.wc || {})[ev.id];
+      const info = wc ? `🎟️ Wild card · ${T.pts[0]} pts au vainqueur` : ev.kind === 'exhib' ? `Cachet ≈ ${eur(3000 + Math.min(40000, (c.fans || 0) * 0.08))} · sans points` : ev.kind === 'mixed' ? `Double mixte${c.mpartner ? ' avec ' + esc(C.getP(c.mpartner).name) : ''}` : ev.kind === 'double' ? `Double · ${Math.round(T.pts[0] * 0.6)} pts double` : ev.kind === 'team' ? `Avec ${C.COUNTRIES[c.me.country].name} · 8 nations` : ev.kind === 'olympics' ? 'Or, argent, bronze' : `${T.size} joueurs · ${T.pts[0]} pts au vainqueur`;
+      const tag = ev.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ev.kind === 'mixed' ? '<span class="tier" style="background:#ff9ad8">MIXTE</span>' : tierTag(ev.tier);
+      hero += `<button class="mbtn evcard ${lock ? 'locked small' : ''}" data-act="enter" data-ev="${ev.id}" style="--ev:${evAccent(ev)}"><span><b>${esc(ev.name)}</b><small>${lock || info}${!lock && ev.kind !== 'exhib' ? ` · ✈️ ${eur(C.travelCost(ev))}` : ''}</small></span>${tag}</button>`;
+      if (lock && C.qualifOpen(ev)) hero += `<button class="mbtn small qualbtn" data-act="qualif" data-ev="${ev.id}"><span><b>↳ Qualifications</b><small>1 match pour entrer dans le tableau</small></span></button>`;
     }
-    html += `<button class="mbtn ghost" data-act="rest"><span><b>Se reposer</b><small>Passer la semaine</small></span></button>`;
-    if (C.canRetire()) html += `<button class="mbtn ghost" data-act="retire"><span><b>${c.forceRetire ? '⏳ Il est temps de raccrocher' : 'Prendre ma retraite'}</b><small>${confirmRetire ? 'Clique encore pour confirmer : la carrière se termine' : 'Termine ta carrière avec un jubilé'}</small></span></button>`;
+    hero += `<div class="crow c2"><button class="mbtn ghost small" data-act="rest"><span><b>Se reposer</b><small>Passer la semaine</small></span></button>`
+      + (C.canRetire() ? `<button class="mbtn ghost small" data-act="retire"><span><b>${c.forceRetire ? '⏳ Raccrocher' : 'Retraite'}</b><small>${confirmRetire ? 'Clique encore pour confirmer' : 'Fin de carrière et jubilé'}</small></span></button>` : '') + '</div>';
   }
-  $('#car-week-title').textContent = c.week === C.WEEKS ? 'Semaine finale' : 'Cette semaine';
-  $('#car-week').innerHTML = html;
-  if (c.energy < 35 && !c.tour) $('#car-week').insertAdjacentHTML('afterbegin', `<div class="warnbox">⚠ Tu es ${C.formLabel(c.energy).toLowerCase()} : tes stats baissent en match. Une semaine de repos te remet en forme.</div>`);
-  // prochains gros tournois
-  const up = [];
-  for (let w = c.week + 1; w <= C.WEEKS && up.length < 2; w++) {
-    const big = C.weekEvents(c.season, w).find(e => e.tier === 'slam' || e.tier === 'star' || e.tier === 'worlds');
-    if (big) up.push(`<div>Semaine ${w} · <b>${esc(big.name)}</b> <span style="color:${C.TIERS[big.tier].color}">(top ${C.TIERS[big.tier].need})</span></div>`);
+  // --- agenda
+  const ag = [];
+  for (let w = c.week + 1; w <= C.WEEKS && ag.length < 4; w++) {
+    const e = C.weekEvents(c.season, w).filter(e => !e.kind || e.kind === 'team' || e.kind === 'olympics').sort((a, b) => C.TIERS[b.tier].pts[0] - C.TIERS[a.tier].pts[0])[0];
+    if (e) ag.push(`<div class="agw" style="--ev:${C.TIERS[e.tier].color}"><small>${C.weekDate(c.season, w).short.toUpperCase()}</small><b>${esc(e.name.replace('WTT ', ''))}</b><i>${C.TIERS[e.tier].name}${C.lockReason(e) ? ' · 🔒' : ''}</i></div>`);
   }
-  $('#car-news').innerHTML = up.join('') + c.news.slice(0, 3).map(n => `<div>${esc(n)}</div>`).join('');
-  // stats
-  $('#car-up').textContent = c.upPoints ? `${c.upPoints} POINT${c.upPoints > 1 ? 'S' : ''} À DÉPENSER` : '';
+  const cf = c.conf ?? 50, e = c.energy;
+  const ecol = e >= 75 ? '#6ee7a8' : e >= 50 ? '#ffc83c' : e >= 25 ? '#ff9a3c' : '#ff3d5a';
+  const ccol = cf >= 80 ? '#ff9a3c' : cf >= 60 ? '#6ee7a8' : cf >= 40 ? '#ddd5f2' : '#ff6b7d';
+  const S = C.soc(), sp = C.mainSponsor(), ov = C.overall(me.stats), canT = !c.tour && C.canTrain();
+  const socBadge = C.postIdeas().some(x => x.deal) ? '💰 Offre de partenariat' : S.moment && S.moment.w === c.week && C.postsLeft() > 0 ? '🔥 Moment à poster' : `${C.postsLeft()} post${C.postsLeft() > 1 ? 's' : ''} dispo`;
+  $('#hub').innerHTML = `
+    <div class="tile hero" style="--acc:${acc}">${hero}</div>
+    <div class="tile t-rank" data-nav data-goto="scr-rank"><small>CLASSEMENT MONDIAL</small><div class="bign">${rk}<sup>e</sup></div>
+      <div class="mv ${mv > 0 ? 'up' : mv < 0 ? 'dn' : ''}">${mv > 0 ? '▲ ' + mv : mv < 0 ? '▼ ' + (-mv) : '='} cette semaine</div><div class="foot">${C.rankPoints(me)} pts ITTF</div></div>
+    <div class="tile t-form"><small>ÉTAT DU JOUEUR</small><div class="gauges">${gauge(e, ecol, 'Forme', C.formLabel(e))}${gauge(cf, ccol, 'Confiance', C.confLabel(cf))}</div></div>
+    <div class="tile t-player" data-nav data-goto="scr-cplayer"><small>TON JOUEUR</small><div class="ovr"><b>${ov}</b><span>${C.flag(me.country, 30, 20)}${esc(me.name)}<i>${C.STYLE_NAMES[me.style]} · ${me.age || 17} ans</i></span></div>
+      <div class="foot ${c.upPoints || c.perkPts ? 'hot' : ''}">${c.upPoints ? `⬆ ${c.upPoints} point${c.upPoints > 1 ? 's' : ''} à dépenser` : c.perkPts ? `★ ${c.perkPts} talent${c.perkPts > 1 ? 's' : ''} à débloquer` : 'Attributs, talents, vestiaire'}</div></div>
+    <div class="tile t-train ${canT ? 'hot' : ''}" data-nav data-goto="scr-ctrain"><small>ENTRAÎNEMENT</small><div class="mid">🏋</div><div class="foot">${canT ? 'Séance disponible' : c.tour ? 'Pendant le tournoi : non' : 'Déjà fait cette semaine'}</div></div>
+    <div class="tile t-soc" data-nav data-goto="scr-social"><small>MÉDIAS</small><div class="bign sm">${fansN(c.fans)}</div><div class="mv">fans</div><div class="foot">${socBadge}</div></div>
+    <div class="tile t-money" data-nav data-goto="scr-team"><small>FINANCES & ÉQUIPE</small><div class="bign sm">${eur(c.money)}</div>
+      <div class="foot">${sp ? `<span style="color:${sp.color}">★ ${esc(sp.name)}</span>` : 'Pas de sponsor principal'}${c.coach ? ` · 🧢 ${C.COACHES[c.coach].name}` : ''}</div></div>
+    <div class="tile t-news"><small>ACTUALITÉS</small>${c.news.slice(0, 4).map(n => `<div class="nw">${esc(n)}</div>`).join('') || '<div class="nw">Rien de neuf pour l\'instant.</div>'}</div>
+    <div class="tile t-agenda" data-nav data-goto="scr-cal"><small>AGENDA · SAISON ${c.season}</small><div class="agr">${ag.join('') || '<div class="nw">Fin de saison</div>'}</div></div>
+    <div class="tile t-rival" data-nav data-goto="scr-cplayer"><small>RIVAUX</small>${C.rivals().map(({ p, type }) => { const h = c.h2h[p.id] || { w: 0, l: 0 };
+      return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${esc(C.lastName(p))}</b></span><span>${C.rankOf(p.id)}e · <b>${h.w}–${h.l}</b></span></div>`; }).join('')}</div>`;
+  bindCareerButtons($('#scr-career'));
+  $('#hub').querySelectorAll('[data-goto]').forEach(t => t.addEventListener('click', () => { initAudio(); sfx.ui(); show(t.dataset.goto); }));
+  refreshFocus();
+}
+
+function renderCPlayer() {
+  const c = C.career; if (!c) return;
+  const me = c.me, st = me.stats;
+  $('#cp-card').innerHTML = `<div class="fut"><div class="fo">${C.overall(st)}</div><div class="fp">${C.STYLE_NAMES[me.style].toUpperCase()}</div>${C.flag(me.country, 46, 31)}
+    <div class="fn">${esc(me.name)}</div><div class="fs">${C.STAT_KEYS.map(k => `<span><b>${st[k]}</b>${C.STAT_NAMES[k].slice(0, 3).toUpperCase()}</span>`).join('')}</div>
+    <div class="fmeta">${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · ${me.age || 17} ANS · ${C.peakLabel(me.age || 17).toUpperCase()}</div></div>`;
+  $('#car-up').textContent = c.upPoints ? `· ${c.upPoints} POINT${c.upPoints > 1 ? 'S' : ''} À DÉPENSER` : '';
   $('#car-stats').innerHTML = C.STAT_KEYS.map(k => {
-    const v = me.stats[k], cost = C.upgradeCost(v), can = c.upPoints >= cost && v < 99;
+    const v = st[k], cost = C.upgradeCost(v), can = c.upPoints >= cost && v < 99;
     return `<div class="statrow"><span>${C.STAT_NAMES[k]}</span><div class="xbar"><div style="width:${v}%"></div></div><b>${v}</b>
       <button class="mbtn small ${can ? 'accent' : 'locked'}" data-act="up" data-k="${k}" title="Coût : ${cost}"><b>+</b></button></div>`;
   }).join('') + `<div style="font-size:12px;color:#a99cc9;margin-top:4px">Chaque match gagné rapporte 3 points (1 si perdu), un titre jusqu'à 15.</div>`;
-  // rival
   $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TES RIVAUX</small>` + C.rivals().map(({ p, type }) => {
     const h = c.h2h[p.id] || { w: 0, l: 0 };
     return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${pname(p)}</b> <small>${type}</small></span><span>${C.rankOf(p.id)}e · <b>${h.w} – ${h.l}</b></span></div>`;
   }).join('') + '</div>';
   $('#perk-badge').textContent = c.perkPts ? `· ${c.perkPts}` : '';
-  $('#soc-badge').textContent = C.postIdeas().some(x => x.deal) ? '· 💰' : C.soc().moment && C.soc().moment.w === c.week && C.postsLeft() > 0 ? '· !' : '';
-  bindCareerButtons($('#scr-career'));
-  $('#scr-career').querySelectorAll('[data-go2]').forEach(b => b.addEventListener('click', () => { sfx.ui(); show(b.dataset.go2); }));
-  refreshFocus();
+  bindCareerButtons($('#scr-cplayer'));
+}
+
+// ------------------------------------------------------------------ barre d'onglets carrière (LB / RB)
+function renderCNav(id) {
+  const el = $('#cnav'), c = C.career, ti = tabIdx(id);
+  const on = !!c && !c.retired && ti >= 0;
+  el.classList.toggle('hidden', !on);
+  document.querySelector('#menu').classList.toggle('incareer', on);
+  if (!on) return;
+  const me = c.me;
+  el.innerHTML = `<div class="cn-top"><div class="cn-id">${C.flag(me.country, 34, 23)}<div><b>${esc(me.name)}</b><small>${C.overall(me.stats)} GÉN · ${C.rankOf('me')}E MONDIAL</small></div></div>
+    <div class="cn-r"><span>${C.weekDate(c.season, c.week).label.toUpperCase()}</span><span>SAISON ${c.season} · SEM. ${c.week}/${C.WEEKS}</span><b>${eur(c.money)}</b></div></div>
+    <div class="cn-tabs"><span class="kb pad lbrb">${input.padName ? 'LB' : 'A'}</span>${CTABS.map((t, i) => `<button class="cn-t ${i === ti ? 'on' : ''}" data-ti="${i}">${t.label}</button>`).join('')}<span class="kb pad lbrb">${input.padName ? 'RB' : 'E'}</span></div>`;
+  el.querySelectorAll('.cn-t').forEach(b => b.addEventListener('click', () => { initAudio(); sfx.ui(); show(CTABS[+b.dataset.ti].go()); }));
+}
+function cycleTab(d) {
+  const ti = tabIdx(curScreen);
+  if (ti < 0 || !C.career || $('#cnav').classList.contains('hidden')) return false;
+  const n = (ti + d + CTABS.length) % CTABS.length;
+  sfx.ui(); show(CTABS[n].go()); return true;
 }
 
 function scoutCard(o) {
@@ -1643,7 +1732,7 @@ function roundLabel(d, m) {
   if (!d.rounds[d.round]) return '';
   return C.ROUND_NAMES(d.rounds[d.round].length);
 }
-const CAREER_SCREENS = ['scr-career', 'scr-tour', 'scr-ctrain', 'scr-team', 'scr-shop', 'scr-perks', 'scr-cal', 'scr-social', 'scr-clocker', 'scr-rank'];
+const CAREER_SCREENS = ['scr-career', 'scr-cplayer', 'scr-tour', 'scr-ctrain', 'scr-team', 'scr-shop', 'scr-perks', 'scr-cal', 'scr-social', 'scr-clocker', 'scr-rank'];
 const TIPS = {
   'scr-career': 'Bienvenue au QG ! Commence par un WTT Feeder pour gagner tes premiers points. Chaque semaine : un tournoi OU du repos, et une séance d\'entraînement.',
   'scr-tour': 'Voici le tableau. Tu peux jouer ton match ou le simuler. Regarde la fiche de ton adversaire : points forts, points faibles, coups signature.',

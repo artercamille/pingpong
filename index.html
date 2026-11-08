@@ -63,6 +63,7 @@
     </div>
 
     <div id="pcard"></div>
+    <div id="cnav" class="hidden"></div>
     <section class="screen" id="scr-main">
       <button class="mbtn big gold" id="btn-career">
         <i><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0z"/><path d="M7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4M12 14v4M8 21h8M9 18h6"/></svg></i>
@@ -196,34 +197,28 @@
     </section>
 
     <section class="screen hidden xwide" id="scr-career">
-      <div id="car-head"></div>
-      <div class="cgrid">
+      <div class="hub" id="hub"></div>
+      <div class="hubfoot">
+        <button class="mbtn ghost small" data-go="scr-slots"><span><b>Changer de sauvegarde</b></span></button>
+        <button class="mbtn ghost small" data-go="scr-main"><span><b>Retour au menu</b></span></button>
+      </div>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-cplayer">
+      <div class="pgrid">
+        <div id="cp-card"></div>
         <div>
-          <h2 id="car-week-title">Cette semaine</h2>
-          <div id="car-week"></div>
-          <h2>Actualités</h2>
-          <div id="car-news"></div>
-        </div>
-        <div>
-          <h2>Ton joueur <span id="car-up"></span></h2>
+          <h2>Attributs <span id="car-up"></span></h2>
           <div id="car-stats"></div>
           <div class="crow c3">
             <button class="mbtn small" data-go="scr-perks"><span><b>Talents <em id="perk-badge" style="color:#ffc83c;font-style:normal"></em></b></span></button>
             <button class="mbtn small" data-go="scr-ctrain"><span><b>Entraînement</b></span></button>
-            <button class="mbtn small" data-go="scr-team"><span><b>Staff & sponsors</b></span></button>
-            <button class="mbtn small" data-go="scr-shop"><span><b>Matériel & centre</b></span></button>
-            <button class="mbtn small" data-go="scr-cal"><span><b>Calendrier</b></span></button>
-            <button class="mbtn small" data-go="scr-social"><span><b>📱 Réseaux <em id="soc-badge" style="color:#ff6b9d;font-style:normal"></em></b></span></button>
             <button class="mbtn small" data-go="scr-clocker"><span><b>Vestiaire</b></span></button>
-            <button class="mbtn small" data-go="scr-rank"><span><b>Classement</b></span></button>
-            <button class="mbtn small" data-go="scr-palmares"><span><b>Vitrine</b></span></button>
-            <button class="mbtn small" data-go="scr-hof"><span><b>Hall of Fame</b></span></button>
           </div>
           <div id="car-rival"></div>
         </div>
       </div>
-      <button class="mbtn ghost" data-go="scr-slots"><span><b>Changer de sauvegarde</b></span></button>
-      <button class="mbtn ghost" data-go="scr-main"><span><b>Retour au menu</b></span></button>
+      <button class="mbtn ghost" data-go="scr-career"><span><b>Retour au QG</b></span></button>
     </section>
 
     <section class="screen hidden xwide" id="scr-tour">

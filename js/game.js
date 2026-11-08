@@ -559,7 +559,10 @@ export class Game {
       const err = pl.pressErr != null ? pl.pressErr : -(this.simTime - r.pending);
       const g = gradePress(err, this.pressScale(p));
       if (pl.pressErr == null) { this.lastPress = { i: p, grade: g.grade, label: g.label, t: this.simTime }; this.startSwing(p, dx >= 0, pl.pressType); }
-      type = pl.pressType; q = g.q; label = g.label; power = 0.4 + 0.4 * g.q;
+      type = pl.pressType; q = g.q; label = g.label; power = 0.4 + 0.45 * g.q;
+      // rythme : les coups parfaits enchaînés rendent tes frappes plus rapides et plus précises
+      pl.flow = g.grade === 3 ? Math.min(6, (pl.flow || 0) + 1) : 0;
+      if (pl.flow >= 2) { power = Math.min(1, power + 0.04 * pl.flow); label = g.grade === 3 ? `PARFAIT x${pl.flow}` : label; }
       pl.pressType = null; pl.swingAt = 0; r.pending = 0;
     } else if (pl.charging && !r.pending) {
       // le joueur charge encore : on attend qu'il relâche (coup en retard)
@@ -658,11 +661,11 @@ export class Game {
   buildShot(p, type, power, q, serve, sup = false, target = null) {
     const pl = this.players[p], s = pl.side, b = this.ball;
     const ax = clamp(pl.aimX, -1, 1), ay = clamp(pl.aimY, -1, 1);
-    let tx = ax * 0.6 * s;
+    let tx = ax * (serve ? 0.6 : 0.7) * s;
     let depth;
     if (serve) depth = 0.8 + ay * 0.33;
     else if (type === 'lob') depth = 1.05 + ay * 0.15;
-    else depth = 0.92 + ay * 0.3 - (type === 'coupe' ? 0.08 : 0);
+    else depth = 0.9 + ay * 0.38 - (type === 'coupe' ? 0.08 : 0);
     if (target) { tx = target.x; depth = -s * target.z; }
     // service en double : en diagonale, vers la moitié droite du relanceur
     if (serve && this.doubles) tx = -s * clamp(0.38 + ax * 0.2 * -1, 0.15, 0.62);
@@ -684,13 +687,13 @@ export class Game {
       else if (type === 'coupe') { speed = 3.0 + 1.4 * power; top = -(90 + 110 * power); }
       else if (type === 'plat') { speed = 4.0 + 1.6 * power; top = 25; }
       else { speed = 3.4 + 1.0 * power; top = 20; side = (100 + 80 * power) * (pl.sideSpin || 1); }
-    } else if (variant === 'flip') { speed = 3.6 + 2.2 * power; top = 60; depth = Math.min(depth, 0.85); eMul = 0.7; }
-    else if (variant === 'contre') { speed = clamp(inSpeed * 0.85 + 1.5, 6, 13); top = 50; eMul = 1.25; }
+    } else if (variant === 'flip') { speed = 4.2 + 2.6 * power; top = 90; depth = Math.min(depth, 0.85); eMul = 0.7; }
+    else if (variant === 'contre') { speed = clamp(inSpeed * 0.9 + 1.8, 7, 15); top = 60; eMul = 1.25; }
     else if (variant === 'bloc') { speed = clamp(inSpeed * 0.55 + 1.2, 3.5, 8); top = 20; eMul = 0.55; kMul = 0.25; }
     else {
-      if (type === 'top') { speed = 4.6 + 4.4 * power; top = 80 + 120 * power; }
-      else if (type === 'plat') { speed = 5.8 + 6 * power; top = 25; if (b.p.y > 1.15) { speed += 3.5; smash = true; } }
-      else if (type === 'coupe') { speed = 3.6 + 2 * power; top = -(60 + 100 * power); }
+      if (type === 'top') { speed = 5.3 + 5.6 * power; top = 110 + 170 * power; }
+      else if (type === 'plat') { speed = 6.6 + 7 * power; top = 30; if (b.p.y > 1.15) { speed += 4; smash = true; } }
+      else if (type === 'coupe') { speed = 3.8 + 2.2 * power; top = -(80 + 120 * power); }
       else { speed = 3.2 + 1.4 * power; top = 45 + 45 * power; }
     }
     // carrière : stats et coups signature
@@ -710,6 +713,7 @@ export class Game {
       eMul *= 1.45 - 0.85 * sideQ;
     }
     if (sup) { speed += 5; top = Math.abs(top) + 120; }
+    if (pl.flow >= 2 && !serve) { speed *= 1 + 0.03 * pl.flow; top *= 1 + 0.04 * pl.flow; eMul *= 1 - 0.06 * pl.flow; }
     if (pl.sideSpin && !(serve && type === 'lob')) side += pl.sideSpin * (70 + 60 * power);
     side *= s;
 

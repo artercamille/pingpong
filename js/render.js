@@ -892,7 +892,7 @@ export class Renderer {
 
     game.players.forEach((pl, i) => this.paddles[i].update(dt, pl, game, i));
     for (let i = game.players.length; i < 4; i++) { this.paddles[i].obj.visible = false; this.figures[i].g.visible = false; }
-    const robotMode = game.ctrl && game.ctrl[1] === 'robot';
+    const robotMode = !!(game.ctrl && game.ctrl[1] === 'robot');
     this.robot.visible = robotMode;
     game.players.forEach((pl, i) => {
       const fig = this.figures[i];
@@ -1159,11 +1159,13 @@ export class Renderer {
     if (Math.abs(this.camera.fov - wantFov) > 0.05) { this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); }
     if (this.replayCam) {
       // caméra télé latérale qui suit la balle
+      // caméra télé en hauteur, en biais derrière le joueur : jamais dans un joueur
       const b = game.ball.p;
-      const tgt = V(3.6, 1.75, b.z * 0.55);
+      const ms = (game.players[game.me] || {}).side || 1;
+      const tgt = V(2.6 + b.x * 0.15, 3.3, 5.6 * ms);
       const rdt = dt / (this.replaySpeed || 1);
-      this.camPos.lerp(tgt, Math.min(1, rdt * 3));
-      this.camLook.lerp(V(b.x * 0.5, 0.9, b.z * 0.85), Math.min(1, rdt * 5));
+      this.camPos.lerp(tgt, Math.min(1, rdt * 2));
+      this.camLook.lerp(V(b.x * 0.35, 0.85, b.z * 0.45), Math.min(1, rdt * 4));
       this.camera.position.copy(this.camPos);
       this.camera.lookAt(this.camLook);
       return;

@@ -9,10 +9,10 @@ export const DT = 1 / 240;
 
 const G = 9.81;
 const DRAG = 0.12;        // traînée (par mètre)
-const MAGNUS = 0.0042;    // force de Magnus
+const MAGNUS = 0.0052;    // force de Magnus
 const SPIN_DECAY = 0.12;  // perte d'effet par seconde
 const TABLE_E = 0.89;     // restitution table
-const TABLE_GRIP = 0.26;  // accroche de la table (transfert d'effet)
+const TABLE_GRIP = 0.3;   // accroche de la table (transfert d'effet)
 const TOP = TABLE.H + BALL_R;
 const NET_TOP = TABLE.H + NET.H;
 

@@ -693,7 +693,7 @@ function showVS() {
       if (setup.kind === 'team') label = `${C.COUNTRIES[pl.country].name} · ` + label;
     } else if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
     else if (game.doubles) { label = 'Équipe ' + (p === 0 ? 'bleue' : 'rouge'); box.querySelector('.emb').innerHTML = ''; }
-    else { label = `${['IA Facile', 'IA Normale', 'IA Difficile', 'Coach'][setup.level] || 'IA'} · ${setup.aiStyle || ''}`; box.querySelector('.emb').innerHTML = ''; }
+    else { label = `${['IA Facile', 'IA Normale', 'IA Difficile', 'Coach', 'IA Légende'][setup.level] || 'IA'} · ${setup.aiStyle || ''}`; box.querySelector('.emb').innerHTML = ''; }
     box.querySelector('.r').innerHTML = label;
   };
   side('l', me); side('r', op);
@@ -740,8 +740,10 @@ function updateRing(dt) {
   const el = $('#ring');
   const me = game.me, pl = game.players[me];
   const human = game.ctrl[me] === 'human';
-  // position fixe, bien visible, au-dessus de ton joueur
-  el.style.transform = `translate(${innerWidth / 2}px, ${innerHeight * 0.64}px)`;
+  // à droite de la table, côté joueur
+  const anchor = R.worldToScreen({ x: 1.25 * (pl.side || 1), y: 0.95, z: (pl.side || 1) * 0.75 });
+  const ax = Math.min(innerWidth - 70, Math.max(70, anchor.x)), ay = Math.min(innerHeight - 70, Math.max(70, anchor.y));
+  el.style.transform = `translate(${ax}px, ${ay}px)`;
   updateServeHud(human);
   const lp = game.lastPress;
   if (lp && lp.i === me && lp !== ringLastPress) {
@@ -765,7 +767,6 @@ function updateRing(dt) {
   const a = Math.abs(rem) / game.pressScale(me);
   el.className = 'show ' + (a <= 0.05 ? 'now' : a <= 0.11 ? 'near' : '');
   const pad = !!input.padName;
-  el.querySelector('.rk').innerHTML = game.state === 'toss' ? `<span>${kb('top')}</span> frappe le service` : `<span>${kb('top')} lift</span><span>${kb('plat')} frappe</span><span>${kb('coupe')} coupé</span><span>${kb('lob')} lob</span>`;
 }
 function updateServeHud(human) {
   const el = $('#servehud');
@@ -777,16 +778,14 @@ function updateServeHud(human) {
   const tz = -s * (0.8 + ay * 0.33);
   R.setAim && R.setAim({ x: tx, z: tz });
   el.classList.add('on');
-  el.innerHTML = game.state === 'serve'
-    ? `<b>SERVICE</b><span>${input.padName ? 'Stick gauche' : 'Flèches'} : vise la zone</span><span>${kb('top')} lift · ${kb('plat')} rapide · ${kb('coupe')} coupé · ${kb('lob')} latéral : lance la balle</span>`
-    : `<b>SERVICE</b><span>Appuie quand le cercle devient vert</span>`;
 }
 // ------------------------------------------------------------------ ralenti
 function startReplay(clip, onEnd) {
+  for (const f of R.figures) { f.mood = 0; f.moodT = 0; }
   replay = new Player(clip, game, 0.35);
   replay.onEnd = onEnd;
   R.replayCam = true; R.replaySpeed = replay.speed;
-  R.camPos.set(3.6, 1.75, clip.length ? clip[0].ball.z * 0.55 : 0);
+  R.camPos.set(2.6, 3.3, 5.6 * ((game && game.players[game.me] || {}).side || 1));
   document.body.classList.add('replaying');
   $('#replay').classList.remove('hidden');
 }

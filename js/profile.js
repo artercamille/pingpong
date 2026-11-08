@@ -163,7 +163,7 @@ export function recordMatch(res) {
   // XP
   let xp = 40 + res.setsWon * 15 + (res.won ? 40 : 0);
   if (res.mode === 'online') xp += 20;
-  if (res.mode === 'ai') xp += [0, 10, 25][res.aiLevel] || 0;
+  if (res.mode === 'ai') xp += [0, 10, 25, 0, 50][res.aiLevel] || 0;
   xp += Math.min(30, (res.stats.longest || 0));
   profile.xp += xp; out.xp = xp;
 
@@ -183,7 +183,7 @@ export function recordMatch(res) {
   const s = res.stats;
   const tryA = id => { const a = unlock(id); if (a) out.ach.push(a); };
   if (res.won) tryA('first_win');
-  if (res.won && res.mode === 'ai' && res.aiLevel === 2) tryA('beat_hard');
+  if (res.won && res.mode === 'ai' && res.aiLevel >= 2) tryA('beat_hard');
   if (res.won && res.mode === 'online') tryA('online_win');
   if (profile.streak >= 5) tryA('streak5');
   if (profile.wins >= 10) tryA('wins10');

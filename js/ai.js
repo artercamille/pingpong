@@ -8,6 +8,7 @@ const LEVELS = [
   { name: 'Normal', noise: 0.06, slip: 0.09, react: 0.18, speed: 0.9, power: 0.68, aim: 0.8 },
   { name: 'Difficile', noise: 0.035, slip: 0.045, react: 0.1, speed: 1, power: 0.82, aim: 0.95 },
   { name: 'Coach', noise: 0.01, slip: 0, react: 0.1, speed: 1, power: 0.32, aim: 0.25 },
+  { name: 'Légende', noise: 0.016, slip: 0.012, react: 0.065, speed: 1.12, power: 0.95, aim: 1.12 },
 ];
 // styles de jeu : répartition des coups, puissance, prise de risque
 export const STYLES = {
@@ -25,9 +26,10 @@ export class AI {
     this.g = game; this.i = i; this.L = LEVELS[level];
     if (opts && opts.rating) {
       // carrière : niveau calculé depuis la note du joueur (40 à 99)
-      const t = Math.max(0, Math.min(1, (opts.rating - 40) / 56));
+      // courbe accélérée en haut : les tout meilleurs joueurs sont nettement plus forts
+      const t0 = Math.max(0, Math.min(1.08, (opts.rating - 40) / 56)), t = t0 < 0.75 ? t0 : 0.75 + (t0 - 0.75) * 1.4;
       const l = (a, b) => a + (b - a) * t;
-      this.L = { name: 'Pro', noise: l(0.1, 0.022), slip: l(0.16, 0.03), react: l(0.3, 0.09), speed: l(0.72, 1), power: l(0.5, 0.86), aim: l(0.6, 1) };
+      this.L = { name: 'Pro', noise: Math.max(0.012, l(0.1, 0.022)), slip: Math.max(0.008, l(0.16, 0.03)), react: Math.max(0.055, l(0.3, 0.09)), speed: l(0.72, 1), power: Math.min(0.98, l(0.5, 0.86)), aim: l(0.6, 1) };
     }
     this.sig = opts && opts.sig;
     const keys = Object.keys(STYLES);

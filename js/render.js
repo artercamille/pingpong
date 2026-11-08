@@ -146,62 +146,57 @@ class PaddleRig {
 // ------------------------------------------------------------------ bonhomme néon
 const UP = new THREE.Vector3(0, 1, 0);
 // ------------------------------------------------------------------ athlète néon animé
-// Corps volumique en verre néon (contour lumineux), squelette procédural :
+// Bonhomme bâton néon, squelette procédural :
 // appuis au sol, pas chassés, split-step, rotation du buste dans les coups,
 // bras libre d'équilibre, regard sur la balle, respiration, célébrations.
-function neonBodyMat(color) {
-  return new THREE.ShaderMaterial({
-    uniforms: { col: { value: new THREE.Color(color) }, core: { value: new THREE.Color(0x07060e) }, glow: { value: 1 } },
-    vertexShader: `varying vec3 vN; varying vec3 vV;
-      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `uniform vec3 col; uniform vec3 core; uniform float glow; varying vec3 vN; varying vec3 vV;
-      void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0);
-        vec3 c = mix(core + col * 0.1, col * (1.9 + glow), f); gl_FragColor = vec4(c, 1.0); }`,
-  });
-}
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const vv = () => new THREE.Vector3();
 
 class StickFigure {
   constructor(scene, color) {
     this.g = new THREE.Group();
-    this.mat = neonBodyMat(color);
-    this.lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+    // tube néon : cœur lumineux + halo additif
+    this.mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+    this.halo = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    this.lineMat = this.mat;
     this.setColor(color);
-    const cyl = (r1, r2) => { const g = new THREE.CylinderGeometry(r2, r1, 1, 14, 1, false); g.translate(0, 0.5, 0); return g; };
-    const mk = (geo, mat = this.mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; this.g.add(m); return m; };
-    this.segs = {
-      thL: mk(cyl(0.078, 0.055)), thR: mk(cyl(0.078, 0.055)), shL: mk(cyl(0.052, 0.036)), shR: mk(cyl(0.052, 0.036)),
-      uaL: mk(cyl(0.05, 0.04)), uaR: mk(cyl(0.05, 0.04)), faL: mk(cyl(0.04, 0.03)), faR: mk(cyl(0.04, 0.03)), neck: mk(cyl(0.045, 0.04)),
-    };
-    const sph = new THREE.SphereGeometry(1, 20, 14);
-    this.joints = {};
-    for (const [k, r] of [['shL', 0.06], ['shR', 0.06], ['elL', 0.043], ['elR', 0.043], ['haL', 0.04], ['haR', 0.04], ['hiL', 0.07], ['hiR', 0.07], ['knL', 0.056], ['knR', 0.056]]) {
-      const m = mk(sph); m.scale.setScalar(r); this.joints[k] = m;
+    const seg = new THREE.CylinderGeometry(0.019, 0.019, 1, 10, 1, false); seg.translate(0, 0.5, 0);
+    const segH = new THREE.CylinderGeometry(0.048, 0.048, 1, 12, 1, true); segH.translate(0, 0.5, 0);
+    this.segs = {};
+    for (const k of ['spine', 'shoulders', 'hips', 'uaL', 'faL', 'uaR', 'faR', 'thL', 'shL', 'thR', 'shR', 'neck']) {
+      const m = new THREE.Mesh(seg, this.mat); m.castShadow = true;
+      m.add(new THREE.Mesh(segH, this.halo));
+      this.g.add(m); this.segs[k] = m;
     }
-    this.chest = mk(sph); this.abdo = mk(sph); this.hips = mk(sph);
-    const shoe = new THREE.BoxGeometry(0.1, 0.07, 0.26); shoe.translate(0, 0.035, 0.05);
-    this.feet = [mk(shoe), mk(shoe)];
-    // tête : volume néon + visière sombre + liseré lumineux
+    const jg = new THREE.SphereGeometry(0.03, 12, 10), jh = new THREE.SphereGeometry(0.06, 12, 10);
+    this.joints = {};
+    for (const k of ['shL', 'shR', 'elL', 'elR', 'haL', 'haR', 'hiL', 'hiR', 'knL', 'knR', 'ftL', 'ftR', 'pelvis', 'neck']) {
+      const m = new THREE.Mesh(jg, this.mat); m.castShadow = true;
+      m.add(new THREE.Mesh(jh, this.halo));
+      this.g.add(m); this.joints[k] = m;
+    }
+    // tête : anneau lumineux + disque sombre
     this.head = new THREE.Group();
-    const skull = new THREE.Mesh(sph, this.mat); skull.scale.set(0.105, 0.125, 0.11); skull.castShadow = true;
-    const visor = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, Math.PI / 2 - 0.9, 1.8, 1.0, 0.75), new THREE.MeshBasicMaterial({ color: 0x05040a })); visor.scale.set(0.108, 0.125, 0.113);
-    visor.rotation.y = 0;
-    const brow = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 6, 40, Math.PI * 0.9), this.lineMat); brow.rotation.set(Math.PI / 2, 0, Math.PI * 0.05 + Math.PI); brow.position.set(0, 0.015, 0.012);
-    this.head.add(skull, visor, brow);
+    this.headRing = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.02, 12, 48), this.mat);
+    ring.add(new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.05, 12, 48), this.halo));
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.11, 32), new THREE.MeshBasicMaterial({ color: 0x07060c }));
+    disc.position.z = -0.004; ring.castShadow = true;
+    this.headRing.add(ring, disc);
+    this.head.add(this.headRing);
     this.g.add(this.head);
-    // lignes lumineuses (couture néon le long du corps)
     // accessoires
     this.acc = {
-      band: new THREE.Mesh(new THREE.TorusGeometry(0.112, 0.016, 8, 40), this.lineMat),
+      band: new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.03), this.mat),
       cap: new THREE.Group(),
-      wristL: new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.014, 8, 20), this.lineMat),
-      wristR: new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.014, 8, 20), this.lineMat),
+      wristL: new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 20), this.mat),
+      wristR: new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 20), this.mat),
     };
-    this.acc.band.rotation.x = Math.PI / 2; this.acc.band.position.y = 0.05; this.head.add(this.acc.band);
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.118, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), this.lineMat); dome.position.y = 0.02;
-    const peak = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.1), this.lineMat); peak.position.set(0, 0.03, 0.14);
-    this.acc.cap.add(dome, peak); this.head.add(this.acc.cap);
+    this.acc.band.position.set(0, 0.035, 0.01); this.headRing.add(this.acc.band);
+    const dome = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.022, 10, 32, Math.PI), this.mat);
+    dome.position.y = 0.025; dome.scale.set(1.08, 0.9, 1);
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.022, 0.03), this.mat); visor.position.set(0.09, 0.03, 0.02);
+    this.acc.cap.add(dome, visor); this.headRing.add(this.acc.cap);
     this.g.add(this.acc.wristL, this.acc.wristR);
     this.setAccessory(0);
     scene.add(this.g);
@@ -212,8 +207,9 @@ class StickFigure {
     this.vel = vv(); this.prev = null; this.t = Math.random() * 10; this.split = 0; this.lastHitId = null; this.look = vv(); this.lean = 0; this.yaw = 0;
   }
   setColor(c) {
-    this.mat.uniforms.col.value.set(c);
-    this.lineMat.color.set(c).lerp(new THREE.Color(0xffffff), 0.4).multiplyScalar(1.6);
+    const col = new THREE.Color(c);
+    this.mat.color.copy(col).lerp(new THREE.Color(0xffffff), 0.22).multiplyScalar(1.5);
+    this.halo.color.copy(col);
   }
   setAccessory(a) {
     this.accId = a;
@@ -370,31 +366,24 @@ class StickFigure {
     this.ik(V0.shR, handR, 0.3, 0.28, elbowPole.clone().addScaledVector(r, 0.7), V0.elR, V0.haR);
     this.ik(V0.shL, handL, 0.3, 0.28, elbowPole.clone().addScaledVector(r, -0.7), V0.elL, V0.haL);
 
-    // pose des volumes
+    // pose des segments néon
     const S = this.segs, J = this.joints;
+    this.place(S.spine, V0.pelvis, V0.neck);
+    this.place(S.neck, V0.neck, V0.headC.clone().addScaledVector(spineDir, -0.11));
+    this.place(S.shoulders, V0.shL, V0.shR);
+    this.place(S.hips, V0.hiL, V0.hiR);
     this.place(S.thL, V0.hiL, V0.knL); this.place(S.shL, V0.knL, V0.ftL);
     this.place(S.thR, V0.hiR, V0.knR); this.place(S.shR, V0.knR, V0.ftR);
     this.place(S.uaL, V0.shL, V0.elL); this.place(S.faL, V0.elL, V0.haL);
     this.place(S.uaR, V0.shR, V0.elR); this.place(S.faR, V0.elR, V0.haR);
-    this.place(S.neck, V0.neck, V0.headC);
     for (const k of Object.keys(J)) J[k].position.copy(V0[k]);
-    this.orient(this.chest, V0.chest.clone().addScaledVector(spineDir, 0.02), shAxis, spineDir, 0.17, 0.2, 0.11);
-    this.orient(this.abdo, V0.pelvis.clone().addScaledVector(spineDir, 0.17), rotY(r, this.yaw * 0.7), spineDir, 0.135, 0.15, 0.095);
-    this.orient(this.hips, V0.pelvis.clone().addScaledVector(spineDir, 0.02), hipAxis, spineDir, 0.15, 0.09, 0.1);
-    for (let k = 0; k < 2; k++) {
-      const F = this.feet[k], A = k === 0 ? V0.ftL : V0.ftR;
-      F.position.set(A.x, Math.max(0, A.y - 0.075), A.z);
-      F.rotation.set(0, Math.atan2(f.x, f.z) + (k === 0 ? -0.25 : 0.25) * s * hd, 0);
-    }
     this.head.position.copy(V0.headC);
-    this.head.lookAt(this.look);
+    this.head.lookAt(camera.position);
     if (this.badge && this.badge.visible) this.badge.position.copy(V0.chest).addScaledVector(f, 0.12);
     if (this.accId === 3) {
       this.acc.wristL.position.copy(V0.elL).lerp(V0.haL, 0.82); this.acc.wristL.lookAt(V0.haL);
       this.acc.wristR.position.copy(V0.elR).lerp(V0.haR, 0.82); this.acc.wristR.lookAt(V0.haR);
     }
-    // les joueurs immobiles du podium gardent la pose
-    void camera;
   }
 }
 

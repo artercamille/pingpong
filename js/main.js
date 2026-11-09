@@ -128,7 +128,7 @@ function renderLocker() {
     const ok = isUnlocked(c);
     ov.textContent = ok ? c.name : `🔒 ${c.name} · niv. ${c.level}`;
     ov.classList.toggle('locked', !ok);
-    if (ok && profile.cos[kind] !== c.id) { profile.cos[kind] = c.id; saveProfile(); applyCosmetics(); }
+    if (ok && profile.cos[kind] !== c.id) { profile.cos[kind] = c.id; saveProfile(); applyCosmetics(); if (kind === 'arena') setArenaChoice(c.id); }
   });
 }
 document.querySelectorAll('.opt.cos').forEach(o => {
@@ -181,12 +181,19 @@ function optStep(o, d) {
   o.dataset.i = (+o.dataset.i + d + n) % n; optRender(o); sfx.ui();
   if (o.closest('#scr-career-new')) renderCreate();
   if (o.closest('#scr-ctrain')) renderCTrain();
+  if (o.id === 'ai-arena' || o.id === 'host-arena') setArenaChoice(o.dataset.v.split('|')[+o.dataset.i]);
+}
+// la salle choisie est mémorisée et partagée entre « Contre l'IA », « Créer un salon » et le vestiaire
+function setArenaChoice(id) {
+  store.set('pp-arena', id);
+  for (const sel of ['#ai-arena', '#host-arena']) { const o = $(sel); const k = o.dataset.v.split('|').indexOf(id); if (k >= 0 && String(k) !== o.dataset.i) { o.dataset.i = k; optRender(o); } }
 }
 document.querySelectorAll('.opt').forEach(o => {
   optRender(o);
   o.addEventListener('click', e => { initAudio(); const r = o.getBoundingClientRect(); optStep(o, e.clientX < r.left + r.width * 0.5 ? -1 : 1); });
 });
 const choice = id => { const o = $('#' + id); const v = o.dataset.v.split('|')[+o.dataset.i]; return isNaN(+v) ? v : +v; };
+setArenaChoice(store.get('pp-arena') || 'random');
 
 // ------------------------------------------------------------------ options
 const CAMS = ['raquette', 'tv', 'haute'];

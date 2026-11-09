@@ -69,3 +69,7 @@ Le jeu est ensuite disponible sur `https://artercamille.github.io/pingpong/`.
 - Classement mondial, rivaux, coups signature, presse, réseaux sociaux, fans, sponsors, staff, centre d'entraînement, matériel.
 - Entraînement hebdomadaire (robot, cibles, vitesse, régularité, défense, réception, sparring), préparation d'un tournoi, talents, blessures, confiance, âge et déclin.
 - Calendrier, fiches joueurs, vitrine, records, Hall of Fame, jubilé et match d'adieu, podium 3D.
+
+## Mise en ligne
+
+Avant chaque commit : `python3 tools/version.py` (ajoute un numéro de version aux fichiers JS/CSS pour que les navigateurs ne gardent pas une ancienne version en cache).

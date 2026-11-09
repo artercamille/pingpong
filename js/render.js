@@ -6,6 +6,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+import { paintFloor } from './floors.js';
 import { TABLE, NET, BALL_R, topAxis } from './physics.js';
 import { IDEAL_REL } from './game.js';
 import { arenaKit, hideKits } from './arenas.js';
@@ -566,25 +568,25 @@ export class Renderer {
   // ---------------------------------------------------------------- arène
   buildArena() {
     const s = this.scene;
-    // sol : anthracite mat avec logos blancs
-    const floorTex = canvasTex(2048, 2048, (g, w, h) => {
-      noiseFill(g, w, h, '#1d1f25', 8);
-      const grd = g.createRadialGradient(w / 2, h / 2, 100, w / 2, h / 2, w * 0.6);
-      grd.addColorStop(0, 'rgba(255,255,255,0.05)'); grd.addColorStop(1, 'rgba(0,0,0,0.35)');
-      g.fillStyle = grd; g.fillRect(0, 0, w, h);
-      const sx = w / (COURT.hx * 2), sz = h / (COURT.hz * 2);
-      logo(g, w * 0.78, h * 0.27, 46, Math.PI / 2, 0.85);
-      logo(g, w * 0.22, h * 0.73, 46, -Math.PI / 2, 0.85);
-      logo(g, w * 0.3, h * 0.12, 40, 0, 0.8);
-      logo(g, w * 0.72, h * 0.88, 40, Math.PI, 0.8);
-      g.font = '800 34px Arial'; g.fillStyle = 'rgba(255,255,255,0.75)'; g.textAlign = 'center';
-      g.save(); g.translate(w * 0.7, h * 0.12); g.fillText('WORLD CHAMPIONSHIPS', 0, 0); g.restore();
-      g.save(); g.translate(w * 0.3, h * 0.88); g.rotate(Math.PI); g.fillText('WORLD CHAMPIONSHIPS', 0, 0); g.restore();
-      void sx; void sz;
-    });
-    this.courtMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.48, metalness: 0.05, envMapIntensity: 0.8 });
+    // sol : texture couleur + masque de reflet (aux proportions exactes du terrain), posé sur un miroir
+    const fc = document.createElement('canvas'); fc.width = 1152; fc.height = 2048;
+    const mc = document.createElement('canvas'); mc.width = 288; mc.height = 512;
+    this.floorCanvas = fc; this.floorMask = mc;
+    const floorTex = new THREE.CanvasTexture(fc); floorTex.colorSpace = THREE.SRGBColorSpace; floorTex.anisotropy = 8;
+    const maskTex = new THREE.CanvasTexture(mc);
+    this.courtMat = new THREE.MeshStandardMaterial({ map: floorTex, alphaMap: maskTex, transparent: true, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.8 });
     const court = new THREE.Mesh(new THREE.PlaneGeometry(COURT.hx * 2, COURT.hz * 2), this.courtMat);
-    court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; s.add(court);
+    court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; court.renderOrder = -1; s.add(court);
+    this.mirror = new Reflector(new THREE.PlaneGeometry(COURT.hx * 2, COURT.hz * 2), { textureWidth: 768, textureHeight: 768, color: 0x9a9a9a, clipBias: 0.003 });
+    this.mirror.rotation.x = -Math.PI / 2; this.mirror.position.y = 0.0008; s.add(this.mirror);
+    // le reflet ne montre que l'aire de jeu (table, joueurs, panneaux, éclairages) : pas le décor lointain ni le public
+    const mirrorRender = this.mirror.onBeforeRender;
+    this.mirror.onBeforeRender = (...args) => {
+      const hide = [this.kit && this.kit.g, this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones, this.crowdHair, ...(this.tribunes || []), this.seatMesh].filter(Boolean);
+      const was = hide.map(o => o.visible); hide.forEach(o => { o.visible = false; });
+      mirrorRender.apply(this.mirror, args);
+      hide.forEach((o, i) => { o.visible = was[i]; });
+    };
     this.outerMat = new THREE.MeshStandardMaterial({ color: 0x0c0b12, roughness: 0.9 });
     const outer = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), this.outerMat);
     outer.rotation.x = -Math.PI / 2; outer.receiveShadow = true; s.add(outer); this.outerMesh = outer;
@@ -761,7 +763,10 @@ export class Renderer {
     // public : corps, têtes, bras, drapeaux et téléphones (instanciés)
     const N = people.length;
     const crowdMat = new THREE.MeshStandardMaterial({ roughness: 0.85, envMapIntensity: 0.05, emissive: 0x0c0c12 });
-    this.crowd = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.18, 0.3, 3, 8), crowdMat, N);
+    const torso = new THREE.CapsuleGeometry(0.18, 0.3, 4, 10); torso.scale(1.18, 1, 0.78);
+    this.crowd = new THREE.InstancedMesh(torso, crowdMat, N);
+    // cheveux / casquettes : calotte posée sur la tête
+    this.crowdHair = new THREE.InstancedMesh(new THREE.SphereGeometry(0.108, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshStandardMaterial({ roughness: 0.9, envMapIntensity: 0.05 }), N);
     this.crowdHeads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.05, emissive: 0x0a0806 }), N);
     this.crowdArms = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.042, 0.3, 2, 6), crowdMat, N * 2);
     const skins = [0xf1c7a5, 0xd8a27f, 0x8d5524, 0xc68642, 0xffdbac, 0x5c3a21];
@@ -787,8 +792,10 @@ export class Renderer {
       const w = V(st.lx, st.ly + 0.21, st.lz).applyMatrix4(st.grp.matrixWorld);
       d.position.copy(w); d.rotation.y = st.ry; d.updateMatrix(); seatMesh.setMatrixAt(i, d.matrix);
     });
-    for (const m of [this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones]) m.frustumCulled = false;
-    s.add(this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones, seatMesh);
+    const hairs = [0x1a1410, 0x2a1a10, 0x4a2a14, 0x6a4a2a, 0xc8a060, 0x8a3a1a, 0x9a9a9a, 0x0e0e0e];
+    this.crowdItems.forEach((it, i) => this.crowdHair.setColorAt(i, col.setHex(Math.random() < 0.12 ? [0x3d8bff, 0xff3d6b][it.team] : hairs[Math.floor(Math.random() * hairs.length)]).multiplyScalar(0.8)));
+    for (const m of [this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones, this.crowdHair]) m.frustumCulled = false;
+    s.add(this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones, this.crowdHair, seatMesh);
     this.dummy = new THREE.Object3D();
     this.clap = 0; this.ola = -1; this.ovation = 0; this.crowdFrame = 0;
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._v = V(); this._s = V(1, 1, 1); this._up = V(0, 1, 0); this._d = V();
@@ -918,7 +925,7 @@ export class Renderer {
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (i >= n || (it.g && !it.g.visible)) {
-        this.crowd.setMatrixAt(i, zero); this.crowdHeads.setMatrixAt(i, zero); this.crowdArms.setMatrixAt(i * 2, zero); this.crowdArms.setMatrixAt(i * 2 + 1, zero);
+        this.crowd.setMatrixAt(i, zero); this.crowdHeads.setMatrixAt(i, zero); this.crowdHair.setMatrixAt(i, zero); this.crowdArms.setMatrixAt(i * 2, zero); this.crowdArms.setMatrixAt(i * 2 + 1, zero);
         if (it.flag >= 0) this.crowdFlags.setMatrixAt(it.flag, zero); if (it.phone >= 0) this.crowdPhones.setMatrixAt(it.phone, zero);
         continue;
       }
@@ -935,6 +942,8 @@ export class Renderer {
       this.crowd.setMatrixAt(i, M.compose(P, Q, S));
       P.y = by + 0.37 * it.hs; S.set(1, 1, 1);
       this.crowdHeads.setMatrixAt(i, M.compose(P, Q, S));
+      P.y += 0.012; Q.setFromAxisAngle(UP, Math.atan2(it.fx, it.fz)); this._q2 = this._q2 || new THREE.Quaternion(); this._q2.setFromAxisAngle(this._x || (this._x = V(1, 0, 0)), -0.25); Q.multiply(this._q2);
+      this.crowdHair.setMatrixAt(i, M.compose(P, Q, S)); Q.identity();
       // bras
       const fx = it.fx, fz = it.fz, rx = it.rx, rz = it.rz, shy = by + 0.2 * it.hs;
       for (const side of [-1, 1]) {
@@ -963,7 +972,7 @@ export class Renderer {
         }
       }
     }
-    for (const m of [this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones]) m.instanceMatrix.needsUpdate = true;
+    for (const m of [this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones, this.crowdHair]) m.instanceMatrix.needsUpdate = true;
   }
 
   buildScreens() {
@@ -1355,30 +1364,15 @@ export class Renderer {
     }
     show.visible = false; s.add(show); this.showKit = show;
   }
-  drawFloor(base, accent, title, sub, pattern, textCol = 'rgba(255,255,255,0.85)') {
-    const c = this.courtMat.map.image, g = c.getContext('2d'), w = c.width, h = c.height;
-    noiseFill(g, w, h, base, 7);
-    g.save(); g.globalAlpha = 0.12; g.fillStyle = accent; g.strokeStyle = accent;
-    if (pattern === 'stripes') { g.lineWidth = 40; for (let x = -h; x < w; x += 160) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + h, h); g.stroke(); } }
-    else if (pattern === 'checker') { for (let y = 0; y < h; y += 128) for (let x = (y / 128 % 2) * 128; x < w; x += 256) g.fillRect(x, y, 128, 128); }
-    else if (pattern === 'rings') { g.lineWidth = 14; for (let r = 120; r < w; r += 110) { g.beginPath(); g.arc(w / 2, h / 2, r, 0, Math.PI * 2); g.stroke(); } }
-    else if (pattern === 'waves') { g.lineWidth = 12; for (let y = 0; y < h; y += 70) { g.beginPath(); for (let x = 0; x <= w; x += 20) g.lineTo(x, y + Math.sin(x / 80) * 18); g.stroke(); } }
-    else if (pattern === 'grid') { g.globalAlpha = 0.22; g.lineWidth = 3; for (let x = 0; x < w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y < h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } }
-    else if (pattern === 'hex') { g.globalAlpha = 0.2; g.lineWidth = 3; const r = 48, hh = r * Math.sqrt(3); for (let y = 0, row = 0; y < h + hh; y += hh / 2, row++) for (let x = (row % 2) * r * 1.5; x < w + r * 2; x += r * 3) { g.beginPath(); for (let k = 0; k <= 6; k++) { const a = k / 6 * Math.PI * 2; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.stroke(); } }
-    else if (pattern === 'planks') { g.globalAlpha = 0.25; g.fillStyle = '#000'; for (let x = 0; x < w; x += 56) { g.fillRect(x, 0, 3, h); for (let y = (x * 7) % 300; y < h; y += 300) g.fillRect(x, y, 56, 3); } g.globalAlpha = 0.08; g.fillStyle = '#fff'; for (let x = 0; x < w; x += 112) g.fillRect(x + 8, 0, 40, h); }
-    else if (pattern === 'ice') { g.globalAlpha = 0.35; g.strokeStyle = '#ffffff'; g.lineWidth = 2; for (let k = 0; k < 40; k++) { let x = Math.random() * w, y = Math.random() * h; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 6; j++) { x += (Math.random() - 0.5) * 160; y += (Math.random() - 0.5) * 160; g.lineTo(x, y); } g.stroke(); } }
-    else if (pattern === 'border') { g.globalAlpha = 0.35; g.lineWidth = 50; g.strokeRect(80, 80, w - 160, h - 160); g.lineWidth = 10; g.strokeRect(150, 150, w - 300, h - 300); }
-    g.restore();
-    const grd = g.createRadialGradient(w / 2, h / 2, 100, w / 2, h / 2, w * 0.6);
-    grd.addColorStop(0, 'rgba(255,255,255,0.06)'); grd.addColorStop(1, 'rgba(0,0,0,0.3)'); g.fillStyle = grd; g.fillRect(0, 0, w, h);
-    g.strokeStyle = accent; g.lineWidth = 10; g.strokeRect(30, 30, w - 60, h - 60);
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (const [x, y, r] of [[w * 0.5, h * 0.1, 0], [w * 0.5, h * 0.9, Math.PI]]) {
-      g.save(); g.translate(x, y); g.rotate(r); g.fillStyle = textCol; g.font = 'italic 900 64px Arial'; g.fillText(title.toUpperCase(), 0, 0);
-      g.font = '800 30px Arial'; g.fillStyle = accent; g.fillText(sub.toUpperCase(), 0, 54); g.restore();
-    }
-    logo(g, w * 0.82, h * 0.5, 40, Math.PI / 2, 0.7); logo(g, w * 0.18, h * 0.5, 40, -Math.PI / 2, 0.7);
-    this.courtMat.map.needsUpdate = true;
+  drawFloor(v) {
+    paintFloor(this.floorCanvas, this.floorMask, v, logo);
+    this.courtMat.map.needsUpdate = true; this.courtMat.alphaMap.needsUpdate = true;
+    this.courtMat.roughness = v.floorRough ?? 0.5;
+    const refl = v.reflect ?? 1;
+    this.mirror.visible = refl > 0;
+    this.courtMat.transparent = refl > 0; this.courtMat.alphaMap = refl > 0 ? this.courtMat.alphaMap : this.courtMat.alphaMap; this.courtMat.opacity = 1;
+    this.mirror.material.uniforms.color.value.setHex(v.mirrorTint ?? 0x8a8a8a);
+    this.courtMat.needsUpdate = true;
   }
   drawBoards(bg, fg, accent, items) {
     const c = this.boardTex.image, g = c.getContext('2d'), w = c.width, h = c.height;
@@ -1421,8 +1415,9 @@ export class Renderer {
     const st = v.stands || 'all';
     this.tribunes.forEach((t, k) => { t.visible = st === 'all' || (st === 'sides' && k >= 2) || (st === 'one' && k === 2); });
     this.seatMesh.visible = st === 'all';
-    this.crowd.visible = this.crowdHeads.visible = this.crowdArms.visible = this.crowdFlags.visible = this.crowdPhones.visible = st !== 'none';
+    this.crowd.visible = this.crowdHeads.visible = this.crowdArms.visible = this.crowdFlags.visible = this.crowdPhones.visible = this.crowdHair.visible = st !== 'none';
     if (this.venue !== v) this.recolorCrowd(v.crowdPal);
+    this.venue = v; this.updateCrowd(0);
     // décor à thème
     hideKits(); this.kit = arenaKit(v.kit, this.scene); if (this.kit) this.kit.g.visible = true;
     this.outerMat.roughness = v.outerRough ?? 0.9; this.outerMat.metalness = v.outerMetal ?? 0;
@@ -1430,7 +1425,7 @@ export class Renderer {
     this.standMat.color.setHex(v.standCol ?? 0x0b0a10);
     this.seatMesh.material.color.setHex(v.seats ?? 0x6a0f1c);
     this.outerMat.color.setHex(v.outer);
-    this.drawFloor(v.floor, v.accent, v.title || 'PINGPONG', v.sub || 'WORLD CHAMPIONSHIPS', v.pattern, v.floorText);
+    this.drawFloor(v);
     this.drawBoards(v.boardBg ?? '#0c0c12', v.boardFg ?? '#ffffff', v.accent, v.items || ['@logo', 'PINGPONG']);
     this.drawTableTop(v.table ?? '#131a25');
     this.r.toneMappingExposure = v.exposure ?? 1.05;

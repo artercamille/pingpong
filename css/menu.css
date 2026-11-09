@@ -615,3 +615,23 @@
 .menu.inlobby .brand, .menu.inlobby #pcard { display: none; }
 .lb-copy { position: static !important; width: auto !important; height: auto !important; align-self: flex-start; margin-top: 6px; }
 .lb-bar .opt { flex: 0 0 300px; }
+
+/* ---------- célébration de fin de match ---------- */
+#victory { position: fixed; left: 0; right: 0; bottom: 6vh; z-index: 9; text-align: center; pointer-events: none; }
+#victory.hidden { display: none; }
+#victory small { display: block; font-size: 14px; letter-spacing: 8px; font-weight: 900; color: #fff; opacity: 0; }
+#victory b { display: block; font-size: clamp(54px, 9vw, 130px); font-weight: 900; font-style: italic; line-height: .95; letter-spacing: -2px; opacity: 0;
+  background: linear-gradient(180deg, #fff 20%, #ffd23c 60%, #ff8a3c); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 30px rgba(255,200,60,.55)); }
+#victory.lose b { background: linear-gradient(180deg, #fff 10%, #a99cc9 70%, #6a5a8a); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 20px rgba(120,90,200,.4)); }
+#victory .vn { font-size: 28px; font-weight: 900; font-style: italic; text-transform: uppercase; color: #fff; opacity: 0; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
+#victory .vs2 { font-size: 15px; font-weight: 800; letter-spacing: 3px; color: #ddd5f2; text-transform: uppercase; opacity: 0; }
+#victory .vk { margin-top: 18px; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 800; color: #ddd5f2; opacity: 0; }
+#victory.show small { animation: vIn .5s .1s ease-out forwards; }
+#victory.show b { animation: vSlam .7s .25s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+#victory.show .vn { animation: vIn .5s .8s ease-out forwards; }
+#victory.show .vs2 { animation: vIn .5s 1s ease-out forwards; }
+#victory.show .vk { animation: vIn .5s 1.6s ease-out forwards, pulse 1s 2.1s infinite alternate; }
+#victory::before { content: ''; position: absolute; left: 0; right: 0; bottom: -9vh; height: 60vh; background: linear-gradient(0deg, rgba(5,3,12,.85), transparent); z-index: -1; }
+@keyframes vSlam { 0% { opacity: 0; transform: scale(2.6) skewX(-8deg); letter-spacing: 30px; } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1) skewX(0); letter-spacing: -2px; } }
+@keyframes vIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+body:has(#victory:not(.hidden)) #hud > *:not(#board) { opacity: 0; transition: opacity .4s; }

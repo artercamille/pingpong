@@ -39,6 +39,12 @@ export const COSMETICS = {
   ],
   arena: [
     { id: 'finale', name: 'Finale (violet)', neon: 0xd23cff, legs: 0x7a3fd6, light: 0x8a3cff, level: 1 },
+    { id: 'neotokyo', name: 'Néo-Tokyo (toit)', venue: 'neotokyo', level: 1 },
+    { id: 'beach', name: 'Sunset Beach', venue: 'beach', level: 1 },
+    { id: 'underground', name: 'Underground (club)', venue: 'underground', level: 1 },
+    { id: 'orbit', name: 'Orbital (espace)', venue: 'orbit', level: 1 },
+    { id: 'sakura', name: 'Sakura (temple)', venue: 'sakura', level: 1 },
+    { id: 'aurora', name: 'Aurora (banquise)', venue: 'aurora', level: 1 },
     { id: 'glacier', name: 'Glacier (bleu)', neon: 0x3cc8ff, legs: 0x1f6fd6, light: 0x2a8cff, level: 3 },
     { id: 'inferno', name: 'Inferno (rouge)', neon: 0xff3c3c, legs: 0xc8202e, light: 0xff3030, level: 6 },
     { id: 'jungle', name: 'Jungle (vert)', neon: 0x3cff8a, legs: 0x1f9a55, light: 0x20d070, level: 8 },

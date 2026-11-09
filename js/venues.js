@@ -1,3 +1,4 @@
+import { ARENA_VENUES } from './arenas.js';
 // Salles : chaque tournoi a son décor (sol, éclairage, tribunes, panneaux, ambiance).
 const FLAGS = [0x1f4bd6, 0xffffff, 0xe33340, 0xde2910, 0xffde00, 0xbc002d, 0x009c3b, 0x2a62c9, 0xf7d117, 0x111111, 0xdd1f1f, 0xf4c400, 0x159447, 0x0047a0, 0xff9933];
 const city = name => name.replace(/^WTT (Feeder|Contender|Champions) /, '').replace(/ Smash$/, '');
@@ -16,8 +17,12 @@ export const JUBILE_VENUE = { floor: '#14100a', outer: 0x060403, accent: '#ffc83
 
 export function venueFor(d) {
   const ev = d.ev, n = ev.name, c = city(n).toUpperCase(), t = d.tier;
-  if (d.kind === 'exhib') return { pattern: 'rings', floor: '#0b0b0e', outer: 0x020203, accent: '#ff3dc8', neon: 0xff3dc8, neon2: 0x3dff8a, legs: 0x2a2a30, light: 0xff3dc8, bg: 0x000000, show: true, cones: false, spots: 0.8, table: '#141418',
-    title: 'EXHIBITION', sub: n.replace('Exhibition à ', ''), items: ['EXHIBITION', '@logo', 'SHOW', n.replace('Exhibition à ', '').toUpperCase()], seats: 0x1a0a20 };
+  if (d.kind === 'exhib') {
+    // les exhibitions se jouent dans les salles à thème (toit à Tokyo, plage, club…)
+    const keys = Object.keys(ARENA_VENUES), h = [...n].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    const where = n.replace('Exhibition à ', '');
+    return { ...ARENA_VENUES[keys[h % keys.length]], title: 'EXHIBITION', sub: where, items: ['EXHIBITION', '@logo', 'SHOW', where.toUpperCase()] };
+  }
   if (t === 'challenger') return { ...GYM, floor: '#7b1d24', accent: '#3cc8ff', neon: 0x3cc8ff, legs: 0x1f3f8a, table: '#1f4fa8', title: 'WTT FEEDER', sub: c, items: ['WTT FEEDER', c, '@logo', 'TENNIS DE TABLE'] };
   if (t === 'contender') return { floor: '#1d3c7a', outer: 0x15171d, accent: '#3cff8a', neon: 0x3cff8a, legs: 0x1f6fd6, light: 0x2aa0ff, amb: 12, bg: 0x0b1220, fog: 0.02, hemi: 0.65, hemiSky: 0x9fb8ff, key: 1.35, spots: 0.9,
     cones: false, stands: 'sides', standCol: 0x1a2236, seats: 0x1f4fa8, table: '#1f4fa8', boardBg: '#0e1d44', title: 'WTT CONTENDER', sub: c, items: ['WTT CONTENDER', c, '@logo', 'WORLD TABLE TENNIS'] };

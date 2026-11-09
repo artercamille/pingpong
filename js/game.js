@@ -922,7 +922,7 @@ export class Game {
     const big = this.rallyCount >= 6 || setWon || this.match.over;
     const winnerShot = reason === 'Point gagnant' || reason === 'Ace !';
     sfx.crowd(setWon || this.match.over || this.rallyCount + 1 >= 10 ? 3 : (this.rallyCount + 1 >= 5 || winnerShot) ? 2 : 1);
-    this.fx.push({ type: 'cheer', big });
+    this.fx.push({ type: 'cheer', big, rally: this.rallyCount + 1 });
     this.hooks.point && this.hooks.point(winner, reason, setWon, this.rallyCount);
   }
 

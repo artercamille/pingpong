@@ -7,6 +7,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { TABLE, NET, BALL_R, topAxis } from './physics.js';
 import { IDEAL_REL } from './game.js';
+import { arenaKit, hideKits } from './arenas.js';
 
 const NEON = 0xd23cff;          // violet néon
 const PURPLE = 0x7a3fd6;        // pieds de table
@@ -490,7 +491,9 @@ export class Renderer {
     this.robot = this.buildRobot();
     this.camMode = 'raquette';
     this.sparks = new Particles(this.scene, 500, true);
-    this.confettiP = new Particles(this.scene, 900, false);
+    this.confettiP = new Particles(this.scene, 1600, false);
+    this.fireP = new Particles(this.scene, 3200, true);
+    this.celeb = null;
     this.flash = 0; this.intro = 0;
 
     const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType });
@@ -565,7 +568,7 @@ export class Renderer {
     court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; s.add(court);
     this.outerMat = new THREE.MeshStandardMaterial({ color: 0x0c0b12, roughness: 0.9 });
     const outer = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), this.outerMat);
-    outer.rotation.x = -Math.PI / 2; outer.receiveShadow = true; s.add(outer);
+    outer.rotation.x = -Math.PI / 2; outer.receiveShadow = true; s.add(outer); this.outerMesh = outer;
 
     // panneaux : noirs, logos blancs, liseré néon violet
     this.boardTex = canvasTex(4096, 160, (g, w, h) => {
@@ -720,23 +723,30 @@ export class Renderer {
       grp.updateMatrixWorld(true);
     }
     const people = [], seats = [];
-    for (const sp of spots) (Math.random() < 0.72 ? people : seats).push(sp);
+    for (const sp of spots) (Math.random() < 0.74 ? people : seats).push(sp);
     for (let i = people.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [people[i], people[j]] = [people[j], people[i]]; }
-    // public
-    const bodyGeo = new THREE.CapsuleGeometry(0.19, 0.32, 3, 8);
-    const headGeo = new THREE.SphereGeometry(0.1, 10, 8);
-    this.crowd = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ roughness: 0.9, envMapIntensity: 0.05 }), people.length);
-    this.crowdHeads = new THREE.InstancedMesh(headGeo, new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.05 }), people.length);
-    const pal = [0x2b2b3a, 0x3a3f5c, 0x5a1f2b, 0x1e3a6e, 0x4a4a4a, 0x6b2a8a, 0x2a5a4a, 0x8a8a8a, 0x1a1a1a, 0x7a5a2a];
+    // public : corps, têtes, bras, drapeaux et téléphones (instanciés)
+    const N = people.length;
+    const crowdMat = new THREE.MeshStandardMaterial({ roughness: 0.85, envMapIntensity: 0.05, emissive: 0x0c0c12 });
+    this.crowd = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.18, 0.3, 3, 8), crowdMat, N);
+    this.crowdHeads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.05, emissive: 0x0a0806 }), N);
+    this.crowdArms = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.042, 0.3, 2, 6), crowdMat, N * 2);
     const skins = [0xf1c7a5, 0xd8a27f, 0x8d5524, 0xc68642, 0xffdbac, 0x5c3a21];
     const col = new THREE.Color();
     this.crowdItems = people.map((st, i) => {
       const w = V(st.lx, st.ly + 0.34, st.lz).applyMatrix4(st.grp.matrixWorld);
-      this.crowd.setColorAt(i, col.setHex(pal[Math.floor(Math.random() * pal.length)]).multiplyScalar(0.35 + Math.random() * 0.25));
-      this.crowdHeads.setColorAt(i, col.setHex(skins[Math.floor(Math.random() * skins.length)]).multiplyScalar(0.4));
-      return { x: w.x, y: w.y, z: w.z, ph: Math.random() * 6.28, sp: 0.7 + Math.random() * 0.6, g: st.grp };
+      this.crowdHeads.setColorAt(i, col.setHex(skins[Math.floor(Math.random() * skins.length)]).multiplyScalar(0.55));
+      return { x: w.x, y: w.y, z: w.z, fx: Math.sin(st.ry), fz: Math.cos(st.ry), rx: Math.cos(st.ry), rz: -Math.sin(st.ry),
+        ph: Math.random() * 6.28, sp: 0.7 + Math.random() * 0.6, ex: Math.random(), hs: 0.9 + Math.random() * 0.2, g: st.grp,
+        team: Math.random() < 0.5 ? 0 : 1, flag: -1, phone: -1, ang: Math.atan2(w.z, w.x) };
     });
-    // sièges rouges vides
+    // drapeaux (≈ 9 %) et téléphones (≈ 45 %)
+    let nf = 0, np = 0;
+    for (const it of this.crowdItems) { if (Math.random() < 0.09) it.flag = nf++; else if (Math.random() < 0.5) it.phone = np++; }
+    this.crowdFlags = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.55, 0.36), new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.8, emissive: 0x111111 }), Math.max(1, nf));
+    this.crowdPhones = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 0.1, 0.012), new THREE.MeshBasicMaterial({ color: 0xf4f8ff, toneMapped: false }), Math.max(1, np));
+    this.recolorCrowd();
+    // sièges vides
     const seatGeo = new THREE.BoxGeometry(0.44, 0.42, 0.4);
     const seatMesh = new THREE.InstancedMesh(seatGeo, new THREE.MeshStandardMaterial({ color: 0x6a0f1c, roughness: 0.7 }), seats.length); this.seatMesh = seatMesh;
     const d = new THREE.Object3D();
@@ -744,9 +754,32 @@ export class Renderer {
       const w = V(st.lx, st.ly + 0.21, st.lz).applyMatrix4(st.grp.matrixWorld);
       d.position.copy(w); d.rotation.y = st.ry; d.updateMatrix(); seatMesh.setMatrixAt(i, d.matrix);
     });
-    s.add(this.crowd, this.crowdHeads, seatMesh);
+    for (const m of [this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones]) m.frustumCulled = false;
+    s.add(this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones, seatMesh);
     this.dummy = new THREE.Object3D();
+    this.clap = 0; this.ola = -1; this.ovation = 0; this.crowdFrame = 0;
+    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._v = V(); this._s = V(1, 1, 1); this._up = V(0, 1, 0); this._d = V();
     this.updateCrowd(0);
+  }
+  // couleurs du public selon la salle : 1/3 porte les couleurs des joueurs
+  recolorCrowd(pal) {
+    pal = pal || [0x2b2b3a, 0x3a3f5c, 0x8a1f2b, 0x1e4a8e, 0x5a5a5a, 0x7b2a9a, 0x2a6a5a, 0xb0b0b0, 0x1a1a1a, 0xc08a2a, 0xffffff, 0xd84a3a];
+    const col = new THREE.Color(), TEAM = [0x3d8bff, 0xff3d6b];
+    this.crowdItems.forEach((it, i) => {
+      const c = Math.random() < 0.3 ? TEAM[it.team] : pal[Math.floor(Math.random() * pal.length)];
+      col.setHex(c).multiplyScalar(0.55 + Math.random() * 0.35);
+      this.crowd.setColorAt(i, col); this.crowdArms.setColorAt(i * 2, col); this.crowdArms.setColorAt(i * 2 + 1, col);
+      if (it.flag >= 0) this.crowdFlags.setColorAt(it.flag, col.setHex(TEAM[it.team]));
+    });
+    for (const m of [this.crowd, this.crowdArms, this.crowdFlags]) if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }
+  // réactions : 'clap' (applaudit), 'cheer' (se lève et crie), 'ola', 'ovation' (fin de match), 'calm'
+  crowdReact(kind) {
+    if (kind === 'clap') this.clap = Math.max(this.clap, 2.2);
+    else if (kind === 'cheer') { this.cheer = 1.4; this.clap = 2.6; }
+    else if (kind === 'ola') { if (this.ola < 0) this.ola = 0; }
+    else if (kind === 'ovation') { this.ovation = 1; this.cheer = 1.4; }
+    else if (kind === 'calm') { this.ovation = 0; this.cheer = 0; this.clap = 0; this.ola = -1; }
   }
 
   // podium de remise des trophées
@@ -799,8 +832,7 @@ export class Renderer {
   }
 
   setCrowdDensity(f) {
-    const n = Math.max(1, Math.round(this.crowdItems.length * Math.max(0.05, Math.min(1, f))));
-    this.crowd.count = n; this.crowdHeads.count = n;
+    this.crowdN = Math.max(1, Math.round(this.crowdItems.length * Math.max(0.05, Math.min(1, f))));
   }
   setEventTitle(t) { this.eventTitle = t || null; this.lastScoreKey = null; this.drawScreen(null); }
   // cible d'entraînement sur la table
@@ -833,20 +865,72 @@ export class Renderer {
   updateCrowd(dt) {
     if (this.showKit && this.showKit.visible) for (const b of this.beams) { const a = b.userData.a + this.time * 0.4; b.rotation.z = Math.sin(this.time * 0.8 + a) * 0.5; b.rotation.x = Math.cos(this.time * 0.6 + a) * 0.4; }
     if (this.targetFlash > 0) { this.targetFlash -= dt; if (this.targetFlash <= 0) this.targetMesh.material.color.setHex(0x6ee7a8); }
-    this.cheer = Math.max(0, this.cheer - dt * 0.4);
-    const d = this.dummy, t = this.time, items = this.crowdItems;
+    this.cheer = Math.max(0, this.cheer - dt * (this.ovation ? 0 : 0.4));
+    this.clap = Math.max(0, this.clap - dt);
+    if (this.ola >= 0) { this.ola += dt; if (this.ola > 6.5) this.ola = -1; }
+    if (!this.crowd.visible) return;
+    // les bras n'ont besoin d'être recalculés à chaque image que si le public bouge
+    const busy = this.cheer > 0.02 || this.clap > 0 || this.ola >= 0 || this.ovation;
+    this.crowdFrame++;
+    if (!busy && this.crowdFrame % 4 && dt > 0) return;
+    const t = this.time, items = this.crowdItems, M = this._m, Q = this._q, P = this._v, S = this._s, UP = this._up, D = this._d;
+    const n = this.crowdN ?? items.length, cheer = Math.min(1, this.cheer), night = !!(this.venue && (this.venue.sky || this.venue.show || this.venue.kit));
+    const olaA = this.ola >= 0 ? -Math.PI + this.ola * 2.1 : null;
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const setArm = (k, sx, sy, sz, dx, dy, dz) => {
+      const l = Math.hypot(dx, dy, dz) || 1; D.set(dx / l, dy / l, dz / l);
+      Q.setFromUnitVectors(UP, D); P.set(sx + D.x * 0.19, sy + D.y * 0.19, sz + D.z * 0.19); S.set(1, 1, 1);
+      this.crowdArms.setMatrixAt(k, M.compose(P, Q, S));
+    };
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      const jump = this.cheer > 0.02 ? Math.max(0, Math.sin(t * 8 * it.sp + it.ph)) * 0.18 * Math.min(1, this.cheer) : Math.sin(t * 1.1 * it.sp + it.ph) * 0.01;
-      d.scale.setScalar(it.g && !it.g.visible ? 0.0001 : 1);
-      d.position.set(it.x, it.y + jump, it.z); d.updateMatrix();
-      this.crowd.setMatrixAt(i, d.matrix);
-      d.position.y += 0.37; d.updateMatrix();
-      this.crowdHeads.setMatrixAt(i, d.matrix);
+      if (i >= n || (it.g && !it.g.visible)) {
+        this.crowd.setMatrixAt(i, zero); this.crowdHeads.setMatrixAt(i, zero); this.crowdArms.setMatrixAt(i * 2, zero); this.crowdArms.setMatrixAt(i * 2 + 1, zero);
+        if (it.flag >= 0) this.crowdFlags.setMatrixAt(it.flag, zero); if (it.phone >= 0) this.crowdPhones.setMatrixAt(it.phone, zero);
+        continue;
+      }
+      // état de la personne
+      let wave = false, stand = 0, jump = 0, clap = false, phone = false;
+      if (this.ovation) { stand = 1; wave = it.phone < 0 || Math.sin(t * 0.5 + it.ph) > 0.2; phone = it.phone >= 0 && !wave; jump = Math.max(0, Math.sin(t * 7 * it.sp + it.ph)) * 0.1; }
+      else if (it.ex < cheer * 0.85) { stand = 1; wave = true; jump = Math.max(0, Math.sin(t * 8 * it.sp + it.ph)) * 0.14 * cheer; }
+      else if (this.clap > 0 && it.ex < 0.92) clap = true;
+      if (olaA !== null) { let da = Math.abs(((it.ang - olaA) % 6.283 + 9.425) % 6.283 - 3.1416); if (da < 0.45) { const k = 1 - da / 0.45; stand = Math.max(stand, k); if (k > 0.4) wave = true, clap = false; } }
+      if (!stand && !clap && night && this.pressure && it.phone >= 0 && it.ex < 0.25) phone = true;
+      const sway = Math.sin(t * 1.1 * it.sp + it.ph) * 0.012;
+      const by = it.y + stand * 0.24 + jump + sway;
+      P.set(it.x, by, it.z); S.set(1, it.hs, 1); Q.identity();
+      this.crowd.setMatrixAt(i, M.compose(P, Q, S));
+      P.y = by + 0.37 * it.hs; S.set(1, 1, 1);
+      this.crowdHeads.setMatrixAt(i, M.compose(P, Q, S));
+      // bras
+      const fx = it.fx, fz = it.fz, rx = it.rx, rz = it.rz, shy = by + 0.2 * it.hs;
+      for (const side of [-1, 1]) {
+        const sx = it.x + rx * side * 0.2, sz = it.z + rz * side * 0.2, k = i * 2 + (side > 0 ? 1 : 0);
+        let ux, uy, lat, fw;
+        if (phone && side > 0) { uy = 0.8; fw = 0.6; lat = -0.1; }
+        else if (wave) { uy = 0.92; fw = 0.12; lat = 0.32 + 0.28 * Math.sin(t * 6 * it.sp + it.ph + side); }
+        else if (clap) { const c = Math.sin(t * 15 * it.sp + it.ph) * 0.5 + 0.5; uy = 0.3; fw = 0.85; lat = -(0.52 - 0.32 * c); }
+        else { uy = -0.95; fw = 0.28; lat = 0.1; }
+        ux = rx * side * lat + fx * fw; const uz = rz * side * lat + fz * fw;
+        setArm(k, sx, shy, sz, ux, uy, uz);
+        // main : drapeau ou téléphone
+        if (side > 0) {
+          const hx = sx + D.x * 0.38, hy = shy + D.y * 0.38, hz = sz + D.z * 0.38;
+          if (it.flag >= 0) {
+            if (wave || stand > 0.5) {
+              Q.setFromAxisAngle(UP, Math.atan2(fx, fz) + Math.PI / 2 + Math.sin(t * 5 + it.ph) * 0.5);
+              P.set(hx + rx * 0.27, hy + 0.22, hz + rz * 0.27); S.set(1, 1, 1);
+              this.crowdFlags.setMatrixAt(it.flag, M.compose(P, Q, S));
+            } else this.crowdFlags.setMatrixAt(it.flag, zero);
+          }
+          if (it.phone >= 0) {
+            if (phone) { Q.setFromAxisAngle(UP, Math.atan2(fx, fz)); P.set(hx, hy + 0.05, hz); S.set(1, 1, 1); this.crowdPhones.setMatrixAt(it.phone, M.compose(P, Q, S)); }
+            else this.crowdPhones.setMatrixAt(it.phone, zero);
+          }
+        }
+      }
     }
-    d.scale.setScalar(1);
-    this.crowd.instanceMatrix.needsUpdate = true;
-    this.crowdHeads.instanceMatrix.needsUpdate = true;
+    for (const m of [this.crowd, this.crowdHeads, this.crowdArms, this.crowdFlags, this.crowdPhones]) m.instanceMatrix.needsUpdate = true;
   }
 
   buildScreens() {
@@ -942,7 +1026,7 @@ export class Renderer {
     const b = game.ball.p;
     this.ballMesh.position.set(b.x, b.y, b.z);
     this.glow.position.copy(this.ballMesh.position);
-    this.ballMesh.visible = this.glow.visible = game.state !== 'between';
+    this.ballMesh.visible = this.glow.visible = game.state !== 'between' && !this.celeb;
     this.updateSpin(game, dt);
     const lh = game.lastHit ? game.lastHit.p : 0;
     const tc = game.superBall ? [1.0, 0.42, 0.08] : (this.trailColors[lh] || this.trailColors[0]);
@@ -956,7 +1040,7 @@ export class Renderer {
     if (game.fx.length > 8) game.fx.splice(0, game.fx.length - 8);
     for (const f of game.fx) {
       if (f.type === 'bounce') { this.addMark(f.x, f.z); this.burst(f.x, TABLE.H + 0.01, f.z, 6, [0.9, 0.9, 1], 0.9, 0.25, 0.012); }
-      if (f.type === 'cheer') { this.cheer = f.big ? 1.4 : 0.8; this.flash = f.big ? 1 : 0.5; }
+      if (f.type === 'cheer') { this.crowdReact(f.big ? 'cheer' : 'clap'); if (f.big && f.rally >= 10 && Math.random() < 0.6) this.crowdReact('ola'); this.flash = f.big ? 1 : 0.5; }
       if (f.type === 'hit') {
         if (f.sup) this.burst(f.x, f.y, f.z, 45, [1, 0.5, 0.1], 3.5, 0.5, 0.03);
         else this.burst(f.x, f.y, f.z, f.smash ? 26 : 12, this.neonRGB(), f.smash ? 2.6 : 1.6, 0.3, 0.02);
@@ -978,7 +1062,7 @@ export class Renderer {
     this.robot.visible = robotMode;
     game.players.forEach((pl, i) => {
       const fig = this.figures[i];
-      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !this.intro;
+      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !this.intro && !this.celeb;
       // vue raquette : on ne voit ni son propre corps ni celui de son partenaire (seulement sa raquette)
       const hideMe = fp && (i === game.me || (game.doubles && game.partner && i === game.partner(game.me)));
       fig.g.visible = !hideMe && !(robotMode && i === 1);
@@ -993,6 +1077,8 @@ export class Renderer {
     }
     this.sparks.update(dt);
     this.confettiP.update(dt, 2.5, this.time);
+    this.fireP.update(dt);
+    if (this.celeb && game.players) this.updateCelebration(dt, game);
     this.flash = Math.max(0, this.flash - dt * 1.6);
     this.mats.neon.emissiveIntensity = 3 + this.flash * 2.5;
     for (const m of this.boardMats) m.emissiveIntensity = 0.85 + this.flash * 0.5;
@@ -1001,6 +1087,7 @@ export class Renderer {
     for (const t of this.boards) t.offset.x = (this.time * 0.015) % 1;
     this.updateAim(game);
     this.updateCrowd(dt);
+    if (this.kit) this.kit.update(dt, this.time, this.cheer);
     this.updateCamera(game, dt);
     this.composer.render();
   }
@@ -1071,6 +1158,86 @@ export class Renderer {
       const v = speed * (0.4 + Math.random() * 0.6);
       this.sparks.spawn(x, y, z, Math.cos(a) * Math.cos(e) * v, Math.abs(Math.sin(e)) * v * 0.8 + 0.3, Math.sin(a) * Math.cos(e) * v, color, life * (0.6 + Math.random() * 0.6), size, 6);
     }
+  }
+  // ---------------------------------------------------------------- célébration de fin de match
+  startCelebration({ winners, losers, mine, sfx }) {
+    this.celeb = { t: 0, winners, losers, mine, next: 0.2, sfx, typeT: 0, saved: this.figures.map(f => f.celebType) };
+    this.crowdReact('ovation');
+    if (!this.celebSpot) {
+      const sp = new THREE.SpotLight(0xfff2d8, 0, 22, 0.32, 0.5, 1.2); sp.castShadow = false;
+      this.scene.add(sp, sp.target); this.celebSpot = sp;
+      this.celebRing = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 48), new THREE.MeshBasicMaterial({ color: 0xffd23c, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false, side: THREE.DoubleSide }));
+      this.celebRing.rotation.x = -Math.PI / 2; this.scene.add(this.celebRing);
+    }
+    this.celebSpot.intensity = 0; this.celebRing.visible = true;
+    // canons à confettis dans les quatre coins
+    this.confettiCannons();
+    for (const i of winners) { const f = this.figures[i]; f.mood = 1; f.moodT = 999; f.celebType = Math.floor(Math.random() * 4); }
+    for (const i of losers) { const f = this.figures[i]; f.mood = -1; f.moodT = 999; f.moodType = Math.random() < 0.5 ? 0 : 1; }
+  }
+  stopCelebration() {
+    if (!this.celeb) return;
+    this.celeb.saved.forEach((c, i) => { this.figures[i].celebType = c; this.figures[i].mood = 0; this.figures[i].moodT = 0; });
+    this.celeb = null; this.crowdReact('calm');
+    if (this.celebSpot) { this.celebSpot.intensity = 0; this.celebRing.visible = false; }
+  }
+  confettiCannons() {
+    const cols = [[1, 0.25, 0.4], [0.3, 0.6, 1], [1, 0.85, 0.2], [0.3, 1, 0.5], [0.85, 0.3, 1], [1, 1, 1]];
+    for (const [x, z] of [[-4, -7], [4, -7], [-4, 7], [4, 7]]) for (let k = 0; k < 220; k++) {
+      const a = Math.atan2(-z, -x) + (Math.random() - 0.5) * 0.9, v = 4 + Math.random() * 5;
+      this.confettiP.spawn(x, 0.4, z, Math.cos(a) * v * 0.45, 6 + Math.random() * 5, Math.sin(a) * v * 0.45, cols[k % cols.length], 6 + Math.random() * 4, 0.05, 1.6);
+    }
+  }
+  firework(x, y, z) {
+    const pal = [[1, 0.3, 0.5], [0.3, 0.7, 1], [1, 0.85, 0.25], [0.4, 1, 0.6], [0.9, 0.4, 1], [1, 0.55, 0.2], [1, 1, 1]];
+    const c1 = pal[Math.floor(Math.random() * pal.length)], c2 = pal[Math.floor(Math.random() * pal.length)];
+    const n = 190, sp = 4.5 + Math.random() * 3, ring = Math.random() < 0.3;
+    for (let k = 0; k < n; k++) {
+      let vx, vy, vz;
+      if (ring) { const a = k / n * Math.PI * 2; vx = Math.cos(a); vy = Math.sin(a) * 0.3; vz = Math.sin(a); }
+      else { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u); vx = Math.cos(a) * r; vy = u; vz = Math.sin(a) * r; }
+      const v = sp * (0.85 + Math.random() * 0.3);
+      this.fireP.spawn(x, y, z, vx * v, vy * v, vz * v, k % 3 ? c1 : c2, 1.4 + Math.random() * 0.9, 0.22, 2.0);
+    }
+    // éclair au centre
+    for (let k = 0; k < 12; k++) this.fireP.spawn(x, y, z, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, [1, 1, 0.9], 0.25, 0.4, 0);
+    this.flash = Math.max(this.flash, 0.6);
+  }
+  updateCelebration(dt, game) {
+    const C = this.celeb; C.t += dt;
+    // fusées : elles montent depuis les tribunes et explosent au-dessus du terrain
+    C.next -= dt;
+    if (C.next <= 0 && C.t < 30) {
+      C.next = C.t < 4 ? 0.25 + Math.random() * 0.35 : 0.6 + Math.random() * 0.9;
+      // derrière le vainqueur, donc dans le champ de la caméra
+      const s = C.side || 1, sx = Math.random() < 0.5 ? -1 : 1;
+      const x0 = sx * (5 + Math.random() * 5), z0 = s * (8 + Math.random() * 6);
+      const tx = (Math.random() - 0.5) * 12, ty = 5.5 + Math.random() * 4.5, tz = s * (7 + Math.random() * 7);
+      (C.rockets = C.rockets || []).push({ x: x0, y: 4, z: z0, tx, ty, tz, t: 0, d: 0.9 + Math.random() * 0.4 });
+      C.sfx && C.sfx.rocket && C.sfx.rocket();
+    }
+    C.rockets = (C.rockets || []).filter(r => {
+      r.t += dt; const u = Math.min(1, r.t / r.d), e = 1 - (1 - u) * (1 - u);
+      const x = r.x + (r.tx - r.x) * e, y = r.y + (r.ty - r.y) * e, z = r.z + (r.tz - r.z) * e;
+      this.fireP.spawn(x, y, z, (Math.random() - 0.5) * 0.3, -0.5, (Math.random() - 0.5) * 0.3, [1, 0.75, 0.4], 0.35, 0.1, 0);
+      if (u >= 1) { this.firework(x, y, z); C.sfx && C.sfx.boom && C.sfx.boom(1 + Math.hypot(x, z) / 10); return false; }
+      return true;
+    });
+    // poursuite lumineuse sur le(s) vainqueur(s)
+    const W = C.winners.map(i => game.players[i]).filter(Boolean);
+    if (W.length) {
+      const cx = W.reduce((a, p) => a + p.x, 0) / W.length, cz = W.reduce((a, p) => a + p.z, 0) / W.length;
+      C.cx = cx; C.cz = cz; C.side = Math.sign(cz) || 1;
+      this.celebSpot.position.set(cx, 9, cz + C.side * 1.5); this.celebSpot.target.position.set(cx, 0, cz);
+      this.celebSpot.intensity = Math.min(1, C.t * 2) * 260;
+      this.celebRing.position.set(cx, 0.015, cz); this.celebRing.scale.setScalar(W.length > 1 ? 2 : 1.2 + Math.sin(C.t * 3) * 0.05);
+      this.celebRing.material.opacity = 0.55 + Math.sin(C.t * 4) * 0.25;
+    }
+    // le vainqueur enchaîne les célébrations
+    C.typeT += dt;
+    if (C.typeT > 2.4) { C.typeT = 0; for (const i of C.winners) this.figures[i].celebType = (this.figures[i].celebType + 1 + Math.floor(Math.random() * 2)) % 4; }
+    for (const i of C.winners) { this.figures[i].mood = 1; this.figures[i].moodT = 999; }
+    if (C.t > 3 && C.t < 3.1) this.confettiCannons();
   }
   confetti() {
     const cols = [[1, 0.25, 0.4], [0.3, 0.6, 1], [1, 0.85, 0.2], [0.3, 1, 0.5], [0.85, 0.3, 1], [1, 1, 1]];
@@ -1154,7 +1321,7 @@ export class Renderer {
     }
     show.visible = false; s.add(show); this.showKit = show;
   }
-  drawFloor(base, accent, title, sub, pattern) {
+  drawFloor(base, accent, title, sub, pattern, textCol = 'rgba(255,255,255,0.85)') {
     const c = this.courtMat.map.image, g = c.getContext('2d'), w = c.width, h = c.height;
     noiseFill(g, w, h, base, 7);
     g.save(); g.globalAlpha = 0.12; g.fillStyle = accent; g.strokeStyle = accent;
@@ -1162,6 +1329,10 @@ export class Renderer {
     else if (pattern === 'checker') { for (let y = 0; y < h; y += 128) for (let x = (y / 128 % 2) * 128; x < w; x += 256) g.fillRect(x, y, 128, 128); }
     else if (pattern === 'rings') { g.lineWidth = 14; for (let r = 120; r < w; r += 110) { g.beginPath(); g.arc(w / 2, h / 2, r, 0, Math.PI * 2); g.stroke(); } }
     else if (pattern === 'waves') { g.lineWidth = 12; for (let y = 0; y < h; y += 70) { g.beginPath(); for (let x = 0; x <= w; x += 20) g.lineTo(x, y + Math.sin(x / 80) * 18); g.stroke(); } }
+    else if (pattern === 'grid') { g.globalAlpha = 0.22; g.lineWidth = 3; for (let x = 0; x < w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y < h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); } }
+    else if (pattern === 'hex') { g.globalAlpha = 0.2; g.lineWidth = 3; const r = 48, hh = r * Math.sqrt(3); for (let y = 0, row = 0; y < h + hh; y += hh / 2, row++) for (let x = (row % 2) * r * 1.5; x < w + r * 2; x += r * 3) { g.beginPath(); for (let k = 0; k <= 6; k++) { const a = k / 6 * Math.PI * 2; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.stroke(); } }
+    else if (pattern === 'planks') { g.globalAlpha = 0.25; g.fillStyle = '#000'; for (let x = 0; x < w; x += 56) { g.fillRect(x, 0, 3, h); for (let y = (x * 7) % 300; y < h; y += 300) g.fillRect(x, y, 56, 3); } g.globalAlpha = 0.08; g.fillStyle = '#fff'; for (let x = 0; x < w; x += 112) g.fillRect(x + 8, 0, 40, h); }
+    else if (pattern === 'ice') { g.globalAlpha = 0.35; g.strokeStyle = '#ffffff'; g.lineWidth = 2; for (let k = 0; k < 40; k++) { let x = Math.random() * w, y = Math.random() * h; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 6; j++) { x += (Math.random() - 0.5) * 160; y += (Math.random() - 0.5) * 160; g.lineTo(x, y); } g.stroke(); } }
     else if (pattern === 'border') { g.globalAlpha = 0.35; g.lineWidth = 50; g.strokeRect(80, 80, w - 160, h - 160); g.lineWidth = 10; g.strokeRect(150, 150, w - 300, h - 300); }
     g.restore();
     const grd = g.createRadialGradient(w / 2, h / 2, 100, w / 2, h / 2, w * 0.6);
@@ -1169,7 +1340,7 @@ export class Renderer {
     g.strokeStyle = accent; g.lineWidth = 10; g.strokeRect(30, 30, w - 60, h - 60);
     g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const [x, y, r] of [[w * 0.5, h * 0.1, 0], [w * 0.5, h * 0.9, Math.PI]]) {
-      g.save(); g.translate(x, y); g.rotate(r); g.fillStyle = 'rgba(255,255,255,0.85)'; g.font = 'italic 900 64px Arial'; g.fillText(title.toUpperCase(), 0, 0);
+      g.save(); g.translate(x, y); g.rotate(r); g.fillStyle = textCol; g.font = 'italic 900 64px Arial'; g.fillText(title.toUpperCase(), 0, 0);
       g.font = '800 30px Arial'; g.fillStyle = accent; g.fillText(sub.toUpperCase(), 0, 54); g.restore();
     }
     logo(g, w * 0.82, h * 0.5, 40, Math.PI / 2, 0.7); logo(g, w * 0.18, h * 0.5, 40, -Math.PI / 2, 0.7);
@@ -1216,11 +1387,16 @@ export class Renderer {
     const st = v.stands || 'all';
     this.tribunes.forEach((t, k) => { t.visible = st === 'all' || (st === 'sides' && k >= 2) || (st === 'one' && k === 2); });
     this.seatMesh.visible = st === 'all';
-    this.crowd.visible = this.crowdHeads.visible = st !== 'none';
+    this.crowd.visible = this.crowdHeads.visible = this.crowdArms.visible = this.crowdFlags.visible = this.crowdPhones.visible = st !== 'none';
+    if (this.venue !== v) this.recolorCrowd(v.crowdPal);
+    // décor à thème
+    hideKits(); this.kit = arenaKit(v.kit, this.scene); if (this.kit) this.kit.g.visible = true;
+    this.outerMat.roughness = v.outerRough ?? 0.9; this.outerMat.metalness = v.outerMetal ?? 0;
+    const os = v.outerSize; this.outerMesh.scale.set(os ? os[0] / 90 : 1, os ? os[1] / 90 : 1, 1);
     this.standMat.color.setHex(v.standCol ?? 0x0b0a10);
     this.seatMesh.material.color.setHex(v.seats ?? 0x6a0f1c);
     this.outerMat.color.setHex(v.outer);
-    this.drawFloor(v.floor, v.accent, v.title || 'PINGPONG', v.sub || 'WORLD CHAMPIONSHIPS', v.pattern);
+    this.drawFloor(v.floor, v.accent, v.title || 'PINGPONG', v.sub || 'WORLD CHAMPIONSHIPS', v.pattern, v.floorText);
     this.drawBoards(v.boardBg ?? '#0c0c12', v.boardFg ?? '#ffffff', v.accent, v.items || ['@logo', 'PINGPONG']);
     this.drawTableTop(v.table ?? '#131a25');
     this.r.toneMappingExposure = v.exposure ?? 1.05;
@@ -1252,6 +1428,17 @@ export class Renderer {
       this.camLook.lerp(V(b.x * 0.35, 0.85, b.z * 0.45), Math.min(1, rdt * 4));
       this.camera.position.copy(this.camPos);
       this.camera.lookAt(this.camLook);
+      return;
+    }
+    if (this.celeb && this.celeb.cx !== undefined && !this.podiumOn) {
+      // caméra de célébration : on tourne lentement autour du vainqueur, face à lui
+      const C = this.celeb, s = C.side, u = Math.min(1, C.t / 1.4);
+      const a = Math.sin(C.t * 0.22) * 0.9 + (1 - ease(u)) * 1.2;
+      const R2 = lerp(5.5, 3.6, ease(u)), h = lerp(3, 1.25, ease(u));
+      const tgt = V(C.cx + Math.sin(a) * R2, h, C.cz - s * Math.cos(a) * R2);
+      this.camPos.lerp(tgt, Math.min(1, dt * 3));
+      this.camLook.lerp(V(C.cx, 0.95 + (1 - ease(u)) * 0.3, C.cz + s * 0.6), Math.min(1, dt * 4));
+      this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
       return;
     }
     if (this.podiumOn) {

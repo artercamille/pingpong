@@ -11,6 +11,7 @@ import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMET
 import { Recorder, Player, recordCanvas } from './replay.js';
 import * as C from './career.js';
 import { venueFor, defaultVenue, TRAINING_VENUE, JUBILE_VENUE } from './venues.js';
+import { ARENA_VENUES } from './arenas.js';
 
 const $ = s => document.querySelector(s);
 const R = new Renderer($('#c'));
@@ -134,9 +135,17 @@ document.querySelectorAll('.opt.cos').forEach(o => {
   o.dataset.values = COSMETICS[o.dataset.kind].map(c => c.name).join('|');
   o.dataset.v = COSMETICS[o.dataset.kind].map((c, i) => i).join('|');
 });
+// salle du match : choisie dans l'écran de lancement (ou aléatoire), sinon celle du vestiaire
+let matchArena = null;
+const THEMED = COSMETICS.arena.filter(a => a.venue).map(a => a.id);
+function arenaVenue(id) {
+  const c = COSMETICS.arena.find(a => a.id === id) || cosmetic('arena');
+  return c.venue ? ARENA_VENUES[c.venue] : defaultVenue(c);
+}
+function pickArena(sel) { return sel === 'random' ? ['finale', ...THEMED][Math.floor(Math.random() * (THEMED.length + 1))] : sel; }
 function applyCosmetics(oppPaddle, oppTrail) {
   const me = game ? game.me : 0;
-  R.setVenue(defaultVenue(cosmetic('arena')));
+  R.setVenue(arenaVenue(matchArena || cosmetic('arena').id));
   const pad = cosmetic('paddle');
   const op = oppPaddle ? COSMETICS.paddle.find(c => c.id === oppPaddle) : null;
   const opp = op || (pad.id === 'bleu' ? COSMETICS.paddle[0] : COSMETICS.paddle[1]);
@@ -354,13 +363,14 @@ function hooks() {
 
     },
     message: t => banner(t, '', 1.5),
-    over: m => showEnd(m),
+    over: m => celebrateEnd(m),
   };
 }
 
 function startAI() {
   const level = choice('ai-level'), bestOf = choice('ai-format');
   setup = { mode: 'ai', level, bestOf };
+  matchArena = pickArena(choice('ai-arena'));
   const doubles = choice('ai-mode') === 'double';
   const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
   const first = n => n.split(' ')[0];
@@ -421,6 +431,7 @@ function enterGame(oppPaddle, oppTrail) {
   [0x3d8bff, 0xff3d6b, 0x3de8ff, 0xffa23d].forEach((c, i) => { R.figures[i].setColor(c); R.figures[i].setAccessory(0); });
   R.setCrowdDensity(1); R.setEventTitle(null); R.setTarget(null); R.setAim(null); $('#walkout').classList.add('hidden');
   recorder.reset(); bestClip = null; replay = null; postPoint = null; replayDone = {};
+  endPending = null; R.stopCelebration(); $('#victory').classList.add('hidden');
   if (!tuto && setup.mode !== 'training') { game.stateT = 3.4; R.intro = 3.2; showVS(); } else { R.intro = 0; game.stateT = 1; }
   music.stop();
   document.body.classList.remove('replaying'); $('#replay').classList.add('hidden');
@@ -432,7 +443,7 @@ function enterGame(oppPaddle, oppTrail) {
 }
 
 function quitToMenu(scr = 'scr-main') {
-  game = null; tuto = null;
+  game = null; tuto = null; matchArena = null; endPending = null; R.stopCelebration(); $('#victory').classList.add('hidden');
   $('#tuto').classList.add('hidden'); $('#board').classList.remove('hidden');
   $('#vs').classList.add('hidden'); R.intro = 0;
   document.body.classList.remove('training'); $('#trainhud').classList.add('hidden'); $('#ring').className = '';
@@ -473,7 +484,7 @@ $('#host-go').addEventListener('click', () => {
   net = new Net();
   const mode = choice('host-mode');
   net.maxGuests = mode === 'double' ? 3 : 1;
-  LB = { host: true, mode, bestOf: choice('host-format'), code: '', slots: [{ ...meCard(), host: true }, null, ...(mode === 'double' ? [null, null] : [])], conns: new Map(), you: 0, feed: ['Salon créé · connexion au serveur…'] };
+  LB = { host: true, mode, bestOf: choice('host-format'), arena: pickArena(choice('host-arena')), code: '', slots: [{ ...meCard(), host: true }, null, ...(mode === 'double' ? [null, null] : [])], conns: new Map(), you: 0, feed: ['Salon créé · connexion au serveur…'] };
   const fo = $('#lb-format'); fo.dataset.i = String([1, 3, 5, 7].indexOf(LB.bestOf)); optRender(fo);
   show('scr-lobby'); renderLB();
   net.host(code => {
@@ -528,7 +539,7 @@ function lbBroadcast() {
   // tout le monde prêt → compte à rebours
   const humans = LB.slots.filter(Boolean);
   if (!LB.count && humans.length >= 2 && humans.every(p => p.ready)) lbStartCount();
-  for (const [c, k] of LB.conns) net.sendTo(c, { t: 'lstate', lobby: true, mode: LB.mode, bestOf: LB.bestOf, code: LB.code, slots: LB.slots, you: k, feed: LB.feed, count: LB.count ? LB.count.n : 0 });
+  for (const [c, k] of LB.conns) net.sendTo(c, { t: 'lstate', lobby: true, mode: LB.mode, bestOf: LB.bestOf, arena: LB.arena, code: LB.code, slots: LB.slots, you: k, feed: LB.feed, count: LB.count ? LB.count.n : 0 });
   renderLB();
 }
 function lbStartCount() {
@@ -551,8 +562,8 @@ function lbLaunch() {
     const g = L.slots[1], c = [...L.conns.keys()][0];
     const names = [myName(), g.name];
     oppName = g.name; opp = { lp: g.lp, paddle: g.paddle, trail: g.trail };
-    net.sendTo(c, { t: 'start', lobby: true, bestOf, firstServer, names, lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail });
-    LB = null; startOnline(0, bestOf, firstServer, names); return;
+    net.sendTo(c, { t: 'start', lobby: true, bestOf, firstServer, names, lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail, arena: L.arena });
+    LB = null; matchArena = L.arena; startOnline(0, bestOf, firstServer, names); return;
   }
   const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
   const first = n => n.split(' ')[0];
@@ -560,8 +571,8 @@ function lbLaunch() {
   const playerNames = [0, 1, 2, 3].map(k => L.slots[k] ? L.slots[k].name : pool[k]);
   const names = [`${first(playerNames[0])} / ${first(playerNames[2])}`, `${first(playerNames[1])} / ${first(playerNames[3])}`];
   const dbl = { kinds, playerNames };
-  for (const [c, k] of L.conns) net.sendTo(c, { t: 'start', lobby: true, mode: 'double', me: k, bestOf, firstServer, names, dbl });
-  opp = { lp: 0 }; LB = null;
+  for (const [c, k] of L.conns) net.sendTo(c, { t: 'start', lobby: true, mode: 'double', me: k, bestOf, firstServer, names, dbl, arena: L.arena });
+  opp = { lp: 0 }; LB = null; matchArena = L.arena;
   startOnline(0, bestOf, firstServer, names, dbl);
 }
 function lbEmote(k, e) {
@@ -585,10 +596,10 @@ $('#join-go').addEventListener('click', () => {
     LB = { host: false, mode: 'simple', bestOf: 3, code, slots: [null, null], you: 1, feed: ['Connexion au salon…'] };
     show('scr-lobby'); renderLB();
     net.onMessage = msg => {
-      if (msg.t === 'lstate' && LB) { Object.assign(LB, { mode: msg.mode, bestOf: msg.bestOf, code: msg.code || code, slots: msg.slots, you: msg.you, feed: msg.feed }); LB.countN = msg.count; renderLB(); return; }
+      if (msg.t === 'lstate' && LB) { Object.assign(LB, { mode: msg.mode, bestOf: msg.bestOf, arena: msg.arena, code: msg.code || code, slots: msg.slots, you: msg.you, feed: msg.feed }); LB.countN = msg.count; renderLB(); return; }
       if (msg.t === 'lemote' && LB) { LB.bubbles = LB.bubbles || {}; LB.bubbles[msg.k] = { e: msg.e, t: performance.now() }; renderLB(); setTimeout(() => renderLB(), 2100); return; }
-      if (msg.t === 'start' && msg.mode === 'double') { LB = null; opp = { lp: 0 }; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl); return; }
-      if (msg.t === 'start') { LB = null; opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names); return; }
+      if (msg.t === 'start' && msg.mode === 'double') { LB = null; opp = { lp: 0 }; matchArena = COSMETICS.arena.some(a => a.id === msg.arena) ? msg.arena : null; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl); return; }
+      if (msg.t === 'start') { LB = null; matchArena = COSMETICS.arena.some(a => a.id === msg.arena) ? msg.arena : null; opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names); return; }
       if (msg.t === 'full') { resetNet(); show('scr-join'); $('#join-status').textContent = 'Le salon est complet ou la partie a déjà commencé.'; }
     };
     net.onClose = () => { if (LB) { resetNet(); show('scr-join'); $('#join-status').textContent = 'L\'hôte a fermé le salon.'; } };
@@ -643,7 +654,7 @@ function renderLB() {
   const dbl = LB.mode === 'double';
   $('#lb-mode').textContent = dbl ? 'Double · 2 contre 2' : 'Simple · classé';
   $('#lb-kicker').textContent = LB.host ? 'TON SALON' : 'SALON EN LIGNE';
-  $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span><span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
+  $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span>${LB.arena ? `<span>🏟 ${esc((COSMETICS.arena.find(a => a.id === LB.arena) || {}).name || '')}</span>` : ''}<span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
   $('#lb-code').textContent = LB.code || '·····';
   if (dbl) {
     $('#lb-teams').innerHTML = `<div class="lbt blue"><h4>ÉQUIPE BLEUE</h4>${lbCard(LB.slots[0], 0)}${lbCard(LB.slots[2], 2)}</div><div class="lb-vs">VS</div><div class="lbt red"><h4>ÉQUIPE ROUGE</h4>${lbCard(LB.slots[1], 1)}${lbCard(LB.slots[3], 3)}</div>`;
@@ -691,6 +702,28 @@ function restartOnline(fs) {
 }
 
 // ------------------------------------------------------------------ fin / pause
+// ------------------------------------------------------------------ célébration de fin de match
+let endPending = null;
+function celebrateEnd(m) {
+  const me = game.myTeam, win = m.winner === me;
+  const teamOf = t => game.doubles ? [t, t + 2] : [t];
+  R.startCelebration({ winners: teamOf(m.winner), losers: teamOf(1 - m.winner), mine: win, sfx });
+  sfx.crowd(3); setTimeout(() => game && sfx.crowd(3), 1600);
+  const sets = m.history.length ? `${m.sets[m.winner]} – ${m.sets[1 - m.winner]}` : '';
+  const v = $('#victory');
+  v.className = win ? 'win' : 'lose';
+  v.innerHTML = `<small>${setup.mode === 'career' && win ? 'VICTOIRE EN TOURNOI' : 'FIN DU MATCH'}</small><b>${win ? 'VICTOIRE' : 'DÉFAITE'}</b>
+    <div class="vn">${esc(game.names[m.winner])}</div><div class="vs2">${sets} en manches</div>
+    <div class="vk">${input.padName ? '<span class="kb pad">A</span>' : '<span class="kb key">Espace</span>'} Continuer</div>`;
+  v.classList.remove('hidden'); void v.offsetWidth; v.classList.add('show');
+  endPending = { m, t: 5.2, age: 0 };
+}
+function finishCelebration() {
+  if (!endPending) return;
+  const m = endPending.m; endPending = null;
+  $('#victory').classList.add('hidden'); $('#victory').classList.remove('show');
+  showEnd(m);
+}
 function showEnd(m) {
   setTimeout(() => music.start(0.4), 1500);
   const me = game.myTeam, op = 1 - me;
@@ -1095,7 +1128,7 @@ function loop(now) {
   if (game) {
     setMuted(false);
     R.orbit = false;
-    if (inp.pressed.start) { if (tuto) quitToMenu(); else togglePause(); }
+    if (inp.pressed.start && !endPending) { if (tuto) quitToMenu(); else togglePause(); }
     if (!game) { requestAnimationFrame(loop); return; }
     if (tuto) tutoUpdate(dt);
     if (inp.pressed.cam) { profile.settings.camera = (profile.settings.camera + 1) % 3; saveProfile(); applySettings(); banner(`Caméra : ${['Raquette', 'TV', 'Haute'][profile.settings.camera]}`, '', 1); }
@@ -1118,6 +1151,11 @@ function loop(now) {
         if (!bestClip || pp.score > bestClip.score) { bestClip = clip; bestClip.score = pp.score; }
         if (pp.big && !tuto && !pp.noReplay) startReplay(clip, null);
       }
+    }
+    if (endPending) {
+      endPending.t -= dt; endPending.age += dt;
+      const anyBtn = inp.pressed.top || inp.pressed.plat || inp.pressed.coupe || inp.pressed.lob || inp.pressed.start;
+      if (endPending.t <= 0 || (endPending.age > 1.2 && anyBtn)) finishCelebration();
     }
     recorder.record(game, dt);
     updateMomentum();

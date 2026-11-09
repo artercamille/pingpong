@@ -152,5 +152,12 @@ export const sfx = {
   superArm() { noiseBurst(0.5, 0.12, 400, 1.2, 'bandpass', 3000); tone(220, 0.4, 0.05, 'triangle'); },
   superHit() { modal([180, 420], [0.06, 0.03], [1, 0.6], 0.35, 0.6, 1500); noiseBurst(0.35, 0.15, 3000, 0.6, 'bandpass', 300); },
   unlock() { [784, 988, 1175].forEach((f, i) => setTimeout(() => tone(f, 0.22, 0.05, 'triangle'), i * 80)); },
+  // feu d'artifice : sifflement qui monte puis détonation sourde + crépitements
+  rocket() { noiseBurst(0.7, 0.025, 900, 6, 'bandpass', 3800); },
+  boom(dist = 1) {
+    noiseBurst(0.9, 0.22 / dist, 160, 0.7, 'lowpass', 60);
+    modal([62, 90], [0.12, 0.08], [1, 0.6], 0.18 / dist, 0.5, 1200, 1.5);
+    for (let k = 0; k < 6; k++) setTimeout(() => noiseBurst(0.05, 0.03 / dist, 3500 + Math.random() * 3000, 1.2, 'bandpass'), 250 + Math.random() * 600);
+  },
   whoosh() { noiseBurst(0.4, 0.05, 600, 0.8, 'bandpass', 2400); },
 };

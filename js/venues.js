@@ -4,7 +4,7 @@ const FLAGS = [0x1f4bd6, 0xffffff, 0xe33340, 0xde2910, 0xffde00, 0xbc002d, 0x009
 const city = name => name.replace(/^WTT (Feeder|Contender|Champions) /, '').replace(/ Smash$/, '');
 
 export function defaultVenue(t) {
-  return { floor: '#1d1f25', outer: 0x0c0b12, accent: '#' + t.neon.toString(16).padStart(6, '0'), neon: t.neon, legs: t.legs, light: t.light, bg: 0x050409,
+  return { floor: '#17151f', outer: 0x0c0b12, accent: '#' + t.neon.toString(16).padStart(6, '0'), neon: t.neon, legs: t.legs, light: t.light, bg: 0x050409,
     title: 'PINGPONG', sub: 'WORLD CHAMPIONSHIPS', items: ['@logo', 'WORLD CHAMPIONSHIPS', '@logo', 'LE JEU. LA PASSION.', 'FINALE'], table: '#131a25' };
 }
 

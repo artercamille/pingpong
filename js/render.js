@@ -5,6 +5,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { TABLE, NET, BALL_R, topAxis } from './physics.js';
 import { IDEAL_REL } from './game.js';
 import { arenaKit, hideKits } from './arenas.js';
@@ -502,6 +503,24 @@ export class Renderer {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.55, 0.93);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    // étalonnage final : contraste, saturation, vignette et léger grain (rendu « diffusion TV »)
+    this.grade = new ShaderPass({
+      uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: 0.38 }, uSat: { value: 1.08 }, uCon: { value: 1.06 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uVig, uSat, uCon; varying vec2 vUv;
+        float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+        void main(){
+          vec4 c = texture2D(tDiffuse, vUv);
+          float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+          c.rgb = mix(vec3(l), c.rgb, uSat);
+          c.rgb = (c.rgb - 0.5) * uCon + 0.5;
+          vec2 d = vUv - 0.5; d.x *= 1.25;
+          c.rgb *= 1.0 - uVig * smoothstep(0.25, 0.85, length(d));
+          c.rgb += (h(vUv * 900.0 + uTime) - 0.5) * 0.018;
+          gl_FragColor = vec4(clamp(c.rgb, 0.0, 1.0), c.a);
+        }`,
+    });
+    this.composer.addPass(this.grade);
     this.resize();
     addEventListener('resize', () => this.resize());
   }
@@ -563,7 +582,7 @@ export class Renderer {
       g.save(); g.translate(w * 0.3, h * 0.88); g.rotate(Math.PI); g.fillText('WORLD CHAMPIONSHIPS', 0, 0); g.restore();
       void sx; void sz;
     });
-    this.courtMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.62, envMapIntensity: 0.5 });
+    this.courtMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.48, metalness: 0.05, envMapIntensity: 0.8 });
     const court = new THREE.Mesh(new THREE.PlaneGeometry(COURT.hx * 2, COURT.hz * 2), this.courtMat);
     court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; s.add(court);
     this.outerMat = new THREE.MeshStandardMaterial({ color: 0x0c0b12, roughness: 0.9 });
@@ -602,16 +621,30 @@ export class Renderer {
 
     // table de l'arbitre
     const dark = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.5, metalness: 0.4 });
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.74, 1.1), dark); desk.position.set(3.2, 0.37, 0); desk.castShadow = true; s.add(desk);
-    const deskLine = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.015, 1.11), neon); deskLine.position.set(2.95, 0.73, 0); s.add(deskLine);
+    // table d'arbitrage : plateau clair, façade lumineuse, compteur à volets et chaise
+    const deskG = new THREE.Group();
+    const top = new THREE.MeshStandardMaterial({ color: 0xe8e6f0, roughness: 0.35, metalness: 0.1 });
+    const body = new THREE.MeshStandardMaterial({ color: 0x1a1726, roughness: 0.35, metalness: 0.5 });
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.04, 1.0), top); deskTop.position.y = 0.72; deskTop.castShadow = true; deskG.add(deskTop);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 1.0), body); front.position.set(-0.21, 0.4, 0); deskG.add(front);
+    for (const z of [-0.47, 0.47]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.7, 0.04), body); leg.position.set(0, 0.35, z); deskG.add(leg); }
+    const deskLine = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.02, 1.0), neon); deskLine.position.set(-0.235, 0.64, 0); deskG.add(deskLine);
+    const deskLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 1.0), neon); deskLine2.position.set(-0.235, 0.14, 0); deskG.add(deskLine2);
+    const chair = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.05, 0.38), body); seat.position.y = 0.46; chair.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 0.38), body); back.position.set(0.17, 0.68, 0); chair.add(back);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.44, 8), dark); pole.position.y = 0.22; chair.add(pole);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 16), dark); foot.position.y = 0.01; chair.add(foot);
+    chair.position.set(0.4, 0, 0); deskG.add(chair);
+    deskG.position.set(3.55, 0, 0); deskG.traverse(m => { if (m.isMesh) m.castShadow = true; }); s.add(deskG);
     this.counterTex = canvasTex(512, 256, () => {});
     const cMat = new THREE.MeshBasicMaterial({ map: this.counterTex });
-    const counter = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.42), [dark, dark, dark, dark, cMat, cMat]);
-    counter.position.set(3.2, 0.86, 0); counter.rotation.y = Math.PI / 2; s.add(counter);
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.4), [dark, dark, dark, dark, cMat, cMat]);
+    counter.position.set(3.5, 0.84, 0); counter.rotation.y = Math.PI / 2; s.add(counter);
     // boîtes à serviettes
     for (const z of [-COURT.hz + 0.7, COURT.hz - 0.7]) {
-      const b = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.65, 0.35), dark); b.position.set(-COURT.hx + 0.5, 0.325, z); b.castShadow = true; s.add(b);
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.015, 0.015), neon); l.position.set(-COURT.hx + 0.5, 0.64, z + (z > 0 ? -0.18 : 0.18)); s.add(l);
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.55, 0.3), new THREE.MeshStandardMaterial({ color: 0x24202f, roughness: 0.3, metalness: 0.4 })); b.position.set(-COURT.hx + 0.45, 0.275, z); b.castShadow = true; s.add(b);
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.012, 0.31), neon); l.position.set(-COURT.hx + 0.45, 0.556, z); s.add(l);
     }
     // anneau lumineux au plafond + rampes
     const truss = new THREE.MeshStandardMaterial({ color: 0x15141c, roughness: 0.6, metalness: 0.6 });
@@ -1062,7 +1095,7 @@ export class Renderer {
     this.robot.visible = robotMode;
     game.players.forEach((pl, i) => {
       const fig = this.figures[i];
-      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !this.intro && !this.celeb;
+      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !(this.intro > 0) && !this.celeb;
       // vue raquette : on ne voit ni son propre corps ni celui de son partenaire (seulement sa raquette)
       const hideMe = fp && (i === game.me || (game.doubles && game.partner && i === game.partner(game.me)));
       fig.g.visible = !hideMe && !(robotMode && i === 1);
@@ -1089,6 +1122,7 @@ export class Renderer {
     this.updateCrowd(dt);
     if (this.kit) this.kit.update(dt, this.time, this.cheer);
     this.updateCamera(game, dt);
+    this.grade.uniforms.uTime.value = this.time % 100;
     this.composer.render();
   }
 
@@ -1480,7 +1514,7 @@ export class Renderer {
       return;
     }
     // vue à la première personne, juste derrière la raquette
-    const target = V(me.x * 0.6, this.pressure ? 1.8 : 1.95, s * Math.min(Math.abs(me.z) + (this.pressure ? 1.25 : 1.7), 4.2));
+    const target = V(me.x * 0.6, this.pressure ? 1.8 : 1.95, s * (Math.abs(me.z) + (this.pressure ? 1.25 : 1.7)));
     const look = V(me.x * 0.25 + game.ball.p.x * 0.08, 0.68, -s * 0.9);
     const k = Math.min(1, dt * 6);
     this.camPos.lerp(target, k);

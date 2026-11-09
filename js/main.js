@@ -462,6 +462,7 @@ function resetNet() {
   if (LB && LB.timer) clearInterval(LB.timer);
   if (LB && LB.count) clearInterval(LB.count.iv);
   LB = null;
+  if ($('#lb-teams')) { $('#lb-teams').dataset.k = ''; $('#lb-feed').dataset.f = ''; }
   $('#lb-count') && $('#lb-count').classList.add('hidden');
   $('#host-status').textContent = '';
   $('#join-status').textContent = '';
@@ -656,12 +657,25 @@ function renderLB() {
   $('#lb-kicker').textContent = LB.host ? 'TON SALON' : 'SALON EN LIGNE';
   $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span>${LB.arena ? `<span>🏟 ${esc((COSMETICS.arena.find(a => a.id === LB.arena) || {}).name || '')}</span>` : ''}<span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
   $('#lb-code').textContent = LB.code || '·····';
-  if (dbl) {
-    $('#lb-teams').innerHTML = `<div class="lbt blue"><h4>ÉQUIPE BLEUE</h4>${lbCard(LB.slots[0], 0)}${lbCard(LB.slots[2], 2)}</div><div class="lb-vs">VS</div><div class="lbt red"><h4>ÉQUIPE ROUGE</h4>${lbCard(LB.slots[1], 1)}${lbCard(LB.slots[3], 3)}</div>`;
-  } else {
-    $('#lb-teams').innerHTML = `<div class="lbt blue">${lbCard(LB.slots[0], 0)}</div><div class="lb-vs">VS</div><div class="lbt red">${lbCard(LB.slots[1], 1)}</div>`;
+  // structure construite une seule fois ; ensuite on ne remplace que les cartes qui ont changé (pas de clignotement)
+  const T = $('#lb-teams'), key = dbl ? 'd' : 's';
+  if (T.dataset.k !== key) {
+    T.dataset.k = key; LB.cards = {};
+    T.innerHTML = dbl ? `<div class="lbt blue"><h4>ÉQUIPE BLEUE</h4><div data-slot="0"></div><div data-slot="2"></div></div><div class="lb-vs">VS</div><div class="lbt red"><h4>ÉQUIPE ROUGE</h4><div data-slot="1"></div><div data-slot="3"></div></div>`
+      : `<div class="lbt blue"><div data-slot="0"></div></div><div class="lb-vs">VS</div><div class="lbt red"><div data-slot="1"></div></div>`;
   }
-  $('#lb-feed').innerHTML = LB.feed.map((f, i) => `<div style="opacity:${1 - i * 0.17}">${esc(f)}</div>`).join('');
+  LB.cards = LB.cards || {};
+  LB.slots.forEach((p, k) => {
+    const html = lbCard(p, k), host = T.querySelector(`[data-slot="${k}"]`);
+    if (!host || LB.cards[k] === html) return;
+    const who = p ? p.name : '';
+    const fresh = (LB.cardWho || {})[k] !== who;
+    LB.cardWho = LB.cardWho || {}; LB.cardWho[k] = who; LB.cards[k] = html;
+    host.innerHTML = html;
+    if (fresh) host.firstElementChild.classList.add('fresh');
+  });
+  const feed = LB.feed.join('|');
+  if ($('#lb-feed').dataset.f !== feed) { $('#lb-feed').dataset.f = feed; $('#lb-feed').innerHTML = LB.feed.map((f, i) => `<div style="opacity:${1 - i * 0.17}">${esc(f)}</div>`).join(''); }
   const me = LB.slots[LB.you];
   const rb = $('#lb-ready');
   rb.classList.toggle('accent', !(me && me.ready));

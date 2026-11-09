@@ -564,7 +564,8 @@
 .lbt.blue h4 { color: #6aa8ff; } .lbt.red h4 { color: #ff6b8b; }
 .lb-vs { text-align: center; font-size: 42px; font-weight: 900; font-style: italic; color: rgba(255,255,255,.18); }
 .lbp { position: relative; display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 92px; border-radius: 8px;
-  background: linear-gradient(110deg, color-mix(in srgb, var(--pc, #555) 22%, rgba(26,20,42,.95)), rgba(20,16,34,.92) 60%); border: 1px solid rgba(255,255,255,.07); transition: border-color .2s, box-shadow .2s; animation: lbIn .35s ease-out; }
+  background: linear-gradient(110deg, color-mix(in srgb, var(--pc, #555) 22%, rgba(26,20,42,.95)), rgba(20,16,34,.92) 60%); border: 1px solid rgba(255,255,255,.07); transition: border-color .2s, box-shadow .2s; }
+.lbp.fresh { animation: lbIn .35s ease-out; }
 .lbt.blue .lbp { border-left: 4px solid #3d8bff; } .lbt.red .lbp { border-left: 4px solid #ff3d6b; }
 .lbp.me { box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
 .lbp.ok { border-color: rgba(110,231,168,.55); box-shadow: 0 0 26px rgba(110,231,168,.15); }
@@ -635,3 +636,22 @@
 @keyframes vSlam { 0% { opacity: 0; transform: scale(2.6) skewX(-8deg); letter-spacing: 30px; } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1) skewX(0); letter-spacing: -2px; } }
 @keyframes vIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 body:has(#victory:not(.hidden)) #hud > *:not(#board) { opacity: 0; transition: opacity .4s; }
+
+/* ---------- finitions ---------- */
+.mside:has(.screen.wide:not(.hidden)) { width: min(720px, 94vw); }
+.mside { overflow-x: hidden; }
+/* entrée en cascade des boutons à chaque changement d'écran */
+.screen:not(.hidden) > .mbtn, .screen:not(.hidden) > .opt { animation: mIn .32s cubic-bezier(.2, .9, .3, 1) backwards; }
+.screen:not(.hidden) > :nth-child(2) { animation-delay: .03s; } .screen:not(.hidden) > :nth-child(3) { animation-delay: .06s; }
+.screen:not(.hidden) > :nth-child(4) { animation-delay: .09s; } .screen:not(.hidden) > :nth-child(5) { animation-delay: .12s; }
+.screen:not(.hidden) > :nth-child(6) { animation-delay: .15s; } .screen:not(.hidden) > :nth-child(7) { animation-delay: .18s; }
+.screen:not(.hidden) > :nth-child(n+8) { animation-delay: .21s; }
+@keyframes mIn { from { opacity: 0; transform: translateX(-26px); } }
+.screen:not(.hidden) > h2 { animation: mIn .3s ease-out backwards; }
+/* sélecteurs : focus plus lisible */
+.opt.focus { box-shadow: inset 4px 0 0 #fff, 0 0 24px rgba(200,77,255,.25); }
+/* salon : le bouton prêt et les emotes ont un focus net */
+#lb-ready.focus { box-shadow: 0 0 0 2px #fff, 0 0 30px rgba(200,77,255,.45); }
+.lb-copy:hover { box-shadow: 0 0 0 1px #fff; }
+/* tuiles et cartes : léger reflet en haut */
+.tile:not(.hero)::before, .lbp::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,.045), transparent); pointer-events: none; border-radius: inherit; }

@@ -79,7 +79,10 @@ function show(id) {
   if (id === 'scr-team') renderTeam();
   if (id === 'scr-shop') renderShop();
   renderCNav(id);
-  focusIdx = 0; refreshFocus();
+  document.querySelector('#menu').classList.toggle('inlobby', id === 'scr-lobby');
+  focusIdx = 0;
+  if (id === 'scr-lobby') focusIdx = Math.max(0, navItems().indexOf($('#lb-ready')));
+  refreshFocus();
   const sc = document.querySelector('#menu .screen:not(.hidden)'); if (sc) sc.closest('.mside') && (sc.closest('.mside').scrollTop = 0);
 }
 
@@ -445,81 +448,131 @@ function quitToMenu(scr = 'scr-main') {
 
 function resetNet() {
   if (net) { net.onClose = () => {}; net.destroy(); net = null; }
-  $('#host-box').classList.add('hidden');
-  $('#host-go').classList.remove('hidden');
-  $('#host-start').classList.add('hidden'); $('#host-lobby').innerHTML = '';
-  $('#host-status').textContent = 'En attente de ton pote…';
+  if (LB && LB.timer) clearInterval(LB.timer);
+  if (LB && LB.count) clearInterval(LB.count.iv);
+  LB = null;
+  $('#lb-count') && $('#lb-count').classList.add('hidden');
+  $('#host-status').textContent = '';
   $('#join-status').textContent = '';
 }
 
 $('#ai-go').addEventListener('click', () => { sfx.ui(); startAI(); });
 
-// ------------------------------------------------------------------ lobby en ligne
+// ------------------------------------------------------------------ salon en ligne (salle d'attente)
+// L'hôte fait autorité : il tient l'état du salon et le renvoie à chaque invité.
+let LB = null;
+const EMOTES = ['👋', '🔥', '😂', '😤', '🏓', 'GG'];
+const paddleColor = id => '#' + ((COSMETICS.paddle.find(p => p.id === id) || COSMETICS.paddle[0]).color).toString(16).padStart(6, '0');
+function meCard() { return { name: myName(), lp: profile.lp || 0, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail, ready: false, ping: 0 }; }
+function lbFeed(t) { if (!LB) return; LB.feed.unshift(t); LB.feed = LB.feed.slice(0, 5); renderLB(); }
+
 $('#host-go').addEventListener('click', () => {
   initAudio(); sfx.ui();
   if (!window.Peer) { $('#host-status').textContent = 'PeerJS introuvable.'; return; }
   resetNet();
   net = new Net();
-  const bestOf = choice('host-format');
-  const dblMode = choice('host-mode') === 'double';
-  net.maxGuests = dblMode ? 3 : 1;
-  lobby = [];
-  renderLobby(dblMode);
-  $('#host-go').classList.add('hidden');
-  $('#host-box').classList.remove('hidden');
-  $('#host-code').textContent = '·····';
-  $('#host-status').textContent = 'Connexion au serveur…';
+  const mode = choice('host-mode');
+  net.maxGuests = mode === 'double' ? 3 : 1;
+  LB = { host: true, mode, bestOf: choice('host-format'), code: '', slots: [{ ...meCard(), host: true }, null, ...(mode === 'double' ? [null, null] : [])], conns: new Map(), you: 0, feed: ['Salon créé · connexion au serveur…'] };
+  const fo = $('#lb-format'); fo.dataset.i = String([1, 3, 5, 7].indexOf(LB.bestOf)); optRender(fo);
+  show('scr-lobby'); renderLB();
   net.host(code => {
-    $('#host-code').textContent = code;
-    $('#host-status').textContent = 'En attente de ton pote…';
+    LB.code = code; LB.feed[0] = 'Salon ouvert · envoie le code à tes potes';
+    renderLB(); sfx.unlock && sfx.unlock();
   }, conn => {
-    $('#host-status').textContent = dblMode ? 'Un joueur a rejoint !' : 'Pote connecté !';
-    net.onMessage = (msg, from) => {
-      if (msg.t === 'hello' && dblMode) {
-        if (!lobby.find(l => l.conn === from)) lobby.push({ conn: from, name: (msg.name || 'Invité').slice(0, 14), paddle: msg.paddle, trail: msg.trail });
-        renderLobby(true);
-        return;
-      }
-      if (msg.t === 'hello') {
-        oppName = (msg.name || 'Invité').slice(0, 14);
-        const firstServer = Math.random() < 0.5 ? 0 : 1;
-        const names = [myName(), oppName];
-        opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail };
-        net.send({ t: 'start', bestOf, firstServer, names, lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail });
-        startOnline(0, bestOf, firstServer, names);
-      }
+    net.onMessage = lbHostMsg;
+    net.onClose = c => {
+      if (!LB) return;
+      const k = LB.conns.get(c);
+      if (k != null) { lbFeed(`🚪 ${LB.slots[k].name} a quitté le salon`); LB.slots[k] = null; LB.conns.delete(c); lbCancel(); lbBroadcast(); }
     };
-  }, err => { $('#host-status').textContent = err; });
-});
-let lobby = [];
-function renderLobby(dbl) {
-  const el = $('#host-lobby');
-  $('#host-start').classList.toggle('hidden', !dbl || !lobby.length);
-  if (!dbl) { el.innerHTML = ''; return; }
-  const slot = k => k === 0 ? `<div>${myName()} (toi)</div>` : lobby[k - 1] ? `<div>${lobby[k - 1].name}</div>` : '<div class="ai">IA</div>';
-  el.innerHTML = `<div class="team"><b>ÉQUIPE BLEUE</b>${slot(0)}${slot(2)}</div><div class="team r"><b>ÉQUIPE ROUGE</b>${slot(1)}${slot(3)}</div>`;
-  $('#host-status').textContent = lobby.length ? `${lobby.length + 1} joueur${lobby.length ? 's' : ''} · jusqu'à 4` : 'Envoie le code à 1, 2 ou 3 potes…';
-}
-$('#host-start').addEventListener('click', () => {
-  if (!net || !lobby.length) return;
-  net.locked = true;
-  const bestOf = choice('host-format');
-  const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
-  const first = n => n.split(' ')[0];
-  const kinds = [0, 1, 2, 3].map(k => k === 0 ? 'host' : lobby[k - 1] ? 'guest' : 'ai');
-  const playerNames = [0, 1, 2, 3].map(k => k === 0 ? myName() : lobby[k - 1] ? lobby[k - 1].name : pool[k]);
-  const names = [`${first(playerNames[0])} / ${first(playerNames[2])}`, `${first(playerNames[1])} / ${first(playerNames[3])}`];
-  const firstServer = Math.random() < 0.5 ? 0 : 1;
-  const dbl = { kinds, playerNames };
-  lobby.forEach((l, k) => net.sendTo(l.conn, { t: 'start', lobby: true, mode: 'double', me: k + 1, bestOf, firstServer, names, dbl }));
-  opp = { lp: 0 };
-  startOnline(0, bestOf, firstServer, names, dbl);
-});
-$('#copy').addEventListener('click', () => {
-  const c = $('#host-code').textContent;
-  try { navigator.clipboard.writeText(c); $('#copy').textContent = 'Copié !'; setTimeout(() => $('#copy').textContent = 'Copier le code', 1500); } catch (e) {}
+  }, err => { if (LB) { LB.feed.unshift('⚠ ' + err); renderLB(); } });
+  LB.timer = setInterval(() => {
+    if (!LB || !net) return;
+    for (const [c, k] of LB.conns) if (LB.slots[k]) LB.slots[k].ping = Math.round(c.rtt || 0);
+    lbBroadcast();
+  }, 1000);
 });
 
+function lbHostMsg(msg, from) {
+  if (!LB || !msg.lobby) return;
+  let k = LB.conns.get(from);
+  if (msg.t === 'hello') {
+    if (k == null) {
+      // place libre : en double on équilibre les équipes
+      const order = LB.mode === 'double' ? [1, 2, 3] : [1];
+      k = order.find(j => !LB.slots[j]);
+      if (k == null) { net.sendTo(from, { t: 'full', lobby: true }); return; }
+      LB.conns.set(from, k);
+    }
+    LB.slots[k] = { name: (msg.name || 'Invité').slice(0, 14), lp: +msg.lp || 0, level: Math.max(1, Math.min(99, +msg.level || 1)), paddle: String(msg.paddle || ''), trail: msg.trail, ready: false, ping: Math.round(from.rtt || 0) };
+    lbFeed(`✅ ${LB.slots[k].name} a rejoint le salon`); sfx.ui();
+  } else if (k == null) return;
+  else if (msg.t === 'ready') { LB.slots[k].ready = !!msg.v; lbFeed(msg.v ? `✔ ${LB.slots[k].name} est prêt` : `✖ ${LB.slots[k].name} n'est plus prêt`); }
+  else if (msg.t === 'emote') { lbEmote(k, msg.e); net.send({ t: 'lemote', lobby: true, k, e: msg.e }); return; }
+  else if (msg.t === 'swap') { lbSwap(k); }
+  lbBroadcast();
+}
+function lbSwap(k) {
+  if (LB.mode !== 'double' || LB.count) return;
+  // équipe bleue = places 0 et 2, rouge = 1 et 3
+  const other = (k % 2 === 0) ? [1, 3] : [0, 2];
+  const j = other.find(x => !LB.slots[x]) ?? other.find(x => x !== 0);
+  if (j == null || j === 0) return;
+  [LB.slots[k], LB.slots[j]] = [LB.slots[j], LB.slots[k]];
+  for (const [c, v] of LB.conns) { if (v === k) LB.conns.set(c, j); else if (v === j) LB.conns.set(c, k); }
+  if (LB.you === k) LB.you = j; else if (LB.you === j) LB.you = k;
+}
+function lbBroadcast() {
+  if (!LB || !LB.host) return;
+  // tout le monde prêt → compte à rebours
+  const humans = LB.slots.filter(Boolean);
+  if (!LB.count && humans.length >= 2 && humans.every(p => p.ready)) lbStartCount();
+  for (const [c, k] of LB.conns) net.sendTo(c, { t: 'lstate', lobby: true, mode: LB.mode, bestOf: LB.bestOf, code: LB.code, slots: LB.slots, you: k, feed: LB.feed, count: LB.count ? LB.count.n : 0 });
+  renderLB();
+}
+function lbStartCount() {
+  LB.count = { n: 3 };
+  sfx.ui();
+  LB.count.iv = setInterval(() => {
+    if (!LB || !LB.count) return;
+    LB.count.n--;
+    if (LB.count.n <= 0) { clearInterval(LB.count.iv); lbLaunch(); return; }
+    lbBroadcast();
+  }, 1000);
+}
+function lbCancel() { if (LB && LB.count) { clearInterval(LB.count.iv); LB.count = null; lbFeed('⏸ Lancement annulé'); } }
+function lbLaunch() {
+  const L = LB; if (!L || !net) return;
+  clearInterval(L.timer);
+  net.locked = true;
+  const bestOf = L.bestOf, firstServer = Math.random() < 0.5 ? 0 : 1;
+  if (L.mode !== 'double') {
+    const g = L.slots[1], c = [...L.conns.keys()][0];
+    const names = [myName(), g.name];
+    oppName = g.name; opp = { lp: g.lp, paddle: g.paddle, trail: g.trail };
+    net.sendTo(c, { t: 'start', lobby: true, bestOf, firstServer, names, lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail });
+    LB = null; startOnline(0, bestOf, firstServer, names); return;
+  }
+  const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
+  const first = n => n.split(' ')[0];
+  const kinds = [0, 1, 2, 3].map(k => k === 0 ? 'host' : L.slots[k] ? 'guest' : 'ai');
+  const playerNames = [0, 1, 2, 3].map(k => L.slots[k] ? L.slots[k].name : pool[k]);
+  const names = [`${first(playerNames[0])} / ${first(playerNames[2])}`, `${first(playerNames[1])} / ${first(playerNames[3])}`];
+  const dbl = { kinds, playerNames };
+  for (const [c, k] of L.conns) net.sendTo(c, { t: 'start', lobby: true, mode: 'double', me: k, bestOf, firstServer, names, dbl });
+  opp = { lp: 0 }; LB = null;
+  startOnline(0, bestOf, firstServer, names, dbl);
+}
+function lbEmote(k, e) {
+  if (!LB || !EMOTES.includes(e)) return;
+  const p = LB.slots[k]; if (!p) return;
+  LB.bubbles = LB.bubbles || {}; LB.bubbles[k] = { e, t: performance.now() };
+  lbFeed(`${e} ${p.name}`);
+  setTimeout(() => renderLB(), 2100);
+}
+
+// ---- côté invité
 $('#join-go').addEventListener('click', () => {
   initAudio(); sfx.ui();
   const code = $('#join-code').value.trim().toUpperCase();
@@ -529,16 +582,90 @@ $('#join-go').addEventListener('click', () => {
   net = new Net();
   $('#join-status').textContent = 'Connexion…';
   net.join(code, () => {
-    $('#join-status').textContent = 'Connecté ! Lancement…';
+    LB = { host: false, mode: 'simple', bestOf: 3, code, slots: [null, null], you: 1, feed: ['Connexion au salon…'] };
+    show('scr-lobby'); renderLB();
     net.onMessage = msg => {
-      if (msg.t === 'start' && msg.mode === 'double') { opp = { lp: 0 }; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl); return; }
-      if (msg.t === 'start') { opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names); }
-      if (msg.t === 'full') $('#join-status').textContent = 'La partie est complète ou déjà lancée.';
+      if (msg.t === 'lstate' && LB) { Object.assign(LB, { mode: msg.mode, bestOf: msg.bestOf, code: msg.code || code, slots: msg.slots, you: msg.you, feed: msg.feed }); LB.countN = msg.count; renderLB(); return; }
+      if (msg.t === 'lemote' && LB) { LB.bubbles = LB.bubbles || {}; LB.bubbles[msg.k] = { e: msg.e, t: performance.now() }; renderLB(); setTimeout(() => renderLB(), 2100); return; }
+      if (msg.t === 'start' && msg.mode === 'double') { LB = null; opp = { lp: 0 }; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl); return; }
+      if (msg.t === 'start') { LB = null; opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names); return; }
+      if (msg.t === 'full') { resetNet(); show('scr-join'); $('#join-status').textContent = 'Le salon est complet ou la partie a déjà commencé.'; }
     };
-    net.send({ t: 'hello', lobby: true, name: myName(), lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail });
+    net.onClose = () => { if (LB) { resetNet(); show('scr-join'); $('#join-status').textContent = 'L\'hôte a fermé le salon.'; } };
+    net.send({ t: 'hello', lobby: true, name: myName(), lp: profile.lp, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail });
   }, err => { $('#join-status').textContent = err; });
 });
 $('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#join-go').click(); });
+
+// ---- actions communes
+$('#lb-ready').addEventListener('click', () => {
+  if (!LB) return; initAudio();
+  const me = LB.slots[LB.you]; if (!me) return;
+  const v = !me.ready; sfx.ui();
+  if (LB.host) { me.ready = v; if (!v) lbCancel(); lbFeed(v ? `✔ ${me.name} est prêt` : `✖ ${me.name} n'est plus prêt`); lbBroadcast(); }
+  else { me.ready = v; renderLB(); net.send({ t: 'ready', lobby: true, v }); }
+});
+$('#lb-swap').addEventListener('click', () => {
+  if (!LB) return; sfx.ui();
+  if (LB.host) { lbSwap(0); lbBroadcast(); } else net.send({ t: 'swap', lobby: true });
+});
+$('#lb-copy').addEventListener('click', () => {
+  if (!LB || !LB.code) return;
+  try { navigator.clipboard.writeText(LB.code); $('#lb-copy').textContent = 'Copié !'; setTimeout(() => $('#lb-copy').textContent = 'Copier', 1500); } catch (e) {}
+});
+$('#lb-format').addEventListener('click', () => { if (LB && LB.host) { LB.bestOf = choice('lb-format'); lbCancel(); lbBroadcast(); } });
+$('#lb-quit').addEventListener('click', () => resetNet());
+$('#lb-emotes').innerHTML = EMOTES.map(e => `<button class="lb-em" data-nav data-e="${e}">${e}</button>`).join('');
+$('#lb-emotes').querySelectorAll('.lb-em').forEach(b => b.addEventListener('click', () => {
+  if (!LB) return; initAudio(); sfx.ui();
+  const now = performance.now(); if (LB.lastEm && now - LB.lastEm < 900) return; LB.lastEm = now;
+  if (LB.host) { lbEmote(0, b.dataset.e); net.send({ t: 'lemote', lobby: true, k: 0, e: b.dataset.e }); }
+  else net.send({ t: 'emote', lobby: true, e: b.dataset.e });
+}));
+
+function lbCard(p, k) {
+  if (!p) {
+    const ai = LB.mode === 'double';
+    return `<div class="lbp empty"><div class="lb-av"><span>?</span></div><div class="lb-info"><b>En attente…</b><small>${ai ? 'Remplacé par une IA si personne ne vient' : 'Envoie le code à ton pote'}</small></div><div class="dots"><i></i><i></i><i></i></div></div>`;
+  }
+  const r = rankOf(+p.lp || 0), col = paddleColor(p.paddle), me = k === LB.you;
+  const bub = LB.bubbles && LB.bubbles[k] && performance.now() - LB.bubbles[k].t < 2000 ? `<div class="lb-bub">${esc(LB.bubbles[k].e)}</div>` : '';
+  const bars = p.ping ? (p.ping < 60 ? 3 : p.ping < 130 ? 2 : 1) : 0;
+  return `<div class="lbp ${me ? 'me' : ''} ${p.ready ? 'ok' : ''}" style="--pc:${col}">${bub}
+    <div class="lb-av"><span>${esc((p.name || '?')[0].toUpperCase())}</span></div>
+    <div class="lb-info"><b>${esc(p.name)}${p.host ? ' <em>HÔTE</em>' : ''}${me ? ' <em class="you">TOI</em>' : ''}</b>
+      <small>${emblem(+p.lp || 0, 22)} ${r.label} · Niv. ${+p.level || 1}</small></div>
+    <div class="lb-side">${k === 0 && LB.host || p.host ? '' : `<span class="ping p${bars}" title="${p.ping} ms"><i></i><i></i><i></i></span>`}
+      <span class="lb-st">${p.ready ? 'PRÊT' : 'PAS PRÊT'}</span></div></div>`;
+}
+function renderLB() {
+  if (!LB) return;
+  const dbl = LB.mode === 'double';
+  $('#lb-mode').textContent = dbl ? 'Double · 2 contre 2' : 'Simple · classé';
+  $('#lb-kicker').textContent = LB.host ? 'TON SALON' : 'SALON EN LIGNE';
+  $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span><span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
+  $('#lb-code').textContent = LB.code || '·····';
+  if (dbl) {
+    $('#lb-teams').innerHTML = `<div class="lbt blue"><h4>ÉQUIPE BLEUE</h4>${lbCard(LB.slots[0], 0)}${lbCard(LB.slots[2], 2)}</div><div class="lb-vs">VS</div><div class="lbt red"><h4>ÉQUIPE ROUGE</h4>${lbCard(LB.slots[1], 1)}${lbCard(LB.slots[3], 3)}</div>`;
+  } else {
+    $('#lb-teams').innerHTML = `<div class="lbt blue">${lbCard(LB.slots[0], 0)}</div><div class="lb-vs">VS</div><div class="lbt red">${lbCard(LB.slots[1], 1)}</div>`;
+  }
+  $('#lb-feed').innerHTML = LB.feed.map((f, i) => `<div style="opacity:${1 - i * 0.17}">${esc(f)}</div>`).join('');
+  const me = LB.slots[LB.you];
+  const rb = $('#lb-ready');
+  rb.classList.toggle('accent', !(me && me.ready));
+  rb.classList.toggle('isready', !!(me && me.ready));
+  const humans = LB.slots.filter(Boolean).length;
+  rb.querySelector('b').textContent = me && me.ready ? '✔ Prêt — annuler' : 'Je suis prêt';
+  rb.querySelector('small').textContent = humans < 2 ? 'En attente d\'au moins un autre joueur' : 'La partie se lance quand tout le monde est prêt';
+  $('#lb-swap').classList.toggle('hidden', !dbl);
+  const fo = $('#lb-format'); fo.classList.toggle('hidden', !LB.host);
+  const n = LB.host ? (LB.count ? LB.count.n : 0) : LB.countN || 0;
+  const cd = $('#lb-count');
+  cd.classList.toggle('hidden', !n);
+  if (n && cd.dataset.n !== String(n)) { cd.dataset.n = n; cd.innerHTML = `<small>LA PARTIE COMMENCE</small><b>${n}</b>`; cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop'); sfx.ui(); }
+  if (!n) cd.dataset.n = '';
+}
 
 function onNetMessage(msg) {
   if (msg.t === 'rematch') { restartOnline(msg.firstServer); return; }
@@ -547,6 +674,12 @@ function onNetMessage(msg) {
     return;
   }
   if (msg.t === 'quit') { banner('Ton pote a quitté la partie', '', 2.5); setTimeout(() => quitToMenu(), 2200); return; }
+  if (msg.t === 'skip') {
+    // quelqu'un a passé le replay : on le coupe pour tout le monde
+    if (replay && !recording) { endReplay(); showStreak(`⏭ ${esc(msg.name || 'Un joueur')} a passé le replay`); }
+    else if (postPoint) postPoint.noReplay = true;
+    return;
+  }
   if (replay && !replay.end && (msg.t === 'toss' || msg.t === 'hit')) endReplay();
   if (msg.t === 'timeout') { timeout = { by: msg.name, pending: true, left: 30 }; banner(`Temps mort : ${msg.name}`, 'Il commence à la fin du point', 1.8); return; }
   if (msg.t === 'resume') { endTimeout(false); return; }
@@ -826,6 +959,8 @@ function startReplay(clip, onEnd) {
   R.camPos.set(2.6, 3.3, 5.6 * ((game && game.players[game.me] || {}).side || 1));
   document.body.classList.add('replaying');
   $('#replay').classList.remove('hidden');
+  const ps = /playstation|dualsense|dualshock|054c|wireless controller/i.test(input.padName || '');
+  $('#replay .skip').innerHTML = `${input.padName ? `<span class="kb pad">${ps ? '✕' : 'A'}</span>` : '<span class="kb key">Espace</span>'} Passer${net ? ' (pour tout le monde)' : ''}`;
 }
 function endReplay() {
   if (!replay) return;
@@ -968,7 +1103,9 @@ function loop(now) {
     if (replay) {
       // relecture au ralenti : le match est en pause
       const fake = replay.step(dt);
-      if (replay.done || (!recording && (inp.pressed.top || inp.pressed.plat))) { endReplay(); }
+      const skip = !recording && !timeout && (inp.pressed.top || inp.pressed.plat);
+      if (skip && net) net.send({ t: 'skip', name: myName() });
+      if (replay.done || skip) { endReplay(); for (const k of Object.keys(inp.pressed)) inp.pressed[k] = false; }
       else if (!window.__noRender) R.update(fake, dt * replay.speed);
       setCrowd(0.06);
       requestAnimationFrame(loop); return;
@@ -979,7 +1116,7 @@ function loop(now) {
         const pp = postPoint; postPoint = null;
         const clip = recorder.clip(4.5);
         if (!bestClip || pp.score > bestClip.score) { bestClip = clip; bestClip.score = pp.score; }
-        if (pp.big && !tuto) startReplay(clip, null);
+        if (pp.big && !tuto && !pp.noReplay) startReplay(clip, null);
       }
     }
     recorder.record(game, dt);

@@ -26,7 +26,7 @@
   <div id="hint"></div>
   <div id="charge"><div class="lbl"></div><div class="bar"><div class="fill"></div></div></div>
   <div id="mom"><div class="mlabel">SUPER</div><div class="mbar"><div></div></div><div class="mkey"></div></div>
-  <div id="replay" class="hidden"><div class="lb top"></div><div class="lb bot"></div><div class="tag"><i></i>REPLAY</div></div>
+  <div id="replay" class="hidden"><div class="lb top"></div><div class="lb bot"></div><div class="tag"><i></i>REPLAY</div><div class="skip"></div></div>
   
   <div id="walkout" class="hidden"><small class="wk"></small><div class="wl"><span class="wf"></span><b class="wn"></b></div><span class="wm"></span></div>
   <div id="vs" class="hidden">
@@ -126,19 +126,31 @@
     </section>
 
     <section class="screen hidden" id="scr-host">
-      <h2>Créer une partie</h2>
+      <h2>Créer un salon</h2>
       <div class="opt" id="host-mode" data-values="Simple (classé)|Double (2 contre 2)" data-v="simple|double" data-i="0"><span class="ol">Mode</span><span class="ov"></span></div>
       <div class="opt" id="host-format" data-values="1 manche|3 manches|5 manches|7 manches" data-v="1|3|5|7" data-i="1"><span class="ol">Format</span><span class="ov"></span></div>
-      <button class="mbtn accent" id="host-go"><span><b>Générer le code</b></span></button>
-      <div id="host-box" class="hidden">
-        <p class="status">Envoie ce code à ton pote</p>
-        <div id="host-code" class="code">·····</div>
-        <button class="mbtn small" id="copy"><span><b>Copier le code</b></span></button>
-        <p class="status" id="host-status">En attente de ton pote…</p>
-        <div id="host-lobby"></div>
-        <button class="mbtn accent hidden" id="host-start"><span><b>Lancer le double</b><small>Les places vides sont prises par l'IA</small></span></button>
-      </div>
+      <button class="mbtn accent" id="host-go"><span><b>Ouvrir le salon</b><small>Tu reçois un code à envoyer à tes potes</small></span></button>
+      <p class="status" id="host-status"></p>
       <button class="mbtn ghost" data-go="scr-online" id="host-back"><span><b>Retour</b></span></button>
+    </section>
+
+    <section class="screen hidden xwide" id="scr-lobby">
+      <div class="lb-head">
+        <div class="lb-title"><small id="lb-kicker">SALON EN LIGNE</small><b id="lb-mode">Simple</b><div id="lb-tags"></div></div>
+        <div class="lb-code"><small>CODE DU SALON</small><b id="lb-code">·····</b><button class="lb-copy" id="lb-copy">Copier</button></div>
+      </div>
+      <div id="lb-teams"></div>
+      <div class="lb-low">
+        <div id="lb-feed"></div>
+        <div class="lb-emotes" id="lb-emotes"></div>
+      </div>
+      <div class="lb-bar">
+        <div class="opt hidden" id="lb-format" data-values="1 manche|3 manches|5 manches|7 manches" data-v="1|3|5|7" data-i="1"><span class="ol">Format</span><span class="ov"></span></div>
+        <button class="mbtn small hidden" id="lb-swap"><span><b>Changer d'équipe</b></span></button>
+        <button class="mbtn accent" id="lb-ready"><span><b>Je suis prêt</b><small>La partie se lance quand tout le monde est prêt</small></span></button>
+        <button class="mbtn ghost small" data-go="scr-online" id="lb-quit"><span><b>Quitter le salon</b></span></button>
+      </div>
+      <div id="lb-count" class="hidden"></div>
     </section>
 
     <section class="screen hidden" id="scr-join">

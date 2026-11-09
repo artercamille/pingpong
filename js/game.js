@@ -23,7 +23,7 @@ const REACH = 1.05;
 const MOVE_SPEED = 4.2;
 const RELEASE_WIN = 0.7;
 const HAND_Y = 0.9;
-const SERVE_Y = 1.06; // hauteur idéale de frappe au service
+const SERVE_Y = 0.98; // hauteur idéale de frappe au service
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -36,6 +36,95 @@ export function gradeTiming(err) {
   return { q: 0.28, label: 'TROP TARD', grade: 0 };
 }
 const gauss = () => (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 0.577;
+
+// ------------------------------------------------------------------ services
+// Chaque bouton donne un service vraiment différent : trajectoire basse, rasant le filet.
+//  coupé (carré/X)  : court, lent, gros rétro → rebondit deux fois chez l'adversaire s'il ne l'attaque pas
+//  lift (croix/A)   : long et lifté, la balle « gicle » après le rebond
+//  rapide (rond/B)  : très rapide, long, peu d'effet
+//  latéral (tri./Y) : vitesse moyenne, gros effet latéral qui fait dévier la balle
+export const SERVE_SPEC = {
+  coupe: { v: [4.6, 5.8], spin: -150, depth: [0.55, 0.88], side: 0 },
+  top: { v: [6.2, 8.2], spin: 200, depth: [0.98, 1.24], side: 0 },
+  plat: { v: [8.4, 10.8], spin: 25, depth: [1.08, 1.28], side: 0 },
+  lob: { v: [5.0, 6.4], spin: 50, depth: [0.7, 1.05], side: 240 },
+};
+const TOPY = TABLE.H + 0.02, NETY = TABLE.H + 0.1525;
+function serveLaunch(pos, yaw, vh, vy, top, side) {
+  const dx = Math.sin(yaw), dz = Math.cos(yaw), ax = topAxis(dx, dz);
+  return { p: { ...pos }, v: { x: dx * vh, y: vy, z: dz * vh }, w: { x: ax.x * top, y: side, z: ax.z * top } };
+}
+// trace complète : 1er rebond, passage du filet, 2e rebond
+function serveTrace(b0, own) {
+  const b = copyBall(b0); let maxY = b.p.y, clear = null, bounces = [], prevZ = b.p.z;
+  for (let t = 0; t < 2.2 && bounces.length < 2; t += DT) {
+    const ev = []; stepBall(b, DT, ev);
+    if (bounces.length && (prevZ > 0) !== (b.p.z > 0)) clear = b.p.y - NETY;
+    prevZ = b.p.z;
+    if (bounces.length) maxY = Math.max(maxY, b.p.y);
+    for (const e of ev) { if (e.type === 'net' || e.type === 'floor') return null; if (e.type === 'table') bounces.push({ x: e.x, z: e.z, side: e.side }); }
+    if (b.p.y < TOPY - 0.05) return null;
+  }
+  if (bounces.length < 2 || bounces[0].side !== own || bounces[1].side === own || clear === null) return null;
+  // jouable : la balle doit arriver jusqu'au relanceur (bout de table) sans rebondir une 2e fois chez lui
+  for (let t = 0; t < 1.5; t += DT) {
+    const ev = []; stepBall(b, DT, ev);
+    if (ev.some(e => e.type === 'table' || e.type === 'net')) return null;
+    if (Math.abs(b.p.z) > 1.22) { if (b.p.y < TABLE.H + 0.06) return null; break; }
+  }
+  return { b1: bounces[0], b2: bounces[1], maxY, clear };
+}
+// distance (le long du tir) du premier passage au niveau de la table
+function firstCross(b0) {
+  const b = copyBall(b0);
+  for (let t = 0; t < 1; t += DT) { const py = b.p.y, ev = []; stepBall(b, DT, ev); const tb = ev.find(e => e.type === 'table'); if (tb) return { x: tb.x, z: tb.z }; if (py >= TOPY && b.p.y < TOPY) return b.p; }
+  return null;
+}
+export function planServe({ pos, s, type, q, aimX, aimY, sideSpin = 0, doubles = false, tx = null }) {
+  const S = SERVE_SPEC[type] || SERVE_SPEC.top;
+  const own = s > 0 ? 0 : 1;
+  const ax = clamp(aimX, -1, 1), ay = clamp(aimY, -1, 1);
+  const k = 0.35 + 0.65 * q;                                   // qualité du timing
+  const vh0 = S.v[0] + (S.v[1] - S.v[0]) * k;
+  const top = S.spin * (0.55 + 0.45 * q);
+  let side = (S.side * (sideSpin || 1) + (type !== 'lob' ? sideSpin * 110 : 0)) * (0.6 + 0.4 * q) * s;
+  const depth = S.depth[0] + (S.depth[1] - S.depth[0]) * (ay + 1) / 2 + gauss() * (1 - q) * 0.12;
+  const tz = -s * clamp(depth, 0.28, 1.28);
+  let tX = tx !== null ? tx : clamp(ax * 0.58 * s + gauss() * (1 - q) * 0.1, -0.66, 0.66);
+  const wantClear = 0.025 + (1 - q) * 0.14;                     // un service raté flotte au-dessus du filet
+  let best = null;
+  let aimx = tX;
+  for (let pass = 0; pass < 3; pass++) {
+    const yaw = Math.atan2(aimx - pos.x, tz - pos.z);
+    const dx = Math.sin(yaw), dz = Math.cos(yaw);
+    let cand = null;
+    for (const d1 of [0.14, 0.24, 0.34, 0.46, 0.58, 0.72]) {
+      const z1 = s * (TABLE.halfL - d1);
+      const D1 = (z1 - pos.z) / dz;                              // distance au 1er rebond
+      for (const m of [0.72, 0.82, 0.92, 1, 1.1, 1.22, 1.36]) {
+        const vh = vh0 * m;
+        let lo = -7, hi = 1.2, b = null;
+        for (let it = 0; it < 18; it++) {
+          const mid = (lo + hi) / 2, c = firstCross(serveLaunch(pos, yaw, vh, mid, top, side));
+          const along = c ? (c.x - pos.x) * dx + (c.z - pos.z) * dz : 99;
+          if (along > D1) hi = mid; else lo = mid;
+        }
+        b = serveLaunch(pos, yaw, vh, (lo + hi) / 2, top, side);
+        const tr = serveTrace(b, own);
+        if (!tr) continue;
+        if (Math.abs(tr.b2.x) > TABLE.halfW - 0.03 || Math.abs(tr.b2.z) > TABLE.halfL - 0.02) continue;
+        if (doubles) { const hs = own === 0 ? 1 : -1; if (tr.b1.x * hs < 0.02 || tr.b2.x * -hs < 0.02) continue; }
+        const sc = Math.abs(Math.abs(tr.b2.z) - Math.abs(tz)) * 3 + Math.abs(tr.b2.x - tX) * 1.5
+          + Math.abs(tr.clear - wantClear) * 6 + Math.max(0, tr.maxY - 1.02) * 12 + Math.abs(m - 1) * 1.5;
+        if (!cand || sc < cand.sc) cand = { sc, b, tr };
+      }
+    }
+    if (!cand) break;
+    best = !best || cand.sc < best.sc ? cand : best;
+    aimx += clamp(tX - cand.tr.b2.x, -0.4, 0.4);                  // corrige la dérive due à l'effet latéral
+  }
+  return best ? { v: best.b.v, w: best.b.w, tr: best.tr } : null;
+}
 
 export class Game {
   constructor(o) {
@@ -443,7 +532,7 @@ export class Game {
     const s = this.server();
     for (const pl of this.players) { pl.charging = false; pl.releaseType = null; }
     const sp = this.players[s];
-    if (this.local(s)) { sp.x = clamp(sp.x, -0.6, 0.6); sp.z = sp.side * 1.6; }
+    if (this.local(s)) { sp.x = this.doubles ? sp.side * clamp(Math.abs(sp.x), 0.25, 0.6) : clamp(sp.x, -0.6, 0.6); sp.z = sp.side * 1.6; }
     this.hooks.serve && this.hooks.serve(s);
   }
 
@@ -471,6 +560,17 @@ export class Game {
   serveHit(i, type, power, q, label) {
     const pl = this.players[i];
     let shot = null;
+    // service planifié : trajectoire rasante propre à chaque bouton
+    const M = pl.mods;
+    const qq = clamp(q * (M ? 0.8 + 0.4 * M.serve : 1), 0, 1);
+    const dtx = this.doubles ? -pl.side * clamp(0.38 - pl.aimX * 0.2, 0.15, 0.62) : null;
+    const ss = (pl.sideSpin || 0) + (hasSig(M, 'fantome') ? (Math.random() < 0.5 ? 1 : -1) : 0);
+    let plan = null;
+    for (const [ka, kq] of [[1, qq], [0.5, Math.max(qq, 0.6)], [0, 1]]) {
+      plan = planServe({ pos: { ...this.ball.p }, s: pl.side, type, q: kq, aimX: pl.aimX * ka, aimY: pl.aimY * ka, sideSpin: ss * ka, doubles: this.doubles, tx: dtx });
+      if (plan) break;
+    }
+    if (plan) shot = { v: plan.v, w: plan.w };
     // le service est toujours bon : seule sa qualité varie (vitesse, effet, précision)
     for (let k = 0; k < 6 && !shot; k++) {
       const qq = k < 3 ? q : 1, pw = k < 4 ? power : 0.3;

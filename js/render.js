@@ -978,7 +978,9 @@ export class Renderer {
     this.robot.visible = robotMode;
     game.players.forEach((pl, i) => {
       const fig = this.figures[i];
-      const hideMe = i === game.me && this.camMode === 'raquette' && !this.orbit && !this.replayCam;
+      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !this.intro;
+      // vue raquette : on ne voit ni son propre corps ni celui de son partenaire (seulement sa raquette)
+      const hideMe = fp && (i === game.me || (game.doubles && game.partner && i === game.partner(game.me)));
       fig.g.visible = !hideMe && !(robotMode && i === 1);
       this.paddles[i].obj.visible = !(robotMode && i === 1);
       if (fig.g.visible) fig.update(dt, pl, game, i, this.paddles[i].obj, this.camera);
@@ -1281,14 +1283,17 @@ export class Renderer {
     const s = me.side;
     if (this.camMode === 'tv' || this.camMode === 'haute') {
       const tv = this.camMode === 'tv';
-      const target = tv ? V(me.x * 0.25, 4.4, s * (Math.abs(me.z) + 3.4)) : V(me.x * 0.2, 3.5, s * (Math.abs(me.z) + 2.6));
-      const look = tv ? V(game.ball.p.x * 0.15, 0.45, -s * 0.7) : V(me.x * 0.15 + game.ball.p.x * 0.08, 0.55, -s * 0.55);
+      // haute : plongée fixe derrière sa moitié de table ; TV : plan large de trois quarts, comme à la télé
+      // (indépendantes de la profondeur du joueur : en double on recule souvent loin)
+      const bx = game.ball.p.x;
+      const target = tv ? V(3.4 + bx * 0.1, 3.6, s * 4.3) : V(me.x * 0.15, 4.3, s * 4.0);
+      const look = tv ? V(bx * 0.2, 0.55, -s * 0.15) : V(bx * 0.1, 0.45, -s * 0.6);
       this.camPos.lerp(target, Math.min(1, dt * 4)); this.camLook.lerp(look, Math.min(1, dt * 4));
       this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
       return;
     }
     // vue à la première personne, juste derrière la raquette
-    const target = V(me.x * 0.6, this.pressure ? 1.8 : 1.95, s * (Math.abs(me.z) + (this.pressure ? 1.25 : 1.7)));
+    const target = V(me.x * 0.6, this.pressure ? 1.8 : 1.95, s * Math.min(Math.abs(me.z) + (this.pressure ? 1.25 : 1.7), 4.2));
     const look = V(me.x * 0.25 + game.ball.p.x * 0.08, 0.68, -s * 0.9);
     const k = Math.min(1, dt * 6);
     this.camPos.lerp(target, k);

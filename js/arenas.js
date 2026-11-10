@@ -5,7 +5,7 @@ import * as THREE from 'three';
 // ------------------------------------------------------------------ définitions (paramètres de setVenue)
 export const ARENA_VENUES = {
   neotokyo: {
-    floorStyle: 'asphalt', floorRough: 0.25, mirrorTint: 0x7a7a7a, kit: 'tokyo', title: 'NEO TOKYO', sub: 'ROOFTOP SERIES', pattern: 'grid', floor: '#15111f', outer: 0x17161d, outerRough: 0.22, outerMetal: 0.35, outerSize: [46, 40],
+    bloom: 0.75, grade: { sat: 1.15, con: 1.08, tint: [1, 0.96, 1.05] }, floorStyle: 'asphalt', floorRough: 0.25, mirrorTint: 0x7a7a7a, kit: 'tokyo', title: 'NEO TOKYO', sub: 'ROOFTOP SERIES', pattern: 'grid', floor: '#15111f', outer: 0x17161d, outerRough: 0.22, outerMetal: 0.35, outerSize: [46, 40],
     accent: '#ff2bd6', neon: 0xff2bd6, neon2: 0x2be8ff, legs: 0x2be8ff, light: 0xff2bd6, amb: 16, bg: 0x0b0620, fog: 0.012,
     hemi: 0.45, hemiSky: 0x8a5fe6, hemiGround: 0x10081a, key: 1.1, spots: 0.85, ceiling: false, cones: false, screens: true, stands: 'sides',
     standCol: 0x16131e, seats: 0x2a1a40, table: '#0f1626', boardBg: '#0a0612', exposure: 1.1,
@@ -13,7 +13,7 @@ export const ARENA_VENUES = {
     items: ['NEO TOKYO', '@logo', 'ピンポン', 'ROOFTOP SERIES', '卓球'],
   },
   beach: {
-    floorStyle: 'deck', floorRough: 0.7, mirrorTint: 0x606060, kit: 'beach', title: 'SUNSET BEACH', sub: 'MIAMI OPEN AIR', pattern: 'waves', floor: '#1d6f8f', outer: 0xc89a68, outerRough: 0.95, outerSize: [56, 48],
+    bloom: 0.55, sunEnv: true, grade: { sat: 1.12, con: 1.05, tint: [1.05, 0.98, 0.92] }, floorStyle: 'deck', floorRough: 0.7, mirrorTint: 0x606060, kit: 'beach', title: 'SUNSET BEACH', sub: 'MIAMI OPEN AIR', pattern: 'waves', floor: '#1d6f8f', outer: 0xc89a68, outerRough: 0.95, outerSize: [56, 48],
     accent: '#ffd23c', neon: 0xff8a3c, neon2: 0xffd23c, legs: 0xff6a3c, light: 0xff8a50, amb: 8, bg: 0xff8a5a, fog: 0.009,
     hemi: 0.7, hemiSky: 0xffb890, hemiGround: 0x8a5a40, key: 1.25, spots: 0.55, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0xd8d2c8, seats: 0x3cb6c8, table: '#1f4fa8', boardBg: '#fff6e8', boardFg: '#1a3a6a', exposure: 0.84,
@@ -21,7 +21,7 @@ export const ARENA_VENUES = {
     items: ['SUNSET BEACH', '@logo', 'MIAMI OPEN AIR', 'SUMMER TOUR'],
   },
   underground: {
-    floorStyle: 'concrete', floorRough: 0.3, mirrorTint: 0x9a9a9a, kit: 'club', title: 'UNDERGROUND', sub: 'NIGHT SESSION', pattern: 'grid', floor: '#09090b', outer: 0x121214, outerRough: 0.35, outerMetal: 0.3,
+    bloom: 0.8, grade: { sat: 1.1, con: 1.12, vig: 0.5 }, floorStyle: 'concrete', floorRough: 0.3, mirrorTint: 0x9a9a9a, kit: 'club', title: 'UNDERGROUND', sub: 'NIGHT SESSION', pattern: 'grid', floor: '#09090b', outer: 0x121214, outerRough: 0.35, outerMetal: 0.3,
     accent: '#3dff6e', neon: 0x3dff6e, neon2: 0xff3dc8, legs: 0x18181c, light: 0x3dff6e, amb: 12, bg: 0x020402, fog: 0.02,
     hemi: 0.3, hemiSky: 0x3dff6e, hemiGround: 0x050505, key: 1.1, spots: 1.0, ceiling: false, cones: true, screens: false, stands: 'sides',
     standCol: 0x111111, seats: 0x1a1a1a, table: '#101012', boardBg: '#050505', exposure: 1.05,
@@ -29,7 +29,7 @@ export const ARENA_VENUES = {
     items: ['UNDERGROUND', '@logo', 'PING PONG CLUB', 'NIGHT SESSION'],
   },
   orbit: {
-    floorStyle: 'metal', floorRough: 0.3, mirrorTint: 0xa0a0a0, kit: 'space', title: 'ORBITAL', sub: 'STATION ZÉRO-G', pattern: 'hex', floor: '#141a24', outer: 0x1c222c, outerRough: 0.3, outerMetal: 0.7, outerSize: [46, 40],
+    bloom: 0.65, grade: { sat: 1.05, con: 1.1, tint: [0.95, 1, 1.06] }, floorStyle: 'metal', floorRough: 0.3, mirrorTint: 0xa0a0a0, kit: 'space', title: 'ORBITAL', sub: 'STATION ZÉRO-G', pattern: 'hex', floor: '#141a24', outer: 0x1c222c, outerRough: 0.3, outerMetal: 0.7, outerSize: [46, 40],
     accent: '#7fe3ff', neon: 0x7fe3ff, neon2: 0xffffff, legs: 0x9aa6b8, light: 0x7fe3ff, amb: 14, bg: 0x000000, fog: 0.003,
     hemi: 0.45, hemiSky: 0x6fa0ff, hemiGround: 0x0a0c12, key: 1.25, spots: 0.9, ceiling: false, cones: false, screens: true, stands: 'sides',
     standCol: 0x262c38, seats: 0x1f6fd6, table: '#0f1a30', boardBg: '#081018', exposure: 1.08, sky: 'space',
@@ -37,7 +37,7 @@ export const ARENA_VENUES = {
     items: ['ORBITAL', '@logo', 'STATION ZÉRO-G', 'PING PONG SPATIAL'],
   },
   sakura: {
-    floorStyle: 'darkwood', floorRough: 0.28, mirrorTint: 0x9a9a9a, kit: 'sakura', title: 'SAKURA', sub: 'TEMPLE MATSURI', pattern: 'planks', floor: '#5a3622', outer: 0x5a564c, outerRough: 0.95, outerSize: [60, 60],
+    bloom: 0.6, grade: { sat: 1.1, con: 1.05, tint: [1.04, 0.98, 1] }, floorStyle: 'darkwood', floorRough: 0.28, mirrorTint: 0x9a9a9a, kit: 'sakura', title: 'SAKURA', sub: 'TEMPLE MATSURI', pattern: 'planks', floor: '#5a3622', outer: 0x5a564c, outerRough: 0.95, outerSize: [60, 60],
     accent: '#ff9ad8', neon: 0xff7ab8, neon2: 0xffc83c, legs: 0xc8202e, light: 0xffb070, amb: 12, bg: 0x4a2a5a, fog: 0.011,
     hemi: 0.75, hemiSky: 0xffa8cc, hemiGround: 0x2a2a20, key: 1.25, spots: 0.6, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0x4a2c18, seats: 0x8a1a1a, table: '#1d3a2c', boardBg: '#1c0808', boardFg: '#ffe8d0', exposure: 1.02,
@@ -45,7 +45,7 @@ export const ARENA_VENUES = {
     items: ['SAKURA', '@logo', 'TEMPLE MATSURI', '桜'],
   },
   aurora: {
-    floorStyle: 'ice', floorRough: 0.15, mirrorTint: 0xb0c8d8, kit: 'aurora', title: 'AURORA', sub: 'CERCLE POLAIRE', pattern: 'ice', floor: '#a9d6ec', floorText: '#0a3a5a', outer: 0xb8cad8, outerRough: 0.75, outerSize: [70, 70],
+    bloom: 0.7, grade: { sat: 1.08, con: 1.06, tint: [0.95, 1, 1.05] }, floorStyle: 'ice', floorRough: 0.15, mirrorTint: 0xb0c8d8, kit: 'aurora', title: 'AURORA', sub: 'CERCLE POLAIRE', pattern: 'ice', floor: '#a9d6ec', floorText: '#0a3a5a', outer: 0xb8cad8, outerRough: 0.75, outerSize: [70, 70],
     accent: '#14b88a', neon: 0x3dffb0, neon2: 0x8a5aff, legs: 0x2a4a6a, light: 0x6affd0, amb: 10, bg: 0x06121e, fog: 0.008,
     hemi: 0.55, hemiSky: 0x5a90d8, hemiGround: 0x8ab0d0, key: 0.9, spots: 0.75, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0x2a3a4a, seats: 0x1a4a6a, table: '#14304a', boardBg: '#06121c', exposure: 0.88,
@@ -122,6 +122,34 @@ function garland(group, a, b, n, sag, mat, geo) {
   group.add(bulbs);
   return bulbs;
 }
+// halo lumineux doux autour d'une source (lanterne, torche, ampoule…)
+let haloTex = null;
+function halo(color, size, opacity = 0.6) {
+  haloTex = haloTex || tex(128, 128, (c, w, h) => { const r = c.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.2, 'rgba(255,255,255,0.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = r; c.fillRect(0, 0, w, h); });
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  sp.scale.setScalar(size); return sp;
+}
+// nuages peints (couches douces), teintés selon la lumière de la salle
+const cloudTexs = [];
+function cloudTex(k) {
+  if (cloudTexs[k]) return cloudTexs[k];
+  return (cloudTexs[k] = tex(512, 256, (c, w, h) => {
+    for (let i = 0; i < 70; i++) {
+      const x = w * 0.12 + Math.random() * w * 0.76, y = h * 0.35 + Math.random() * h * 0.35 - (Math.abs(x - w / 2) / w) * h * 0.25, r = 30 + Math.random() * 70;
+      const gr = c.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,255,255,${0.16 + Math.random() * 0.12})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = gr; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  }));
+}
+function clouds(g, n, rMin, rMax, yMin, yMax, color, opacity, aMin = 0, aMax = Math.PI * 2, scale = 1) {
+  const list = [];
+  for (let k = 0; k < n; k++) {
+    const a = R(aMin, aMax), d = R(rMin, rMax);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(R(30, 55) * scale, R(9, 16) * scale), new THREE.MeshBasicMaterial({ map: cloudTex(k % 4), color, transparent: true, opacity, depthWrite: false, fog: false }));
+    m.position.set(Math.cos(a) * d, R(yMin, yMax), Math.sin(a) * d); m.lookAt(0, m.position.y, 0); g.add(m); list.push(m);
+  }
+  return list;
+}
 function signTex(text, col, vertical, bg = 'rgba(0,0,0,0.75)') {
   const w = vertical ? 128 : 512, h = vertical ? 512 : 160;
   return tex(w, h, (g) => {
@@ -191,12 +219,41 @@ const BUILD = {
     train.position.set(0, 6, -45); g.add(train);
     const track = new THREE.Mesh(new THREE.BoxGeometry(200, 0.6, 1.2), new THREE.MeshStandardMaterial({ color: 0x1a1a22, metalness: 0.5, roughness: 0.6 })); track.position.set(0, 4.5, -45); g.add(track);
     for (let x = -90; x <= 90; x += 15) { const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 40, 0.8), track.material); p2.position.set(x, -15.5, -45); g.add(p2); }
+    // tour de Tokyo illuminée (treillis lumineux) derrière la ville
+    const tower = new THREE.Group(), lat = [];
+    const H = 92, lvls = 26, wAt = y => 9 * Math.pow(1 - y / H, 1.6) + 0.5;
+    const ring = (y) => { const w = wAt(y) / 2; return [[-w, y, -w], [w, y, -w], [w, y, w], [-w, y, w]]; };
+    for (let i = 0; i < lvls; i++) {
+      const y0 = i / lvls * H * 0.82, y1 = (i + 1) / lvls * H * 0.82, A = ring(y0), B = ring(y1);
+      for (let k = 0; k < 4; k++) { const n = (k + 1) % 4; lat.push(...A[k], ...B[k], ...A[k], ...A[n], ...A[k], ...B[n], ...A[n], ...B[k]); }
+    }
+    const latGeo = new THREE.BufferGeometry(); latGeo.setAttribute('position', new THREE.Float32BufferAttribute(lat, 3));
+    tower.add(new THREE.LineSegments(latGeo, new THREE.LineBasicMaterial({ color: 0xff7a2a, toneMapped: false, fog: false })));
+    for (const [y, w, hh] of [[H * 0.36, 7.2, 3.2], [H * 0.62, 4.2, 2]]) {
+      const deck = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, hh, 8), new THREE.MeshBasicMaterial({ color: 0xffe8c0, toneMapped: false, fog: false })); deck.position.y = y; tower.add(deck);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(w / 2 + 0.05, w / 2 + 0.05, hh * 0.3, 8), new THREE.MeshBasicMaterial({ color: 0x401808, fog: false })); band.position.y = y + hh * 0.2; tower.add(band);
+    }
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.4, H * 0.18, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, fog: false })); ant.position.y = H * 0.91; tower.add(ant);
+    const towerTop = halo(0xff3030, 6, 0.9); towerTop.position.y = H; tower.add(towerTop);
+    tower.position.set(-26, -46, -96); g.add(tower);
+    const towerGlow = halo(0xff8a3a, 60, 0.18); towerGlow.position.set(-26, 0, -95); g.add(towerGlow);
+    // nuages bas éclairés par la ville
+    clouds(g, 14, 70, 100, 10, 26, 0x8a4ab8, 0.55);
+    // projecteurs qui balaient le ciel
+    const beamM = new THREE.MeshBasicMaterial({ map: tex(32, 256, (c2, w, h) => { const gr2 = c2.createLinearGradient(0, h, 0, 0); gr2.addColorStop(0, 'rgba(255,255,255,0.5)'); gr2.addColorStop(1, 'rgba(255,255,255,0)'); c2.fillStyle = gr2; c2.fillRect(0, 0, w, h); }), color: 0xb0c8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false });
+    const sbeams = [];
+    for (const [x, z] of [[30, -60], [-50, -40], [45, 50]]) { const geo = new THREE.CylinderGeometry(1.8, 0.2, 90, 12, 1, true); geo.translate(0, 45, 0); const b = new THREE.Mesh(geo, beamM); b.position.set(x, 10, z); g.add(b); sbeams.push(b); }
+    // avions qui clignotent
+    const planes = [0, 1].map(k => { const p = halo(k ? 0xff4040 : 0xffffff, 1.2, 1); p.position.set(0, 45 + k * 8, -80); g.add(p); return p; });
     const blink = basic(0xff2020, { fog: false });
     const blinks = tops.map(p => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), blink); m.position.copy(p); g.add(m); return m; });
     const rain = fallers(1400, [18, 14, 20], 0x9fb8ff, 0.05, 0.55); g.add(rain);
     return { g, update(dt, t) {
       fall(rain, dt, t, 13, 1.2); const on = Math.sin(t * 3) > 0.6; blink.color.setRGB(on ? 1 : 0.2, 0.04, 0.04);
       train.position.x = ((t * 9) % 160) - 100;
+      sbeams.forEach((b, k) => { b.rotation.z = Math.sin(t * 0.25 + k * 2) * 0.5; b.rotation.x = Math.cos(t * 0.2 + k) * 0.3; });
+      planes.forEach((p, k) => { p.position.x = ((t * (4 + k) + k * 60) % 220) - 110; p.material.opacity = Math.sin(t * 5 + k) > 0.3 ? 1 : 0.1; });
+      towerTop.material.opacity = Math.sin(t * 2) > 0 ? 0.9 : 0.25;
       flick.forEach((m, k) => { const f = Math.sin(t * 37 + k * 9) > 0.97 || (Math.sin(t * 0.7 + k) > 0.985) ? 0.35 : 1; m.color.setScalar(f); });
     } };
   },
@@ -208,8 +265,8 @@ const BUILD = {
     g.add(skyDome(ARENA_VENUES.beach.sky));
     const sun = new THREE.Mesh(new THREE.CircleGeometry(7, 48), basic(0xffd890, { fog: false }));
     sun.position.set(-6, 3.2, -98); sun.lookAt(0, 3.2, 0); g.add(sun);
-    const halo = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), new THREE.MeshBasicMaterial({ map: tex(128, 128, (c, w, h) => { const r = c.createRadialGradient(64, 64, 4, 64, 64, 64); r.addColorStop(0, 'rgba(255,200,120,0.75)'); r.addColorStop(0.25, 'rgba(255,130,80,0.28)'); r.addColorStop(1, 'rgba(255,100,70,0)'); c.fillStyle = r; c.fillRect(0, 0, w, h); }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false }));
-    halo.position.set(-6, 3.2, -97); halo.lookAt(0, 3.2, 0); g.add(halo);
+    const sunHalo = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), new THREE.MeshBasicMaterial({ map: tex(128, 128, (c, w, h) => { const r = c.createRadialGradient(64, 64, 4, 64, 64, 64); r.addColorStop(0, 'rgba(255,200,120,0.75)'); r.addColorStop(0.25, 'rgba(255,130,80,0.28)'); r.addColorStop(1, 'rgba(255,100,70,0)'); c.fillStyle = r; c.fillRect(0, 0, w, h); }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false }));
+    sunHalo.position.set(-6, 3.2, -97); sunHalo.lookAt(0, 3.2, 0); g.add(sunHalo);
     // mer avec reflets qui scintillent
     const seaTex = tex(256, 256, (c, w, h) => { c.fillStyle = '#0c2a4a'; c.fillRect(0, 0, w, h); for (let k = 0; k < 200; k++) { c.fillStyle = `rgba(255,${150 + Math.random() * 80 | 0},110,${Math.random() * 0.45})`; c.fillRect(Math.random() * w, Math.random() * h, 6 + Math.random() * 30, 2); } });
     seaTex.wrapS = seaTex.wrapT = THREE.RepeatWrapping; seaTex.repeat.set(30, 30);
@@ -224,9 +281,20 @@ const BUILD = {
       const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.08, 0.28, 10), new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 })); cup.position.set(x, 2.3, z); g.add(cup);
       const f = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.5, 10), basic(0xffa040, { transparent: true, opacity: 0.95 })); f.position.set(x, 2.68, z); g.add(f);
       const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.32, 8), basic(0xfff0a0)); f2.position.set(x, 2.6, z); g.add(f2);
+      const hl = halo(0xff9040, 2.4, 0.55); hl.position.set(x, 2.7, z); g.add(hl);
       flames.push(f, f2);
     }
     for (const [x, z] of [[-4.9, -9.5], [4.9, 9.5]]) { const l = new THREE.PointLight(0xff9040, 8, 9, 1.6); l.position.set(x, 2.8, z); g.add(l); flames.push(l); }
+    // îles au loin, nuages dorés, voiliers, mouettes, rayons du soleil
+    for (const [x, z, w, h] of [[-55, -100, 40, 6], [-20, -105, 22, 3.5], [48, -98, 34, 8], [80, -60, 30, 5], [-85, -40, 26, 4]]) { const isl = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3a1e40, fog: true })); isl.scale.set(w, h, 6); isl.position.set(x, -0.3, z); g.add(isl); }
+    clouds(g, 10, 80, 100, 9, 22, 0xffb088, 0.85, -Math.PI * 0.85, -Math.PI * 0.15);
+    clouds(g, 10, 80, 100, 14, 30, 0xb070a0, 0.6);
+    const rays = [];
+    for (let k = 0; k < 7; k++) { const r2 = new THREE.Mesh(new THREE.PlaneGeometry(4 + k % 3 * 2, 70), new THREE.MeshBasicMaterial({ map: tex(32, 256, (c2, w, h) => { const gr2 = c2.createLinearGradient(0, h, 0, 0); gr2.addColorStop(0, 'rgba(255,200,140,0.35)'); gr2.addColorStop(1, 'rgba(255,200,140,0)'); c2.fillStyle = gr2; c2.fillRect(0, 0, w, h); }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false, side: THREE.DoubleSide })); r2.geometry.translate(0, 35, 0); r2.position.set(-6, 3.2, -96); r2.rotation.z = (k - 3) * 0.32; g.add(r2); rays.push(r2); }
+    const sailMat = new THREE.MeshBasicMaterial({ color: 0xffe8d8, side: THREE.DoubleSide }), hullMat = new THREE.MeshBasicMaterial({ color: 0x2a1a30 });
+    const boats = [[-35, -70], [22, -78], [55, -66]].map(([x, z]) => { const b = new THREE.Group(); const hull = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 0.9), hullMat); b.add(hull); const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(1.6, 0); sh.lineTo(0, 4); const sail = new THREE.Mesh(new THREE.ShapeGeometry(sh), sailMat); sail.position.set(-0.6, 0.3, 0); b.add(sail); b.position.set(x, 0, z); g.add(b); return b; });
+    const gullGeo = new THREE.BufferGeometry(); gullGeo.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0.15, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.15, 0], 3));
+    const gulls = []; for (let k = 0; k < 9; k++) { const gl = new THREE.LineSegments(gullGeo, new THREE.LineBasicMaterial({ color: 0x2a1a28 })); g.add(gl); gulls.push({ gl, a: R(0, 6), r: R(14, 26), y: R(6, 10), sp: R(0.15, 0.3), cx: R(-8, 8), cz: R(-40, -25) }); }
     // palmiers
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.9 }), leafMat = new THREE.MeshStandardMaterial({ color: 0x1f4a24, roughness: 0.8, side: THREE.DoubleSide });
     const leafGeo = new THREE.PlaneGeometry(0.55, 3, 1, 6); { const p = leafGeo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 1.5; p.setY(i, y); p.setZ(i, -y * y * 0.12); p.setX(i, p.getX(i) * Math.sin(Math.max(0.1, y / 3) * Math.PI)); } leafGeo.computeVertexNormals(); }
@@ -256,6 +324,9 @@ const BUILD = {
     return { g, update(dt, t) {
       seaTex.offset.x = t * 0.004; seaTex.offset.y = Math.sin(t * 0.3) * 0.01;
       for (const p of palms) p.crown.rotation.z = Math.sin(t * 0.9 + p.ph) * 0.06;
+      rays.forEach((r2, k) => { r2.material.opacity = 0.6 + Math.sin(t * 0.4 + k * 1.3) * 0.4; });
+      boats.forEach((b, k) => { b.position.x += dt * (0.3 + k * 0.1); if (b.position.x > 70) b.position.x = -70; b.rotation.z = Math.sin(t + k) * 0.05; });
+      for (const q of gulls) { q.a += dt * q.sp; q.gl.position.set(q.cx + Math.cos(q.a) * q.r, q.y + Math.sin(q.a * 3) * 0.4, q.cz + Math.sin(q.a) * q.r * 0.5); q.gl.rotation.y = -q.a; q.gl.scale.y = 1 + Math.sin(t * 9 + q.a * 10) * 0.8; }
       flames.forEach((f, k) => { if (f.isMesh) f.scale.set(1, 0.85 + Math.sin(t * 14 + k * 1.7) * 0.15 + Math.random() * 0.08, 1); else f.intensity = 7 + Math.random() * 2; });
       bulbMat.color.setScalar(0.92 + Math.sin(t * 7) * 0.04); bulbMat.color.b = 0.55;
     } };
@@ -330,10 +401,26 @@ const BUILD = {
       const geo = new THREE.CylinderGeometry(0.012, 0.012, 34, 5, 1, true); geo.translate(0, -17, 0);
       const l = new THREE.Mesh(geo, m); l.position.set(0, 10.2, z); g.add(l); lasers.push({ l, k, z, m });
     }
+    // lyres motorisées sur un pont lumière : faisceaux colorés qui balaient la piste
+    const truss = new THREE.MeshStandardMaterial({ color: 0x2a2a30, metalness: 0.8, roughness: 0.35 });
+    for (const z of [-9, 9]) { const tb = new THREE.Mesh(new THREE.BoxGeometry(18, 0.35, 0.35), truss); tb.position.set(0, 8.4, z); g.add(tb); }
+    const heads = [];
+    const hbTex = tex(32, 256, (c2, w, h) => { const gr2 = c2.createLinearGradient(0, 0, 0, h); gr2.addColorStop(0, 'rgba(255,255,255,0.55)'); gr2.addColorStop(1, 'rgba(255,255,255,0)'); c2.fillStyle = gr2; c2.fillRect(0, 0, w, h); });
+    for (const z of [-9, 9]) for (let k = 0; k < 5; k++) {
+      const x = -7 + k * 3.5, col = [0xff3dc8, 0x3dff6e, 0x3de8ff, 0xffd23c, 0xff3dc8][k];
+      const head = new THREE.Group(); head.position.set(x, 8.1, z); g.add(head);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.5, 12), truss); head.add(body);
+      const geo = new THREE.CylinderGeometry(0.15, 1.6, 12, 16, 1, true); geo.translate(0, -6, 0);
+      const beam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: hbTex, color: col, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false }));
+      head.add(beam); const lens = halo(col, 1.2, 0.9); lens.position.y = -0.3; head.add(lens);
+      heads.push({ head, k, z });
+    }
+    const ballGlow = halo(0xffffff, 3, 0.35); ballGlow.position.set(0, 9, 0); g.add(ballGlow);
     const strobe = new THREE.PointLight(0xffffff, 0, 40, 1.4); strobe.position.set(0, 9, 0); g.add(strobe);
     let st = 0;
     return { g, update(dt, t, cheer) {
       ball.rotation.y += dt * 0.6;
+      for (const H2 of heads) { H2.head.rotation.x = Math.sin(t * 0.8 + H2.k) * 0.5 + (H2.z > 0 ? 0.35 : -0.35); H2.head.rotation.z = Math.sin(t * 0.6 + H2.k * 1.7 + (H2.z > 0 ? 2 : 0)) * 0.6; }
       const beat = t * 2.133;
       leds.forEach((m, k) => { const on = (Math.floor(beat) + k) % 4 === 0; m.color.setHex(on ? 0xffffff : k % 2 ? 0x3dff6e : 0xff3dc8); });
       for (const L of lasers) { const s = Math.sign(L.z); L.l.rotation.set(s * (0.75 + Math.sin(t * 0.7 + L.k) * 0.35), 0, Math.sin(t * 0.9 + L.k * 0.7) * 0.9); L.m.opacity = 0.35 + 0.3 * Math.max(0, Math.sin(beat * Math.PI)); }
@@ -387,13 +474,30 @@ const BUILD = {
       const a = R(0, 6.28), d = R(28, 70), r = new THREE.Mesh(new THREE.IcosahedronGeometry(R(0.4, 2.2), 0), rockMat);
       r.position.set(Math.cos(a) * d, R(-8, 25), Math.sin(a) * d); g.add(r); rocks.push({ r, sp: R(0.1, 0.5) });
     }
+    // anneau de station au loin et vaisseaux qui passent
+    const ringSt = new THREE.Group();
+    ringSt.add(new THREE.Mesh(new THREE.TorusGeometry(26, 2.2, 12, 80), new THREE.MeshStandardMaterial({ color: 0x8a94a6, metalness: 0.8, roughness: 0.4, fog: false })));
+    const winRing = new THREE.Mesh(new THREE.TorusGeometry(26, 2.25, 4, 160), new THREE.MeshBasicMaterial({ map: (() => { const t2 = tex(512, 16, (c2, w, h) => { c2.fillStyle = '#000'; c2.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 6) if (Math.random() < 0.6) { c2.fillStyle = Math.random() < 0.8 ? '#bfe8ff' : '#ffd890'; c2.fillRect(x, 6, 3, 4); } }); t2.wrapS = THREE.RepeatWrapping; t2.repeat.set(6, 1); return t2; })(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false }));
+    ringSt.add(winRing);
+    for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 26, 8), new THREE.MeshStandardMaterial({ color: 0x6a7486, metalness: 0.8, roughness: 0.4, fog: false })); sp.rotation.z = k / 6 * Math.PI; ringSt.add(sp); }
+    ringSt.position.set(55, 12, -85); ringSt.rotation.set(0.5, -0.6, 0); g.add(ringSt);
+    const ships = [0, 1, 2].map(k => {
+      const sh = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.ConeGeometry(0.6, 3.2, 6), metal); hull.rotation.z = -Math.PI / 2; sh.add(hull);
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 2.6), metal); wing.position.x = -0.6; sh.add(wing);
+      const eng = halo(k === 1 ? 0xff8a3c : 0x7fe3ff, 2.2, 1); eng.position.x = -1.8; sh.add(eng);
+      const trail = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.35), new THREE.MeshBasicMaterial({ map: tex(256, 8, (c2, w, h) => { const gr2 = c2.createLinearGradient(0, 0, w, 0); gr2.addColorStop(0, 'rgba(127,227,255,0)'); gr2.addColorStop(1, 'rgba(127,227,255,0.8)'); c2.fillStyle = gr2; c2.fillRect(0, 0, w, h); }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false, side: THREE.DoubleSide }));
+      trail.position.x = -8.8; sh.add(trail);
+      g.add(sh); return { sh, k };
+    });
     const sat = new THREE.Group();
     sat.add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 2), metal));
     for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 1.4), new THREE.MeshStandardMaterial({ color: 0x1a3a8a, metalness: 0.6, roughness: 0.3, emissive: 0x0a1a4a })); p.position.x = sx * 2.7; sat.add(p); }
     const satLight = basic(0xff3030, { fog: false }); const sl = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), satLight); sl.position.y = 0.7; sat.add(sl);
     g.add(sat);
     return { g, update(dt, t) {
-      planet.rotation.y += dt * 0.012; ring.rotation.z += dt * 0.004;
+      planet.rotation.y += dt * 0.012; ring.rotation.z += dt * 0.004; ringSt.rotation.z += dt * 0.03;
+      for (const S2 of ships) { const u = ((t * (0.05 + S2.k * 0.015) + S2.k * 0.33) % 1); S2.sh.position.set(-90 + u * 180, 6 + S2.k * 5, -45 - S2.k * 12 + Math.sin(u * 6) * 3); S2.sh.rotation.z = Math.sin(u * 6) * 0.1; }
       for (const r of rocks) { r.r.rotation.x += dt * r.sp; r.r.rotation.y += dt * r.sp * 0.7; }
       sat.position.set(Math.cos(t * 0.05) * 40, 18 + Math.sin(t * 0.1) * 2, Math.sin(t * 0.05) * 40); sat.rotation.y = -t * 0.05; sat.rotation.z = 0.3;
       satLight.color.setScalar(Math.sin(t * 4) > 0.7 ? 1 : 0.1); satLight.color.r = 1;
@@ -481,11 +585,24 @@ const BUILD = {
       const l = new THREE.Mesh(lanternGeo, lantern); l.position.set(sx * 4.8, 2.5, z); g.add(l);
       for (const dy of [0.33, -0.33]) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.06, 12), post); cap.position.set(sx * 4.8, 2.5 + dy, z); g.add(cap); }
     }
+    clouds(g, 12, 80, 100, 12, 26, 0xffb0c0, 0.7);
+    // seconde pagode et lucioles
+    const pag2 = pag.clone(); pag2.position.set(30, 0, -42); pag2.scale.setScalar(0.8); g.add(pag2);
+    const ffN = 160, ffP = new Float32Array(ffN * 3), ffPh = [];
+    for (let k = 0; k < ffN; k++) { ffP.set([R(-22, 22), R(0.4, 4), R(-24, 24)], k * 3); ffPh.push(R(0, 6)); }
+    const ffGeo = new THREE.BufferGeometry(); ffGeo.setAttribute('position', new THREE.BufferAttribute(ffP, 3));
+    const ff = new THREE.Points(ffGeo, new THREE.PointsMaterial({ color: 0xffe08a, size: 0.12, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); g.add(ff);
+    for (const sx of [-1, 1]) for (const z of [-4, 4]) { const hl = halo(0xffa040, 1.8, 0.5); hl.position.set(sx * 4.8, 2.5, z); g.add(hl); }
+    for (const [x, z] of [[-5.6, -9.4], [5.6, -9.4], [-5.6, 9.4], [5.6, 9.4]]) { const hl = halo(0xffb050, 1.6, 0.45); hl.position.set(x, 1.42, z); g.add(hl); }
     const redLantern = basic(0xff3a2a), rl = new THREE.SphereGeometry(0.2, 10, 8);
     for (const z of [-12, 12]) garland(g, new THREE.Vector3(-3.6, 6.2, z * 1.25), new THREE.Vector3(3.6, 6.2, z * 1.25), 9, 0.6, redLantern, rl);
     for (const sx of [-1, 1]) garland(g, new THREE.Vector3(sx * 4.8, 4.4, -12), new THREE.Vector3(sx * 4.8, 4.4, 12), 16, 1.2, redLantern, rl);
     const petals = fallers(700, [16, 12, 18], 0xffb7d5, 0.09, 0.95); g.add(petals);
-    return { g, update(dt, t) { fall(petals, dt, t, 0.6, 0.5, 0.8); lantern.color.setRGB(1, 0.6 + Math.sin(t * 5) * 0.03, 0.25); } };
+    return { g, update(dt, t) {
+      fall(petals, dt, t, 0.6, 0.5, 0.8); lantern.color.setRGB(1, 0.6 + Math.sin(t * 5) * 0.03, 0.25);
+      for (let k = 0; k < ffN; k++) { const i = k * 3, ph = ffPh[k]; ffP[i] += Math.sin(t * 0.7 + ph) * dt * 0.4; ffP[i + 1] += Math.cos(t * 0.9 + ph * 2) * dt * 0.25; ffP[i + 2] += Math.cos(t * 0.6 + ph) * dt * 0.4; if (Math.abs(ffP[i]) < 5.5 && Math.abs(ffP[i + 2]) < 9) ffP[i] += Math.sign(ffP[i] || 1) * dt; }
+      ff.geometry.attributes.position.needsUpdate = true; ff.material.opacity = 0.6 + Math.sin(t * 3) * 0.3;
+    } };
   },
 
   // ---------------- Aurora : arène sur la banquise, aurores boréales, montagnes, sapins, neige
@@ -538,6 +655,16 @@ const BUILD = {
       const f = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 10), basic(0xff8a2a, { transparent: true, opacity: 0.9 })); f.position.set(x, 1.25, z); g.add(f); fire.push(f);
       const l = new THREE.PointLight(0xff8a3a, 6, 8, 1.6); l.position.set(x, 1.6, z); g.add(l); fire.push(l);
     }
+    // chalet aux fenêtres chaudes, étoiles filantes, halos des braseros
+    const cabin = new THREE.Group(), wood = new THREE.MeshStandardMaterial({ color: 0x4a2c18, roughness: 1 });
+    cabin.add(place(new THREE.Mesh(new THREE.BoxGeometry(6, 3, 4.5), wood), 0, 1.5, 0));
+    const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 4.2, 2.4, 4, 1), new THREE.MeshStandardMaterial({ color: 0xeef6ff, roughness: 1 })); roof.rotation.y = Math.PI / 4; roof.scale.set(1.15, 1, 0.85); roof.position.y = 4.2; cabin.add(roof);
+    for (const x of [-1.6, 1.6]) { const w2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.9), basic(0xffb050)); w2.position.set(x, 1.7, 2.26); cabin.add(w2); const hl = halo(0xffa040, 3, 0.5); hl.position.set(x, 1.7, 2.4); cabin.add(hl); }
+    cabin.position.set(14, 0, -30); cabin.rotation.y = -0.4; g.add(cabin);
+    const cabin2 = cabin.clone(); cabin2.position.set(-18, 0, 32); cabin2.rotation.y = Math.PI + 0.3; g.add(cabin2);
+    for (const f of fire) if (f.isMesh) { const hl = halo(0xff8a3a, 1.5, 0.35); hl.position.copy(f.position); g.add(hl); }
+    const shoot = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.12), new THREE.MeshBasicMaterial({ map: tex(256, 8, (c2, w, h) => { const gr2 = c2.createLinearGradient(0, 0, w, 0); gr2.addColorStop(0, 'rgba(255,255,255,0)'); gr2.addColorStop(1, 'rgba(255,255,255,1)'); c2.fillStyle = gr2; c2.fillRect(0, 0, w, h); }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false, side: THREE.DoubleSide }));
+    g.add(shoot); let shootT = 0, shootV = new THREE.Vector3();
     const snow = fallers(1200, [20, 14, 22], 0xffffff, 0.07, 0.85); g.add(snow);
     return { g, update(dt, t) {
       for (const R2 of ribbons) {
@@ -547,6 +674,9 @@ const BUILD = {
         R2.r.material.opacity = 0.75 + Math.sin(t * 0.4 + R2.ph) * 0.25;
       }
       fall(snow, dt, t, 0.9, 0.3, 0.4);
+      shootT -= dt;
+      if (shootT <= 0) { shootT = R(2.5, 6); const a = R(-0.6, 0.6); shoot.position.set(R(-40, 40), R(14, 24), R(-70, -50) * (rnd() < 0.5 ? 1 : -1)); shootV.set(Math.cos(a) * 40, -12, 0); shoot.lookAt(shoot.position.x, shoot.position.y, 0); shoot.material.opacity = 1; }
+      shoot.position.addScaledVector(shootV, dt); shoot.material.opacity = Math.max(0, shoot.material.opacity - dt * 1.4); shoot.rotation.z = Math.atan2(shootV.y, shootV.x);
       fire.forEach((f, k) => { if (f.isMesh) f.scale.set(1, 0.8 + Math.sin(t * 13 + k) * 0.2 + Math.random() * 0.1, 1); else f.intensity = 5 + Math.random() * 2; });
     } };
   },

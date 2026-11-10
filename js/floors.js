@@ -51,7 +51,7 @@ const STYLES = {
     m.fillStyle = '#9a9a9a'; m.fillRect(0, 0, w, h);
     for (let k = 0; k < 26; k++) {
       const x = rnd() * w, y = rnd() * h, rx = R(60, 260), ry = R(40, 160), a = R(0, 3);
-      for (const [ctx, col] of [[g, 'rgba(10,8,16,0.45)'], [m, '#202020']]) {
+      for (const [ctx, col] of [[g, 'rgba(10,8,16,0.35)'], [m, '#303030']]) {
         ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.beginPath();
         for (let t = 0; t <= 24; t++) { const ang = t / 24 * Math.PI * 2, rr = 1 + Math.sin(ang * 3 + k) * 0.18 + Math.sin(ang * 5 + k * 2) * 0.1; ctx.lineTo(Math.cos(ang) * rx * rr, Math.sin(ang) * ry * rr); }
         ctx.fillStyle = col; ctx.fill(); ctx.restore();

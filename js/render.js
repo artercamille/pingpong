@@ -467,7 +467,8 @@ export class Renderer {
     this.scene.background = new THREE.Color(0x050409);
     this.scene.fog = new THREE.FogExp2(0x07050d, 0.03);
     const pm = new THREE.PMREMGenerator(this.r);
-    this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.pmrem = pm; this.defaultEnv = pm.fromScene(new RoomEnvironment(), 0.04).texture; this.envCache = {};
+    this.scene.environment = this.defaultEnv;
     this.scene.environmentIntensity = 0.18;
 
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.03, 160);
@@ -507,15 +508,16 @@ export class Renderer {
     this.composer.addPass(new OutputPass());
     // étalonnage final : contraste, saturation, vignette et léger grain (rendu « diffusion TV »)
     this.grade = new ShaderPass({
-      uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: 0.38 }, uSat: { value: 1.08 }, uCon: { value: 1.06 } },
+      uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: 0.38 }, uSat: { value: 1.08 }, uCon: { value: 1.06 }, uTint: { value: new THREE.Vector3(1, 1, 1) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uVig, uSat, uCon; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uVig, uSat, uCon; uniform vec3 uTint; varying vec2 vUv;
         float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         void main(){
           vec4 c = texture2D(tDiffuse, vUv);
           float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
           c.rgb = mix(vec3(l), c.rgb, uSat);
           c.rgb = (c.rgb - 0.5) * uCon + 0.5;
+          c.rgb *= uTint;
           vec2 d = vUv - 0.5; d.x *= 1.25;
           c.rgb *= 1.0 - uVig * smoothstep(0.25, 0.85, length(d));
           c.rgb += (h(vUv * 900.0 + uTime) - 0.5) * 0.018;
@@ -574,11 +576,31 @@ export class Renderer {
     this.floorCanvas = fc; this.floorMask = mc;
     const floorTex = new THREE.CanvasTexture(fc); floorTex.colorSpace = THREE.SRGBColorSpace; floorTex.anisotropy = 8;
     const maskTex = new THREE.CanvasTexture(mc);
-    this.courtMat = new THREE.MeshStandardMaterial({ map: floorTex, alphaMap: maskTex, transparent: true, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.8 });
+    this.courtMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.5, metalness: 0.05, envMapIntensity: 0.8 });
+    this.maskTex = maskTex;
     const court = new THREE.Mesh(new THREE.PlaneGeometry(COURT.hx * 2, COURT.hz * 2), this.courtMat);
-    court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; court.renderOrder = -1; s.add(court);
-    this.mirror = new Reflector(new THREE.PlaneGeometry(COURT.hx * 2, COURT.hz * 2), { textureWidth: 768, textureHeight: 768, color: 0x9a9a9a, clipBias: 0.003 });
-    this.mirror.rotation.x = -Math.PI / 2; this.mirror.position.y = 0.0008; s.add(this.mirror);
+    court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; s.add(court);
+    // reflet ajouté par-dessus le sol (additif : jamais de « trous » noirs), adouci et modulé par la matière
+    const MirrorShader = {
+      name: 'SoftMirror',
+      uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null }, tMask: { value: maskTex }, uBlur: { value: 0.004 } },
+      vertexShader: `uniform mat4 textureMatrix; varying vec4 vUv; varying vec2 vM;
+        void main() { vUv = textureMatrix * vec4(position, 1.0); vM = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform vec3 color; uniform sampler2D tDiffuse, tMask; uniform float uBlur; varying vec4 vUv; varying vec2 vM;
+        void main() {
+          vec2 p = vUv.xy / vUv.w; float b = uBlur;
+          vec3 c = texture2D(tDiffuse, p).rgb * 0.36;
+          c += texture2D(tDiffuse, p + vec2(b, 0.0)).rgb * 0.16 + texture2D(tDiffuse, p - vec2(b, 0.0)).rgb * 0.16;
+          c += texture2D(tDiffuse, p + vec2(0.0, b * 1.6)).rgb * 0.16 + texture2D(tDiffuse, p - vec2(0.0, b * 1.6)).rgb * 0.16;
+          float k = clamp((1.0 - texture2D(tMask, vM).g) * 1.7, 0.0, 1.0);
+          gl_FragColor = vec4(c * color * k, 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`,
+    };
+    this.mirror = new Reflector(new THREE.PlaneGeometry(COURT.hx * 2, COURT.hz * 2), { textureWidth: 768, textureHeight: 768, color: 0x9a9a9a, clipBias: 0.003, shader: MirrorShader });
+    Object.assign(this.mirror.material, { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.mirror.rotation.x = -Math.PI / 2; this.mirror.position.y = 0.0032; this.mirror.renderOrder = 1; s.add(this.mirror);
     // le reflet ne montre que l'aire de jeu (table, joueurs, panneaux, éclairages) : pas le décor lointain ni le public
     const mirrorRender = this.mirror.onBeforeRender;
     this.mirror.onBeforeRender = (...args) => {
@@ -1366,13 +1388,11 @@ export class Renderer {
   }
   drawFloor(v) {
     paintFloor(this.floorCanvas, this.floorMask, v, logo);
-    this.courtMat.map.needsUpdate = true; this.courtMat.alphaMap.needsUpdate = true;
+    this.courtMat.map.needsUpdate = true; this.maskTex.needsUpdate = true;
     this.courtMat.roughness = v.floorRough ?? 0.5;
-    const refl = v.reflect ?? 1;
-    this.mirror.visible = refl > 0;
-    this.courtMat.transparent = refl > 0; this.courtMat.alphaMap = refl > 0 ? this.courtMat.alphaMap : this.courtMat.alphaMap; this.courtMat.opacity = 1;
+    this.mirror.visible = (v.reflect ?? 1) > 0;
     this.mirror.material.uniforms.color.value.setHex(v.mirrorTint ?? 0x8a8a8a);
-    this.courtMat.needsUpdate = true;
+    this.mirror.material.uniforms.uBlur.value = 0.002 + (v.floorRough ?? 0.5) * 0.012;
   }
   drawBoards(bg, fg, accent, items) {
     const c = this.boardTex.image, g = c.getContext('2d'), w = c.width, h = c.height;
@@ -1429,8 +1449,34 @@ export class Renderer {
     this.drawBoards(v.boardBg ?? '#0c0c12', v.boardFg ?? '#ffffff', v.accent, v.items || ['@logo', 'PINGPONG']);
     this.drawTableTop(v.table ?? '#131a25');
     this.r.toneMappingExposure = v.exposure ?? 1.05;
+    // reflets d'environnement aux couleurs de la salle (table, raquettes, métal)
+    this.scene.environment = v.sky || v.kit ? this.arenaEnv(v) : this.defaultEnv;
+    this.scene.environmentIntensity = v.envI ?? (v.kit ? 0.45 : 0.18);
+    // étalonnage propre à la salle
+    const gr = v.grade || {};
+    this.grade.uniforms.uSat.value = gr.sat ?? 1.08; this.grade.uniforms.uCon.value = gr.con ?? 1.06; this.grade.uniforms.uVig.value = gr.vig ?? 0.38;
+    this.grade.uniforms.uTint.value.set(...(gr.tint || [1, 1, 1]));
+    this.bloom.strength = v.bloom ?? 0.5;
     this.lastScoreKey = '';
     this.venue = v;
+  }
+  arenaEnv(v) {
+    const key = v.title + (v.kit || '');
+    if (this.envCache[key]) return this.envCache[key];
+    const es = new THREE.Scene();
+    const stops = Array.isArray(v.sky) ? v.sky : ['#000004', '#05060c', '#0a0c18', '#141826'];
+    const c = document.createElement('canvas'); c.width = 8; c.height = 256; const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 0, 128); stops.forEach((col, i) => grd.addColorStop(i / (stops.length - 1), col)); g.fillStyle = grd; g.fillRect(0, 0, 8, 128);
+    g.fillStyle = '#' + (v.outer ?? 0x111111).toString(16).padStart(6, '0'); g.fillRect(0, 128, 8, 128);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    es.add(new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })));
+    // panneaux lumineux : projecteurs blancs au plafond + néons de la salle tout autour
+    const add = (col, w, h, x, y, z, k = 1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 1, 0); es.add(m); };
+    add(0xffffff, 8, 8, 0, 20, 0, 2.5);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; add(k % 2 ? v.neon : (v.neon2 ?? v.light ?? v.neon), 6, 1.2, Math.cos(a) * 18, 3, Math.sin(a) * 18, 2); }
+    if (v.sunEnv) add(0xffc080, 14, 10, -6, 4, -40, 4);
+    const tex = this.pmrem.fromScene(es, 0.02).texture;
+    this.envCache[key] = tex; return tex;
   }
   setTheme(t) {
     this.mats.neon.emissive.setHex(t.neon);

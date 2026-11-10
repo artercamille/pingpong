@@ -7,6 +7,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
+import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { paintFloor } from './floors.js';
 import { TABLE, NET, BALL_R, topAxis } from './physics.js';
 import { IDEAL_REL } from './game.js';
@@ -452,6 +453,54 @@ class Particles {
   }
 }
 
+// ------------------------------------------------------------------ profondeur de champ
+// Flou d'arrière-plan façon caméra de télévision : le terrain reste net, le public devient du « bokeh ».
+class DofPass extends Pass {
+  constructor(camera) {
+    super(); this.camera = camera; this.needsSwap = true; this.scale = 1;
+    this.cur = { start: 20, end: 40, max: 0, near: 0 }; this.tgt = { ...this.cur };
+    this.u = { tDiffuse: { value: null }, tDepth: { value: null }, uNear: { value: 0.03 }, uFar: { value: 160 }, uStart: { value: 20 }, uEnd: { value: 40 }, uMax: { value: 0 }, uNearB: { value: 0 }, uNearEnd: { value: 1 }, uPx: { value: new THREE.Vector2(1, 1) } };
+    this.quad = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: this.u, depthTest: false, depthWrite: false,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse, tDepth; uniform float uNear, uFar, uStart, uEnd, uMax, uNearB, uNearEnd; uniform vec2 uPx; varying vec2 vUv;
+        float coc(vec2 uv) {
+          float d = texture2D(tDepth, uv).x;
+          float z = -(uNear * uFar) / ((uFar - uNear) * d - uFar);
+          return max(smoothstep(uStart, uEnd, z), uNearB * (1.0 - smoothstep(uNearEnd * 0.35, uNearEnd, z)));
+        }
+        void main() {
+          vec4 col = texture2D(tDiffuse, vUv);
+          if (uMax < 0.05) { gl_FragColor = col; return; }
+          float c0 = coc(vUv);
+          if (c0 < 0.02) { gl_FragColor = col; return; }
+          vec3 acc = col.rgb; float w = 1.0; float rad = c0 * uMax;
+          for (int i = 1; i <= 30; i++) {
+            float fi = float(i), r = sqrt(fi / 30.0) * rad, a = fi * 2.39996;
+            vec2 uv = vUv + vec2(cos(a), sin(a)) * r * uPx;
+            vec3 sc = texture2D(tDiffuse, uv).rgb;
+            // seuls les pixels eux-mêmes flous s'étalent : le premier plan net ne bave pas sur le fond
+            float ws = smoothstep(0.0, 0.25, coc(uv)) * (1.0 + dot(sc, vec3(0.4)));
+            acc += sc * ws; w += ws;
+          }
+          gl_FragColor = vec4(acc / w, col.a);
+        }`,
+    }));
+  }
+  setSize(w, h) { this.u.uPx.value.set(1 / w, 1 / h); this.scale = h / 1080; }
+  set(start, end, max, near = 0, nearEnd = 1) { Object.assign(this.tgt, { start, end, max, near }); this.u.uNearEnd.value = nearEnd; }
+  render(renderer, writeBuffer, readBuffer, dt) {
+    const k = Math.min(1, (dt || 0.016) * 5), c = this.cur, t = this.tgt;
+    for (const key of ['start', 'end', 'max', 'near']) c[key] += (t[key] - c[key]) * k;
+    const u = this.u;
+    u.tDiffuse.value = readBuffer.texture; u.tDepth.value = readBuffer.depthTexture;
+    u.uNear.value = this.camera.near; u.uFar.value = this.camera.far;
+    u.uStart.value = c.start; u.uEnd.value = c.end; u.uMax.value = this.enabledFx === false ? 0 : c.max * this.scale; u.uNearB.value = c.near;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.quad.render(renderer);
+  }
+}
+
 // ------------------------------------------------------------------ rendu
 export class Renderer {
   constructor(canvas) {
@@ -503,15 +552,19 @@ export class Renderer {
       const n = 700, p = new Float32Array(n * 3);
       for (let k = 0; k < n; k++) p.set([(Math.random() - 0.5) * 9, Math.random() * 7, (Math.random() - 0.5) * 15], k * 3);
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
-      this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xfff2dd, size: 0.018, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }));
+      this.dotTex = canvasTex(64, 64, (g, w, h) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.35, 'rgba(255,255,255,0.55)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); });
+      this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xfff2dd, size: 0.035, map: this.dotTex, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }));
       this.scene.add(this.dust);
     }
     this.celeb = null;
     this.flash = 0; this.intro = 0;
 
     const rt = new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType });
+    rt.depthTexture = new THREE.DepthTexture(1, 1); rt.depthTexture.type = THREE.UnsignedIntType;
     this.composer = new EffectComposer(this.r, rt);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.dof = new DofPass(this.camera);
+    this.composer.addPass(this.dof);
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.55, 0.93);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
@@ -541,6 +594,14 @@ export class Renderer {
   }
 
   async load() { /* plus aucun modèle externe à charger */ }
+  // 1 = élevé (reflets au sol, flou d'arrière-plan, pleine résolution), 0 = performance
+  setQuality(q) {
+    if (this.quality === q) return;
+    this.quality = q;
+    this.r.setPixelRatio(Math.min(devicePixelRatio, q ? 1.75 : 1));
+    this.resize();
+    if (this.venue) this.mirror.visible = q !== 0 && (this.venue.reflect ?? 1) > 0;
+  }
 
   resize() {
     const w = innerWidth, h = innerHeight;
@@ -762,6 +823,9 @@ export class Renderer {
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.025, NET.H + 0.03, 0.04), purple);
       post.position.set(sx * NET.halfW, T.H + NET.H / 2 + 0.005, 0); post.castShadow = true; g.add(post);
     }
+    // liseré lumineux sous le plateau + lueur colorée au sol
+    for (const sx of [-1, 1]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, T.L - 0.12), this.mats.neon); st.position.set(sx * (T.W / 2 - 0.02), T.H - 0.08, 0); g.add(st); }
+    this.tableGlow = new THREE.PointLight(NEON, 1.1, 3.2, 1.9); this.tableGlow.position.set(0, 0.42, 0); g.add(this.tableGlow);
     s.add(g);
 
     this.aimRing = new THREE.Mesh(new THREE.RingGeometry(0.055, 0.075, 40),
@@ -771,7 +835,18 @@ export class Renderer {
 
   buildStands() {
     const s = this.scene;
-    const standMat = new THREE.MeshStandardMaterial({ color: 0x0b0a10, roughness: 0.95 }); this.standMat = standMat;
+    // public dans la pénombre : seuls les premiers rangs prennent la lumière du terrain
+    this.crowdU = { uCrowdDim: { value: 0.5 }, uCrowdTop: { value: 0.3 } };
+    const dim = m => {
+      m.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, this.crowdU);
+        sh.vertexShader = 'varying float vCH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec4 cwp = vec4(transformed, 1.0);\n #ifdef USE_INSTANCING\n cwp = instanceMatrix * cwp;\n #endif\n vCH = (modelMatrix * cwp).y;');
+        sh.fragmentShader = 'uniform float uCrowdDim, uCrowdTop; varying float vCH;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= uCrowdDim * mix(1.0, uCrowdTop, smoothstep(0.8, 6.5, vCH));');
+      };
+      return m;
+    };
+    this.dimMat = dim;
+    const standMat = dim(new THREE.MeshStandardMaterial({ color: 0x0b0a10, roughness: 0.95 })); this.standMat = standMat;
     const spots = [];
     const tribunes = [
       { cx: 0, cz: -9.6, w: 20, ry: 0 }, { cx: 0, cz: 9.6, w: 20, ry: Math.PI },
@@ -795,12 +870,12 @@ export class Renderer {
     for (let i = people.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [people[i], people[j]] = [people[j], people[i]]; }
     // public : corps, têtes, bras, drapeaux et téléphones (instanciés)
     const N = people.length;
-    const crowdMat = new THREE.MeshStandardMaterial({ roughness: 0.85, envMapIntensity: 0.05, emissive: 0x0c0c12 });
+    const crowdMat = dim(new THREE.MeshStandardMaterial({ roughness: 0.85, envMapIntensity: 0.05, emissive: 0x050508 }));
     const torso = new THREE.CapsuleGeometry(0.18, 0.3, 4, 10); torso.scale(1.18, 1, 0.78);
     this.crowd = new THREE.InstancedMesh(torso, crowdMat, N);
     // cheveux / casquettes : calotte posée sur la tête
-    this.crowdHair = new THREE.InstancedMesh(new THREE.SphereGeometry(0.108, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshStandardMaterial({ roughness: 0.9, envMapIntensity: 0.05 }), N);
-    this.crowdHeads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.05, emissive: 0x0a0806 }), N);
+    this.crowdHair = new THREE.InstancedMesh(new THREE.SphereGeometry(0.108, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), dim(new THREE.MeshStandardMaterial({ roughness: 0.9, envMapIntensity: 0.05 })), N);
+    this.crowdHeads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 10, 8), dim(new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.05 })), N);
     this.crowdArms = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.042, 0.3, 2, 6), crowdMat, N * 2);
     const skins = [0xf1c7a5, 0xd8a27f, 0x8d5524, 0xc68642, 0xffdbac, 0x5c3a21];
     const col = new THREE.Color();
@@ -819,7 +894,7 @@ export class Renderer {
     this.recolorCrowd();
     // sièges vides
     const seatGeo = new THREE.BoxGeometry(0.44, 0.42, 0.4);
-    const seatMesh = new THREE.InstancedMesh(seatGeo, new THREE.MeshStandardMaterial({ color: 0x6a0f1c, roughness: 0.7 }), seats.length); this.seatMesh = seatMesh;
+    const seatMesh = new THREE.InstancedMesh(seatGeo, dim(new THREE.MeshStandardMaterial({ color: 0x6a0f1c, roughness: 0.7 })), seats.length); this.seatMesh = seatMesh;
     const d = new THREE.Object3D();
     seats.forEach((st, i) => {
       const w = V(st.lx, st.ly + 0.21, st.lz).applyMatrix4(st.grp.matrixWorld);
@@ -1138,7 +1213,7 @@ export class Renderer {
     this.robot.visible = robotMode;
     game.players.forEach((pl, i) => {
       const fig = this.figures[i];
-      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !(this.intro > 0) && !this.celeb;
+      const fp = this.camMode === 'raquette' && !this.orbit && !this.replayCam && !(this.intro > 0) && !this.celeb && !this.camOverride;
       // vue raquette : on ne voit ni son propre corps ni celui de son partenaire (seulement sa raquette)
       const hideMe = fp && (i === game.me || (game.doubles && game.partner && i === game.partner(game.me)));
       fig.g.visible = !hideMe && !(robotMode && i === 1);
@@ -1166,7 +1241,8 @@ export class Renderer {
     if (this.celeb && game.players) this.updateCelebration(dt, game);
     this.flash = Math.max(0, this.flash - dt * 1.6);
     this.mats.neon.emissiveIntensity = 3 + this.flash * 2.5;
-    for (const m of this.boardMats) m.emissiveIntensity = 0.85 + this.flash * 0.5;
+    for (const m of this.boardMats) m.emissiveIntensity = (this.boardGlow ?? 1.15) * (1 + this.flash);
+    for (const t of this.boards) t.offset.x = (this.time * 0.008) % 1;
     const key = JSON.stringify([game.match.score, game.match.sets, game.names]);
     if (key !== this.lastScoreKey) { this.lastScoreKey = key; this.drawScreen(game); }
     for (const t of this.boards) t.offset.x = (this.time * 0.015) % 1;
@@ -1174,6 +1250,14 @@ export class Renderer {
     this.updateCrowd(dt);
     if (this.kit) this.kit.update(dt, this.time, this.cheer);
     this.updateCamera(game, dt);
+    {
+      const cam = this.camera.position, K = this.dofK ?? 1, o = this.camOverride;
+      if (o && o.dof) this.dof.set(...o.dof);
+      else if (this.orbit) { const d = cam.length(); this.dof.set(d + 2.2, d + 8, 13 * K); }
+      else if (this.replayCam || this.celeb || this.podiumOn || this.intro > 0) { const d = cam.distanceTo(this.podiumOn ? this.podiumPos : this.camLook); this.dof.set(d + 2, d + 8, 10 * K); }
+      else { const d = Math.hypot(cam.x, cam.z); this.dof.set(d + 8.5, d + 17, 5 * K); }
+      this.dof.enabledFx = this.quality !== 0;
+    }
     this.grade.uniforms.uTime.value = this.time % 100;
     this.composer.render();
   }
@@ -1411,7 +1495,7 @@ export class Renderer {
     paintFloor(this.floorCanvas, this.floorMask, v, logo);
     this.courtMat.map.needsUpdate = true; this.maskTex.needsUpdate = true;
     this.courtMat.roughness = v.floorRough ?? 0.5;
-    this.mirror.visible = (v.reflect ?? 1) > 0;
+    this.mirror.visible = this.quality !== 0 && (v.reflect ?? 1) > 0;
     this.mirror.material.uniforms.color.value.setHex(v.mirrorTint ?? 0x8a8a8a);
     this.mirror.material.uniforms.uBlur.value = 0.002 + (v.floorRough ?? 0.5) * 0.012;
   }
@@ -1451,6 +1535,10 @@ export class Renderer {
     this.coneMat.color.setHex(v.coneColor ?? 0xffffff); this.coneMat.opacity = v.coneOpacity ?? 1;
     this.dust.material.color.setHex(v.dustColor ?? 0xfff2dd); this.dust.visible = v.dust !== false;
     this.crowdHype = v.crowdHype || 0;
+    this.crowdU.uCrowdDim.value = v.crowdDim ?? (v.gym ? 0.85 : 0.55); this.crowdU.uCrowdTop.value = v.crowdTop ?? (v.gym ? 0.7 : 0.28);
+    this.tableGlow.color.setHex(v.neon); this.tableGlow.intensity = v.tableGlow ?? 1.1;
+    this.dofK = v.dof ?? 1;
+    this.boardGlow = v.boardGlow ?? 1.15;
     this.ceilingG.visible = v.ceiling !== false;
     for (const g of this.screenGs || []) g.visible = v.screens !== false;
     this.gymKit.visible = !!v.gym; this.flagKit.visible = !!v.flags; this.showKit.visible = !!v.show;
@@ -1464,6 +1552,8 @@ export class Renderer {
     this.venue = v; this.updateCrowd(0);
     // décor à thème
     hideKits(); this.kit = arenaKit(v.kit, this.scene); if (this.kit) this.kit.g.visible = true;
+    // toutes les particules en points deviennent des disques doux (plus de carrés blancs)
+    this.scene.traverse(o => { if (o.isPoints && o.material.isPointsMaterial && !o.material.map) { o.material.map = this.dotTex; o.material.transparent = true; o.material.depthWrite = false; o.material.size *= 1.7; o.material.needsUpdate = true; } });
     this.outerMat.roughness = v.outerRough ?? 0.9; this.outerMat.metalness = v.outerMetal ?? 0;
     const os = v.outerSize; this.outerMesh.scale.set(os ? os[0] / 90 : 1, os ? os[1] / 90 : 1, 1);
     this.standMat.color.setHex(v.standCol ?? 0x0b0a10);
@@ -1512,6 +1602,12 @@ export class Renderer {
   }
 
   updateCamera(game, dt) {
+    if (this.camOverride) {
+      const o = this.camOverride;
+      if (o.fov && this.camera.fov !== o.fov) { this.camera.fov = o.fov; this.camera.updateProjectionMatrix(); }
+      this.camera.position.set(...o.pos); this.camera.lookAt(...o.look); this.camLook.set(...o.look);
+      return;
+    }
     // caméra plus serrée sur les balles de set / de match
     const baseFov = innerWidth / innerHeight < 1.3 ? 64 : 50;
     const wantFov = this.replayCam ? 38 : (this.pressure ? baseFov - 8 : baseFov);
@@ -1560,9 +1656,13 @@ export class Renderer {
       return;
     }
     if (this.orbit) {
-      const a = this.time * 0.06;
-      this.camera.position.set(Math.sin(a) * 7, 3 + Math.sin(this.time * 0.2) * 0.5, Math.cos(a) * 7);
-      this.camera.lookAt(0, 0.8, 0);
+      // menus : travelling lent au ras du terrain ; la scène se décale à droite quand un panneau occupe la gauche
+      const a = this.time * 0.045 + 0.6;
+      const sh = this.menuShiftCur = lerp(this.menuShiftCur ?? 0, this.menuShift ?? 0, Math.min(1, dt * 2.5));
+      const rad = 5.7 + Math.sin(this.time * 0.11) * 0.7, h = 1.5 + Math.sin(this.time * 0.16) * 0.3;
+      this.camera.position.set(Math.sin(a) * rad, h, Math.cos(a) * rad);
+      this.camLook.set(-Math.cos(a) * 1.7 * sh, lerp(-0.2, 0.8, sh), Math.sin(a) * 1.7 * sh);
+      this.camera.lookAt(this.camLook);
       return;
     }
     const me = game.players[game.me];

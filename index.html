@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PingPong — World Championships</title>
-<link rel="stylesheet" href="css/style.css?v=2611100145">
-<link rel="stylesheet" href="css/menu.css?v=2611100145">
-<link rel="stylesheet" href="css/ui.css?v=2611100145">
-<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611100145", "./js/arenas.js": "./js/arenas.js?v=2611100145", "./js/audio.js": "./js/audio.js?v=2611100145", "./js/career.js": "./js/career.js?v=2611100145", "./js/floors.js": "./js/floors.js?v=2611100145", "./js/game.js": "./js/game.js?v=2611100145", "./js/input.js": "./js/input.js?v=2611100145", "./js/main.js": "./js/main.js?v=2611100145", "./js/music.js": "./js/music.js?v=2611100145", "./js/net.js": "./js/net.js?v=2611100145", "./js/physics.js": "./js/physics.js?v=2611100145", "./js/players.js": "./js/players.js?v=2611100145", "./js/profile.js": "./js/profile.js?v=2611100145", "./js/render.js": "./js/render.js?v=2611100145", "./js/replay.js": "./js/replay.js?v=2611100145", "./js/venues.js": "./js/venues.js?v=2611100145", "./js/voice.js": "./js/voice.js?v=2611100145"}}</script>
+<link rel="stylesheet" href="css/style.css?v=2611101428">
+<link rel="stylesheet" href="css/menu.css?v=2611101428">
+<link rel="stylesheet" href="css/ui.css?v=2611101428">
+<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611101428", "./js/arenas.js": "./js/arenas.js?v=2611101428", "./js/audio.js": "./js/audio.js?v=2611101428", "./js/career.js": "./js/career.js?v=2611101428", "./js/floors.js": "./js/floors.js?v=2611101428", "./js/game.js": "./js/game.js?v=2611101428", "./js/input.js": "./js/input.js?v=2611101428", "./js/main.js": "./js/main.js?v=2611101428", "./js/music.js": "./js/music.js?v=2611101428", "./js/net.js": "./js/net.js?v=2611101428", "./js/physics.js": "./js/physics.js?v=2611101428", "./js/players.js": "./js/players.js?v=2611101428", "./js/profile.js": "./js/profile.js?v=2611101428", "./js/render.js": "./js/render.js?v=2611101428", "./js/replay.js": "./js/replay.js?v=2611101428", "./js/venues.js": "./js/venues.js?v=2611101428", "./js/voice.js": "./js/voice.js?v=2611101428"}}</script>
 <script src="lib/peerjs.min.js"></script>
 </head>
 <body>
@@ -65,9 +65,10 @@
 
     <div id="pcard"></div>
     <div id="cnav" class="hidden"></div>
+    <div id="arenatag" class="hidden"></div>
     <section class="screen" id="scr-main">
       <div class="hcards">
-        <button class="mbtn hcard" id="btn-career" style="background-image:url(assets/ui/career.jpg)"><em class="tag">Mode principal</em><span><b>Carrière</b><small>Du 200e mondial au titre de champion du monde</small></span></button>
+        <button class="mbtn hcard" id="btn-career" style="background-image:url(assets/ui/career.jpg)"><em class="tag" id="home-career-tag">Mode principal</em><span><b>Carrière</b><small id="home-career">Du 200e mondial au titre de champion du monde</small></span></button>
         <button class="mbtn hcard" data-go="scr-ai" style="background-image:url(assets/ui/quick.jpg)"><span><b>Match rapide</b><small>Contre l'IA, en simple ou en double</small></span></button>
         <button class="mbtn hcard" data-go="scr-online" style="background-image:url(assets/ui/online.jpg)"><span><b>En ligne</b><small>Défie tes potes, chacun sur son PC</small></span></button>
       </div>
@@ -334,6 +335,7 @@
       <div class="opt set" data-key="crowd" data-values="0|1|2|3|4|5|6|7|8|9|10"><span class="ol">Public</span><span class="ov"></span></div>
       <div class="opt set" data-key="music" data-values="0|1|2|3|4|5|6|7|8|9|10"><span class="ol">Musique</span><span class="ov"></span></div>
       <div class="opt set" data-key="camera" data-values="Raquette|TV|Haute"><span class="ol">Caméra</span><span class="ov"></span></div>
+      <div class="opt set" data-key="gfx" data-values="Performance|Élevés"><span class="ol">Graphismes</span><span class="ov"></span></div>
       <div class="opt set" data-key="assist" data-values="Aucune|Légère|Forte"><span class="ol">Aide au placement</span><span class="ov"></span></div>
       <div class="opt set" data-key="invert" data-values="Non|Oui"><span class="ol">Inverser haut/bas</span><span class="ov"></span></div>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
@@ -367,7 +369,7 @@
   </div>
   <div id="daily"></div>
   <div class="mfoot">
-    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611100145</span>
+    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611101428</span>
     <span class="navhelp"><span class="kb" data-k="ok"></span> Valider <span class="kb" data-k="back"></span> Retour</span>
   </div>
 </div>
@@ -404,6 +406,6 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2611100145"></script>
+<script type="module" src="js/main.js?v=2611101428"></script>
 </body>
 </html>

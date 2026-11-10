@@ -183,4 +183,7 @@ export function paintFloor(colorCanvas, maskCanvas, v, logo) {
   m.setTransform(maskCanvas.width / w, 0, 0, maskCanvas.height / h, 0, 0);
   (STYLES[v.floorStyle] || STYLES.taraflex)(g, m, w, h, v);
   markings(g, w, h, v, logo);
+  // la lumière tombe au centre : les bords du terrain s'assombrissent
+  const k = v.floorVig ?? 0.55;
+  if (k > 0) { const vg = g.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, h * 0.6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${k})`); g.fillStyle = vg; g.fillRect(0, 0, w, h); }
 }

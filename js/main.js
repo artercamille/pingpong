@@ -59,6 +59,9 @@ function show(id) {
   if (id === 'scr-profile') renderProfile();
   if (id === 'scr-locker') renderLocker();
   curScreen = id;
+  R.menuShift = id === 'scr-main' ? 0 : 1;
+  if (id === 'scr-main') renderHome();
+  renderArenaTag(id);
   if (id === 'scr-career') renderCareer();
   if (id === 'scr-cplayer') renderCPlayer();
   if (id === 'scr-tour') renderTour();
@@ -145,7 +148,8 @@ function arenaVenue(id) {
 function pickArena(sel) { return sel === 'random' ? ['finale', ...THEMED][Math.floor(Math.random() * (THEMED.length + 1))] : sel; }
 function applyCosmetics(oppPaddle, oppTrail) {
   const me = game ? game.me : 0;
-  R.setVenue(arenaVenue(matchArena || cosmetic('arena').id));
+  previewId = matchArena || cosmetic('arena').id;
+  R.setVenue(arenaVenue(previewId));
   const pad = cosmetic('paddle');
   const op = oppPaddle ? COSMETICS.paddle.find(c => c.id === oppPaddle) : null;
   const opp = op || (pad.id === 'bleu' ? COSMETICS.paddle[0] : COSMETICS.paddle[1]);
@@ -184,8 +188,44 @@ function optStep(o, d) {
   if (o.id === 'ai-arena' || o.id === 'host-arena') setArenaChoice(o.dataset.v.split('|')[+o.dataset.i]);
 }
 // la salle choisie est mémorisée et partagée entre « Contre l'IA », « Créer un salon » et le vestiaire
+const ARENA_INFO = {
+  random: ['Salle aléatoire', 'Une salle différente à chaque match'],
+  finale: ['Finale', 'La grande salle des championnats, sous les projecteurs'],
+  neotokyo: ['Néo-Tokyo', 'Un toit d\'immeuble sous la pluie, entre les néons'],
+  beach: ['Sunset Beach', 'Une terrasse en bois face au coucher du soleil'],
+  underground: ['Underground', 'Un entrepôt transformé en club, lasers et DJ'],
+  orbit: ['Orbital', 'Une station spatiale au-dessus d\'une planète géante'],
+  sakura: ['Sakura', 'Un temple au crépuscule, sous les cerisiers en fleurs'],
+  aurora: ['Aurora', 'Une patinoire sur la banquise, sous les aurores boréales'],
+};
+// aperçu en direct : le décor derrière le menu devient la salle sélectionnée
+let previewId = null;
+function previewArena(id) {
+  if (game) return;
+  const real = id === 'random' ? cosmetic('arena').id : id;
+  if (previewId !== real) { previewId = real; R.setVenue(arenaVenue(real)); }
+}
+function renderArenaTag(scr = curScreen) {
+  const el = $('#arenatag'); if (!el) return;
+  const on = ['scr-ai', 'scr-host', 'scr-locker'].includes(scr);
+  el.classList.toggle('hidden', !on);
+  if (!on) return;
+  const id = scr === 'scr-locker' ? cosmetic('arena').id : (store.get('pp-arena') || 'random');
+  const [n, d] = ARENA_INFO[id] || ARENA_INFO.finale;
+  if (el.dataset.id !== id) { el.dataset.id = id; el.innerHTML = `<small>Salle</small><b>${n}</b><span>${d}</span>`; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  previewArena(id);
+}
+// carte Carrière de l'accueil : reprend la sauvegarde la plus avancée
+function renderHome() {
+  const el = $('#home-career'); if (!el) return;
+  let best = null;
+  for (let n = 1; n <= C.SLOTS; n++) { const c = C.peek(n); if (c && !c.retired && (!best || c.season * 100 + c.week > best.season * 100 + best.week)) best = c; }
+  el.textContent = best ? `${best.me.name}, saison ${best.season}, semaine ${best.week}` : 'Du 200e mondial au titre de champion du monde';
+  $('#home-career-tag').textContent = best ? 'Reprendre' : 'Mode principal';
+}
 function setArenaChoice(id) {
   store.set('pp-arena', id);
+  renderArenaTag();
   for (const sel of ['#ai-arena', '#host-arena']) { const o = $(sel); const k = o.dataset.v.split('|').indexOf(id); if (k >= 0 && String(k) !== o.dataset.i) { o.dataset.i = k; optRender(o); } }
 }
 document.querySelectorAll('.opt').forEach(o => {
@@ -202,6 +242,7 @@ function applySettings() {
   setVolumes({ master: S.master / 10, sfx: S.sfx / 10, crowd: S.crowd / 10, music: S.music / 10 });
   announcer.enabled = !!S.voice;
   R.camMode = CAMS[S.camera] || 'raquette';
+  R.setQuality(S.gfx ?? 1);
   input.invertY = !!S.invert;
   if (game) game.assist = S.assist;
 }
@@ -1291,6 +1332,7 @@ function gauge(v, col, label, sub) {
 }
 function evAccent(ev) { try { return venueFor({ tier: ev.tier, kind: ev.kind, ev, name: ev.name }).accent || C.TIERS[ev.tier].color; } catch (e) { return C.TIERS[ev.tier].color; } }
 
+const TIER_ART = { challenger: 'challenger', contender: 'contender', star: 'star', slam: 'slam', finals: 'finals', worlds: 'worlds', team: 'worlds', olympics: 'olympics', exhib: 'exhib' };
 function renderCareer() {
   const c = C.career; if (!c) return;
   if (c.retired) { show('scr-jubile'); return; }
@@ -1300,14 +1342,14 @@ function renderCareer() {
   const me = c.me, rk = C.rankOf('me'), mv = rankMove();
   const evs = C.weekEvents(c.season, c.week);
   // --- tuile héros : cette semaine
-  let hero = '', acc = '#c84dff';
+  let hero = '', acc = '#c84dff', heroTier = 'star';
   if (c.tour) {
-    acc = evAccent(c.tour.ev);
+    acc = evAccent(c.tour.ev); heroTier = c.tour.ev.tier;
     hero = `<div class="hk">En cours</div><div class="ht">${esc(c.tour.ev.name)}</div><div class="hs">${c.tour.done || c.tour.out ? 'Tournoi terminé' : roundLabel(c.tour, C.myMatch())}</div>
       <button class="mbtn accent" data-act="tour"><span><b>${c.tour.done || c.tour.out ? 'Voir le tableau' : 'Reprendre le tournoi'}</b><small>Tableau, adversaire, jouer ou simuler</small></span></button>`;
   } else {
     const main = evs.find(e => !C.lockReason(e) && !e.kind) || evs.find(e => !C.lockReason(e)) || evs[0];
-    if (main) acc = evAccent(main);
+    if (main) { acc = evAccent(main); heroTier = main.tier; }
     hero = `<div class="hk">${c.week === C.WEEKS ? 'Semaine finale' : 'Cette semaine'}, ${C.weekDate(c.season, c.week).label}</div>`;
     if (c.injury) hero += `<div class="warnbox">🩹 <b>Blessé : ${esc(c.injury.name)}</b>, encore ${c.injury.weeks} sem. d'arrêt.</div>`;
     if (c.energy < 35) hero += `<div class="warnbox">⚠ ${C.formLabel(c.energy)} : une semaine de repos te remet en forme.</div>`;
@@ -1334,7 +1376,7 @@ function renderCareer() {
   const S = C.soc(), sp = C.mainSponsor(), ov = C.overall(me.stats), canT = !c.tour && C.canTrain();
   const socBadge = C.postIdeas().some(x => x.deal) ? '💰 Offre de partenariat' : S.moment && S.moment.w === c.week && C.postsLeft() > 0 ? '🔥 Moment à poster' : `${C.postsLeft()} post${C.postsLeft() > 1 ? 's' : ''} dispo`;
   $('#hub').innerHTML = `
-    <div class="tile hero" style="--acc:${acc}">${hero}</div>
+    <div class="tile hero" style="--acc:${acc}"><div class="hbg" style="background-image:url(assets/ui/tier_${TIER_ART[heroTier] || 'star'}.jpg)"></div>${hero}</div>
     <div class="tile t-rank" data-nav data-goto="scr-rank"><small>Classement mondial</small><div class="bign">${rk}<sup>e</sup></div>
       <div class="mv ${mv > 0 ? 'up' : mv < 0 ? 'dn' : ''}">${mv > 0 ? '▲ ' + mv : mv < 0 ? '▼ ' + (-mv) : '='} cette semaine</div><div class="foot">${C.rankPoints(me)} pts ITTF</div></div>
     <div class="tile t-form"><small>État du joueur</small><div class="gauges">${gauge(e, ecol, 'Forme', C.formLabel(e))}${gauge(cf, ccol, 'Confiance', C.confLabel(cf))}</div></div>
@@ -1344,7 +1386,7 @@ function renderCareer() {
     <div class="tile t-soc" data-nav data-goto="scr-social"><small>Médias</small><div class="bign sm">${fansN(c.fans)}</div><div class="mv">fans</div><div class="foot">${socBadge}</div></div>
     <div class="tile t-money" data-nav data-goto="scr-team"><small>Finances & équipe</small><div class="bign sm">${eur(c.money)}</div>
       <div class="foot">${sp ? `<span style="color:${sp.color}">★ ${esc(sp.name)}</span>` : 'Pas de sponsor principal'}${c.coach ? ` · 🧢 ${C.COACHES[c.coach].name}` : ''}</div></div>
-    <div class="tile t-news"><small>Actualités</small>${c.news.slice(0, 4).map(n => `<div class="nw">${esc(n)}</div>`).join('') || '<div class="nw">Rien de neuf pour l\'instant.</div>'}</div>
+    <div class="tile t-news"><small>Actualités</small><div class="tick"><div>${(c.news.length ? c.news.slice(0, 6) : ['Rien de neuf pour l\'instant']).map(n => `<span class="nw">${esc(n)}</span>`).join('').repeat(2)}</div></div></div>
     <div class="tile t-agenda" data-nav data-goto="scr-cal"><small>Agenda de la saison ${c.season}</small><div class="agr">${ag.join('') || '<div class="nw">Fin de saison</div>'}</div></div>
     <div class="tile t-rival" data-nav data-goto="scr-cplayer"><small>Rivaux</small>${C.rivals().map(({ p, type }) => { const h = c.h2h[p.id] || { w: 0, l: 0 };
       return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${esc(C.lastName(p))}</b></span><span>${C.rankOf(p.id)}e · <b>${h.w}–${h.l}</b></span></div>`; }).join('')}</div>`;

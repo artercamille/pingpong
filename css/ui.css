@@ -235,3 +235,75 @@ body, button, input { font-family: 'Archivo', 'Segoe UI', system-ui, sans-serif;
 }
 .mside:has(.screen.wide:not(.hidden)) { width: min(820px, 94vw); }
 .screen.wide { width: 100%; max-width: 700px; }
+
+/* ---------- cartes de l'accueil : image vivante, reflet au focus ---------- */
+.mbtn.hcard::before { content: ''; display: block; position: absolute; inset: 0; background: inherit; filter: saturate(.75) brightness(.72); transform: scale(1.02); transition: transform .7s cubic-bezier(.2, .8, .2, 1), filter .3s; }
+.mbtn.hcard:hover::before, .mbtn.hcard.focus::before { filter: none; transform: scale(1.09); }
+.mbtn.hcard::after { background: linear-gradient(115deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.16) 50%, rgba(255,255,255,0) 58%) -150% 0 / 250% 100% no-repeat, linear-gradient(0deg, rgba(0,0,0,.9) 0%, rgba(0,0,0,.25) 48%, rgba(0,0,0,0) 72%); }
+.mbtn.hcard.focus::after, .mbtn.hcard:hover::after { animation: shine .9s ease-out; }
+@keyframes shine { from { background-position: -150% 0, 0 0; } to { background-position: 250% 0, 0 0; } }
+.mbtn.hcard b { text-shadow: 0 4px 24px rgba(0,0,0,.6); }
+.mbtn.hcard.focus > span, .mbtn.hcard:hover > span { transform: translateY(-4px); transition: transform .25s; }
+
+/* ---------- nom de la salle en aperçu ---------- */
+#arenatag { position: fixed; right: 56px; bottom: 86px; z-index: 3; text-align: right; pointer-events: none; max-width: 46vw; }
+#arenatag.hidden { display: none; }
+#arenatag small { display: block; font-size: 15px; font-weight: 700; color: var(--acc); }
+#arenatag b { display: block; font-size: clamp(44px, 5.4vw, 84px); font-weight: 900; font-style: italic; font-stretch: 75%; line-height: 1; letter-spacing: -1.5px; text-shadow: 0 6px 40px rgba(0,0,0,.7); }
+#arenatag span { display: block; margin-top: 6px; font-size: 17px; font-weight: 500; color: rgba(255,255,255,.85); text-shadow: 0 2px 12px rgba(0,0,0,.8); }
+#arenatag.pop b { animation: tagIn .45s cubic-bezier(.2, .9, .3, 1); }
+#arenatag.pop span { animation: tagIn .45s .08s cubic-bezier(.2, .9, .3, 1) backwards; }
+@keyframes tagIn { from { opacity: 0; transform: translateX(40px); } }
+@media (max-width: 1000px) { #arenatag { display: none; } }
+
+/* ---------- chargement ---------- */
+#loading { background: #07060d url(../assets/ui/career.jpg) center/cover no-repeat; }
+#loading::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(7,6,13,.55), rgba(7,6,13,.96)); backdrop-filter: blur(14px); }
+.load { position: relative; }
+.load h1 { font-size: 72px; font-weight: 900; font-style: italic; font-stretch: 75%; letter-spacing: -1px; }
+.load h1 span { color: var(--acc); }
+.load p { color: var(--txt2); letter-spacing: 0; font-size: 15px; font-weight: 500; }
+.lbar { width: 320px; height: 4px; border-radius: 2px; }
+.lbar div { background: linear-gradient(90deg, var(--acc), var(--acc2)); }
+
+/* ---------- présentation du match ---------- */
+#vs { background: linear-gradient(100deg, rgba(36,104,255,.6) 0%, rgba(8,7,16,.72) 44%, rgba(8,7,16,.72) 56%, rgba(255,61,110,.6) 100%); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+#vs::before { content: ''; position: absolute; top: -10%; bottom: -10%; left: 50%; width: 3px; background: #fff; transform: rotate(10deg); box-shadow: 0 0 40px rgba(255,255,255,.8); animation: vsline .5s .15s cubic-bezier(.2, .9, .3, 1) backwards; }
+@keyframes vsline { from { transform: rotate(10deg) scaleY(0); } }
+#vs .vsside { gap: 10px; }
+#vs .n { font-size: clamp(38px, 5.2vw, 82px); font-stretch: 75%; text-transform: none; letter-spacing: -1px; line-height: 1; text-align: center; padding: 0 3vw; }
+#vs .r { letter-spacing: 0; text-transform: none; font-size: 18px; font-weight: 600; color: rgba(255,255,255,.85); }
+#vs .vsx { font-size: clamp(70px, 8vw, 130px); font-stretch: 75%; color: #fff; text-shadow: 0 0 50px rgba(255,255,255,.5); position: relative; padding: 0 2vw; }
+#vs .vsf { letter-spacing: 0; text-transform: lowercase; font-size: 16px; font-weight: 600; color: #fff; background: rgba(0,0,0,.45); padding: 9px 20px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+#vs .vsf::first-letter { text-transform: uppercase; }
+
+/* ---------- entrée des joueurs (carrière) ---------- */
+#walkout .wk { letter-spacing: 0; text-transform: none; font-size: 16px; font-weight: 700; }
+#walkout .wl { border-left: 0; border-radius: 14px; background: rgba(14,12,24,.78); backdrop-filter: blur(10px); box-shadow: inset 5px 0 0 var(--wc), inset 0 0 0 1px rgba(255,255,255,.1); padding: 12px 30px 12px 22px; }
+#walkout .wn { font-stretch: 75%; text-transform: none; text-shadow: none; letter-spacing: -1px; }
+#walkout .wm { letter-spacing: 0; font-weight: 600; color: rgba(255,255,255,.8); }
+
+/* ---------- QG carrière : grande affiche du tournoi de la semaine, fil d'actualités ---------- */
+.mside:has(.screen.xwide:not(.hidden)) { width: min(1480px, 100vw); margin: 0 auto; padding-left: 4vw; padding-right: 4vw; }
+.menu:has(.screen.xwide:not(.hidden)), .menu.incareer { background: linear-gradient(180deg, rgba(6,5,12,.86), rgba(6,5,12,.94)) !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.hub { grid-template-columns: 1.25fr 1.25fr 1fr 1fr; gap: 14px; }
+.tile.hero { background: #0c0a14; overflow: hidden; padding: 22px 24px; }
+.tile.hero .hbg { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: .9; }
+.tile.hero .hbg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8,7,16,.88) 0%, rgba(8,7,16,.55) 50%, rgba(8,7,16,.05) 100%), linear-gradient(0deg, rgba(8,7,16,.8), rgba(8,7,16,0) 45%); }
+.tile.hero > *:not(.hbg) { position: relative; }
+.hero .hk { font-size: 16px; }
+.hero .mbtn.evcard { background: rgba(10,9,20,.5); backdrop-filter: blur(8px); }
+.hero .mbtn.evcard.small { max-width: 62%; }
+.hero .mbtn.qualbtn { max-width: 58%; }
+.hero .mbtn.evcard:not(.small) { height: 84px; }
+.hero .mbtn.evcard:not(.small) b { font-size: 32px; }
+.hero .mbtn.evcard:not(.small) small { font-size: 15px; }
+.hero .mbtn.qualbtn { background: rgba(10,9,20,.5); }
+.t-news { display: flex; align-items: center; gap: 18px; padding: 12px 18px; min-height: 0; grid-row: 5; }
+.t-news > small { margin: 0; flex: 0 0 auto; color: var(--acc); font-weight: 800; }
+.t-news .tick { flex: 1; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+.t-news .tick > div { display: inline-block; animation: tick 38s linear infinite; }
+.t-news .nw { display: inline-block; padding: 0 28px 0 0; border: 0; font-size: 15px; font-weight: 500; }
+.t-news .nw::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); margin-left: 28px; vertical-align: middle; }
+@keyframes tick { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .t-news .tick > div { animation: none; } }

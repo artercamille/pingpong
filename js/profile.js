@@ -81,7 +81,7 @@ function fresh() {
     cos: { paddle: 'rouge', trail: 'blanc', arena: 'finale' },
     best: { rally: 0, speed: 0 },
     daily: null,
-    settings: { master: 8, sfx: 8, crowd: 8, music: 5, voice: 0, camera: 0, assist: 1, invert: 0, camV2: 1, camV3: 1 },
+    settings: { master: 8, sfx: 8, crowd: 8, music: 5, voice: 0, camera: 0, assist: 1, invert: 0, camV2: 1, camV3: 1, gfx: 1 },
   };
 }
 export const profile = (() => {

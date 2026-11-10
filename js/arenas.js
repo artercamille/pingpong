@@ -13,7 +13,7 @@ export const ARENA_VENUES = {
     items: ['NEO TOKYO', '@logo', 'ピンポン', 'ROOFTOP SERIES', '卓球'],
   },
   beach: {
-    bloom: 0.55, sunEnv: true, grade: { sat: 1.12, con: 1.05, tint: [1.05, 0.98, 0.92] }, dust: false, floorStyle: 'deck', floorRough: 0.7, mirrorTint: 0x606060, kit: 'beach', title: 'SUNSET BEACH', sub: 'MIAMI OPEN AIR', pattern: 'waves', floor: '#1d6f8f', outer: 0xc89a68, outerRough: 0.95, outerSize: [56, 48],
+    bloom: 0.32, boardGlow: 0.42, sunEnv: true, grade: { sat: 1.12, con: 1.05, tint: [1.05, 0.98, 0.92] }, dust: false, crowdDim: 0.85, crowdTop: 0.8, floorVig: 0.2, floorStyle: 'deck', floorRough: 0.7, mirrorTint: 0x606060, kit: 'beach', title: 'SUNSET BEACH', sub: 'MIAMI OPEN AIR', pattern: 'waves', floor: '#1d6f8f', outer: 0xc89a68, outerRough: 0.95, outerSize: [56, 48],
     accent: '#ffd23c', neon: 0xff8a3c, neon2: 0xffd23c, legs: 0xff6a3c, light: 0xff8a50, amb: 8, bg: 0xff8a5a, fog: 0.009,
     hemi: 0.7, hemiSky: 0xffb890, hemiGround: 0x8a5a40, key: 1.25, spots: 0.55, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0xd8d2c8, seats: 0x3cb6c8, table: '#1f4fa8', boardBg: '#fff6e8', boardFg: '#1a3a6a', exposure: 0.84,
@@ -21,7 +21,7 @@ export const ARENA_VENUES = {
     items: ['SUNSET BEACH', '@logo', 'MIAMI OPEN AIR', 'SUMMER TOUR'],
   },
   underground: {
-    bloom: 0.8, grade: { sat: 1.1, con: 1.12, vig: 0.5 }, crowdHype: 0.75, dustColor: 0xb0ffc8, floorStyle: 'concrete', floorRough: 0.3, mirrorTint: 0x9a9a9a, kit: 'club', title: 'UNDERGROUND', sub: 'NIGHT SESSION', pattern: 'grid', floor: '#09090b', outer: 0x121214, outerRough: 0.35, outerMetal: 0.3,
+    bloom: 0.8, grade: { sat: 1.1, con: 1.12, vig: 0.5 }, crowdHype: 0.75, dustColor: 0xb0ffc8, crowdDim: 0.5, crowdTop: 0.35, floorStyle: 'concrete', floorRough: 0.3, mirrorTint: 0x9a9a9a, kit: 'club', title: 'UNDERGROUND', sub: 'NIGHT SESSION', pattern: 'grid', floor: '#09090b', outer: 0x121214, outerRough: 0.35, outerMetal: 0.3,
     accent: '#3dff6e', neon: 0x3dff6e, neon2: 0xff3dc8, legs: 0x18181c, light: 0x3dff6e, amb: 12, bg: 0x020402, fog: 0.02,
     hemi: 0.3, hemiSky: 0x3dff6e, hemiGround: 0x050505, key: 1.1, spots: 1.0, ceiling: false, cones: true, screens: false, stands: 'sides',
     standCol: 0x111111, seats: 0x1a1a1a, table: '#101012', boardBg: '#050505', exposure: 1.05,
@@ -37,7 +37,7 @@ export const ARENA_VENUES = {
     items: ['ORBITAL', '@logo', 'STATION ZÉRO-G', 'PING PONG SPATIAL'],
   },
   sakura: {
-    bloom: 0.6, grade: { sat: 1.1, con: 1.05, tint: [1.04, 0.98, 1] }, coneColor: 0xffc890, coneOpacity: 0.55, dustColor: 0xffd0e0, floorStyle: 'darkwood', floorRough: 0.28, mirrorTint: 0x9a9a9a, kit: 'sakura', title: 'SAKURA', sub: 'TEMPLE MATSURI', pattern: 'planks', floor: '#5a3622', outer: 0x5a564c, outerRough: 0.95, outerSize: [60, 60],
+    bloom: 0.6, grade: { sat: 1.1, con: 1.05, tint: [1.04, 0.98, 1] }, coneColor: 0xffc890, coneOpacity: 0.55, dustColor: 0xffd0e0, crowdDim: 0.6, crowdTop: 0.45, floorStyle: 'darkwood', floorRough: 0.28, mirrorTint: 0x9a9a9a, kit: 'sakura', title: 'SAKURA', sub: 'TEMPLE MATSURI', pattern: 'planks', floor: '#5a3622', outer: 0x5a564c, outerRough: 0.95, outerSize: [60, 60],
     accent: '#ff9ad8', neon: 0xff7ab8, neon2: 0xffc83c, legs: 0xc8202e, light: 0xffb070, amb: 12, bg: 0x4a2a5a, fog: 0.011,
     hemi: 0.75, hemiSky: 0xffa8cc, hemiGround: 0x2a2a20, key: 1.25, spots: 0.6, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0x4a2c18, seats: 0x8a1a1a, table: '#1d3a2c', boardBg: '#1c0808', boardFg: '#ffe8d0', exposure: 1.02,
@@ -45,7 +45,7 @@ export const ARENA_VENUES = {
     items: ['SAKURA', '@logo', 'TEMPLE MATSURI', '桜'],
   },
   aurora: {
-    bloom: 0.7, grade: { sat: 1.08, con: 1.06, tint: [0.95, 1, 1.05] }, dustColor: 0xdff4ff, floorStyle: 'ice', floorRough: 0.15, mirrorTint: 0xb0c8d8, kit: 'aurora', title: 'AURORA', sub: 'CERCLE POLAIRE', pattern: 'ice', floor: '#a9d6ec', floorText: '#0a3a5a', outer: 0xb8cad8, outerRough: 0.75, outerSize: [70, 70],
+    bloom: 0.7, grade: { sat: 1.08, con: 1.06, tint: [0.95, 1, 1.05] }, dustColor: 0xdff4ff, crowdDim: 0.55, crowdTop: 0.4, floorVig: 0.35, floorStyle: 'ice', floorRough: 0.15, mirrorTint: 0xb0c8d8, kit: 'aurora', title: 'AURORA', sub: 'CERCLE POLAIRE', pattern: 'ice', floor: '#a9d6ec', floorText: '#0a3a5a', outer: 0xb8cad8, outerRough: 0.75, outerSize: [70, 70],
     accent: '#14b88a', neon: 0x3dffb0, neon2: 0x8a5aff, legs: 0x2a4a6a, light: 0x6affd0, amb: 10, bg: 0x06121e, fog: 0.008,
     hemi: 0.55, hemiSky: 0x5a90d8, hemiGround: 0x8ab0d0, key: 0.9, spots: 0.75, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0x2a3a4a, seats: 0x1a4a6a, table: '#14304a', boardBg: '#06121c', exposure: 0.88,

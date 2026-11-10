@@ -97,7 +97,7 @@ function renderPCard() {
   $('#pcard').innerHTML = `${emblem(profile.lp, 58)}
     <div class="pinfo"><div class="pname">${myName()}</div><div class="prank">${rankLine(profile.lp)}</div>
     <div class="plp">${r.lp} LP <div class="xbar"><div style="width:${r.apex ? 100 : r.lp}%;background:${r.glow}"></div></div></div>
-    <div class="plvl">NIV. ${L.level} <div class="xbar"><div style="width:${L.cur / L.need * 100}%"></div></div></div></div>`;
+    <div class="plvl">Niveau ${L.level} <div class="xbar"><div style="width:${L.cur / L.need * 100}%"></div></div></div></div>`;
 }
 function renderDaily(visible) {
   const el = $('#daily');
@@ -105,7 +105,7 @@ function renderDaily(visible) {
   if (!visible) return;
   const D = daily();
   const h = new Date(); const left = 24 - h.getHours();
-  el.innerHTML = `<h3><span>DÉFIS DU JOUR</span><small>encore ${left} h</small></h3>` + D.list.map(c => `<div class="dc ${c.done ? 'done' : ''}">
+  el.innerHTML = `<h3><span>Défis du jour</span><small>encore ${left} h</small></h3>` + D.list.map(c => `<div class="dc ${c.done ? 'done' : ''}">
     <span>${c.done ? '✔ ' : ''}${c.text}<b>${c.progress}/${c.target}</b></span><div class="xbar"><div style="width:${c.progress / c.target * 100}%"></div></div></div>`).join('')
     + `<small>+80 XP par défi · +150 XP bonus si tu fais les 3</small>`;
 }
@@ -166,7 +166,7 @@ function toast(icon, small, title, text) {
 }
 function achToast(id) {
   const a = unlock(id);
-  if (a) toast('🏆', 'SUCCÈS DÉBLOQUÉ', a.name, `${a.desc} · +${a.xp} XP`);
+  if (a) toast('🏆', 'Succès débloqué', a.name, `${a.desc} · +${a.xp} XP`);
 }
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
   initAudio(); sfx.ui();
@@ -334,7 +334,7 @@ function hooks() {
       const m = game.match;
       if (m.over) banner(`${game.names[m.winner]} remporte le match`, '', 2.6);
       else if (setWon) banner(`Manche ${game.names[w]}`, '', 2.5);
-      else if (game.pressure) banner(game.pressure.type === 'match' ? 'BALLE DE MATCH' : 'BALLE DE MANCHE', game.names[game.pressure.p], 2);
+      else if (game.pressure) banner(game.pressure.type === 'match' ? 'Balle de match' : 'Balle de manche', game.names[game.pressure.p], 2);
       const run = game.run;
       if (run.n >= 3 && !m.over) showStreak(run.p === game.myTeam ? `${run.n} points d'affilée 🔥` : `${game.names[run.p]} enchaîne : ${run.n} points`);
       const pts = document.querySelector(`#board .row[data-p="${w}"] .pts`);
@@ -359,7 +359,7 @@ function hooks() {
       postPoint = { t: 0.75, big, score };
     },
     ach: id => achToast(id),
-    superArmed: i => { if (game && i === game.me) banner('SUPER COUP PRÊT', 'Ton prochain coup va partir comme une fusée', 1.4); },
+    superArmed: i => { if (game && i === game.me) banner('Super coup prêt', 'Ton prochain coup va partir comme une fusée', 1.4); },
     serve: s => {
       if (!game || tuto || setup.mode === 'training') return;
       const m = game.match;
@@ -655,20 +655,20 @@ function lbCard(p, k) {
     <div class="lb-info"><b>${esc(p.name)}${p.host ? ' <em>HÔTE</em>' : ''}${me ? ' <em class="you">TOI</em>' : ''}</b>
       <small>${emblem(+p.lp || 0, 22)} ${r.label} · Niv. ${+p.level || 1}</small></div>
     <div class="lb-side">${k === 0 && LB.host || p.host ? '' : `<span class="ping p${bars}" title="${p.ping} ms"><i></i><i></i><i></i></span>`}
-      <span class="lb-st">${p.ready ? 'PRÊT' : 'PAS PRÊT'}</span></div></div>`;
+      <span class="lb-st">${p.ready ? 'Prêt' : 'Pas prêt'}</span></div></div>`;
 }
 function renderLB() {
   if (!LB) return;
   const dbl = LB.mode === 'double';
   $('#lb-mode').textContent = dbl ? 'Double · 2 contre 2' : 'Simple · classé';
-  $('#lb-kicker').textContent = LB.host ? 'TON SALON' : 'SALON EN LIGNE';
+  $('#lb-kicker').textContent = LB.host ? 'Ton salon' : 'Salon en ligne';
   $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span>${LB.arena ? `<span>🏟 ${esc((COSMETICS.arena.find(a => a.id === LB.arena) || {}).name || '')}</span>` : ''}<span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
   $('#lb-code').textContent = LB.code || '·····';
   // structure construite une seule fois ; ensuite on ne remplace que les cartes qui ont changé (pas de clignotement)
   const T = $('#lb-teams'), key = dbl ? 'd' : 's';
   if (T.dataset.k !== key) {
     T.dataset.k = key; LB.cards = {};
-    T.innerHTML = dbl ? `<div class="lbt blue"><h4>ÉQUIPE BLEUE</h4><div data-slot="0"></div><div data-slot="2"></div></div><div class="lb-vs">VS</div><div class="lbt red"><h4>ÉQUIPE ROUGE</h4><div data-slot="1"></div><div data-slot="3"></div></div>`
+    T.innerHTML = dbl ? `<div class="lbt blue"><h4>Équipe bleue</h4><div data-slot="0"></div><div data-slot="2"></div></div><div class="lb-vs">VS</div><div class="lbt red"><h4>Équipe rouge</h4><div data-slot="1"></div><div data-slot="3"></div></div>`
       : `<div class="lbt blue"><div data-slot="0"></div></div><div class="lb-vs">VS</div><div class="lbt red"><div data-slot="1"></div></div>`;
   }
   LB.cards = LB.cards || {};
@@ -695,7 +695,7 @@ function renderLB() {
   const n = LB.host ? (LB.count ? LB.count.n : 0) : LB.countN || 0;
   const cd = $('#lb-count');
   cd.classList.toggle('hidden', !n);
-  if (n && cd.dataset.n !== String(n)) { cd.dataset.n = n; cd.innerHTML = `<small>LA PARTIE COMMENCE</small><b>${n}</b>`; cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop'); sfx.ui(); }
+  if (n && cd.dataset.n !== String(n)) { cd.dataset.n = n; cd.innerHTML = `<small>La partie commence</small><b>${n}</b>`; cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop'); sfx.ui(); }
   if (!n) cd.dataset.n = '';
 }
 
@@ -733,7 +733,7 @@ function celebrateEnd(m) {
   const sets = m.history.length ? `${m.sets[m.winner]} – ${m.sets[1 - m.winner]}` : '';
   const v = $('#victory');
   v.className = win ? 'win' : 'lose';
-  v.innerHTML = `<small>${setup.mode === 'career' && win ? 'VICTOIRE EN TOURNOI' : 'FIN DU MATCH'}</small><b>${win ? 'VICTOIRE' : 'DÉFAITE'}</b>
+  v.innerHTML = `<small>${setup.mode === 'career' && win ? 'Victoire en tournoi' : 'Fin du match'}</small><b>${win ? 'VICTOIRE' : 'DÉFAITE'}</b>
     <div class="vn">${esc(game.names[m.winner])}</div><div class="vs2">${sets} en manches</div>
     <div class="vk">${input.padName ? '<span class="kb pad">A</span>' : '<span class="kb key">Espace</span>'} Continuer</div>`;
   v.classList.remove('hidden'); void v.offsetWidth; v.classList.add('show');
@@ -760,7 +760,7 @@ function showEnd(m) {
   // rang
   if (ranked) {
     const rb = rankOf(res.lpBefore), ra = rankOf(res.lpAfter);
-    const promo = ra.tier > rb.tier || (ra.tier === rb.tier && ra.div !== rb.div && res.lpDelta > 0) ? 'PROMOTION !' : (ra.tier < rb.tier || (ra.tier === rb.tier && ra.div !== rb.div && res.lpDelta < 0)) ? 'RÉTROGRADATION' : 'CLASSÉ';
+    const promo = ra.tier > rb.tier || (ra.tier === rb.tier && ra.div !== rb.div && res.lpDelta > 0) ? 'Promotion !' : (ra.tier < rb.tier || (ra.tier === rb.tier && ra.div !== rb.div && res.lpDelta < 0)) ? 'Rétrogradation' : 'Classé';
     $('#end-rank').innerHTML = `<div class="rankbox">${emblem(res.lpAfter, 64)}<div><div class="promo">${promo}</div><div class="rl" style="color:${ra.glow}">${ra.label}</div><div>${ra.lp} LP</div></div>
       <div style="margin-left:auto" class="rd ${res.lpDelta >= 0 ? 'up' : 'down'}">${res.lpDelta >= 0 ? '+' : ''}${res.lpDelta} LP</div></div>`;
   } else if (setup.mode === 'career') $('#end-rank').innerHTML = careerEnd(win, setsWon, setsLost);
@@ -777,7 +777,7 @@ function showEnd(m) {
   // XP / niveau
   const L = levelOf(profile.xp);
   const unl = res.unlocks.length ? `<div class="unl">🎁 Débloqué : ${res.unlocks.map(u => u.name).join(', ')}</div>` : '';
-  $('#end-xp').innerHTML = `<div class="infobox"><b>+${res.xp} XP</b> · Niveau ${L.level}${res.levelAfter > res.levelBefore ? ' <b style="color:#6ee7a8">NIVEAU SUPÉRIEUR !</b>' : ''}
+  $('#end-xp').innerHTML = `<div class="infobox"><b>+${res.xp} XP</b> · Niveau ${L.level}${res.levelAfter > res.levelBefore ? ' <b style="color:#6ee7a8">Niveau supérieur !</b>' : ''}
     <div class="xbar" style="margin-top:8px"><div style="width:${L.cur / L.need * 100}%"></div></div>${unl}</div>`;
   const achs = sum.ach.map(id => ACHIEVEMENTS.find(a => a.id === id)).filter(Boolean);
   $('#end-ach').innerHTML = achs.length ? `<div class="infobox">🏆 ${achs.map(a => `<b>${a.name}</b>`).join(' · ')}</div>` : '';
@@ -796,10 +796,10 @@ function showEnd(m) {
   $('#bestpt').classList.toggle('hidden', !bestClip);
   $('#again').innerHTML = setup.mode === 'sparring' ? '<span><b>Continuer</b><small>Retour à l\'entraînement</small></span>' : setup.mode === 'farewell' ? '<span><b>Continuer</b><small>Retour au jubilé</small></span>' : setup.mode === 'career' ? '<span><b>Continuer</b><small>Retour au tableau du tournoi</small></span>' : '<span><b>Revanche</b><small>On remet ça tout de suite</small></span>';
   $('#tomenu').classList.toggle('hidden', ['career', 'farewell', 'sparring'].includes(setup.mode));
-  for (const u of res.unlocks) toast('🎁', 'DÉBLOQUÉ', u.name, u.kind === 'paddle' ? 'Nouvelle raquette' : u.kind === 'trail' ? 'Nouvelle traînée' : 'Nouvelle salle');
+  for (const u of res.unlocks) toast('🎁', 'Débloqué', u.name, u.kind === 'paddle' ? 'Nouvelle raquette' : u.kind === 'trail' ? 'Nouvelle traînée' : 'Nouvelle salle');
   const dd = dailyProgress({ wins: win ? 1 : 0, aces: S[me].aces, smashes: S[me].smashes, superWins: S[me].superWins, longest: sum.longest,
     points: S[me].points, winners: S[me].winners, online: setup.mode === 'online' ? 1 : 0 });
-  dd.forEach((c, k) => setTimeout(() => toast('⭐', c.bonus ? 'BONUS' : 'DÉFI DU JOUR RÉUSSI', c.text, c.bonus ? '+150 XP' : '+80 XP'), 600 + k * 700));
+  dd.forEach((c, k) => setTimeout(() => toast('⭐', c.bonus ? 'BONUS' : 'Défi du jour réussi', c.text, c.bonus ? '+150 XP' : '+80 XP'), 600 + k * 700));
   $('#end').classList.remove('hidden');
   focusIdx = 0; refreshFocus();
 }
@@ -913,7 +913,7 @@ function showVS() {
     if (setup.mode === 'career') {
       const pl = p === me ? (setup.kind === 'double' ? C.getP('me') : C.career.me) : C.getP(setup.oppId);
       box.querySelector('.emb').innerHTML = C.flag(pl.country, 84, 56);
-      label = pl.pair ? `Paire · niveau ${Math.round(pl.rating)}` : `${C.rankOf(pl.id)}e mondial · ${C.STYLE_NAMES[pl.style]}${pl.rival ? ' · <span style="color:#ff6b7d">RIVAL</span>' : pl.enemy ? ' · <span style="color:#ff6b7d">ENNEMI JURÉ</span>' : pl.prodige ? ' · <span style="color:#ffc83c">PRODIGE</span>' : pl.sig ? ' · <span style="color:#ffc83c">BOSS</span>' : ''}`;
+      label = pl.pair ? `Paire · niveau ${Math.round(pl.rating)}` : `${C.rankOf(pl.id)}e mondial · ${C.STYLE_NAMES[pl.style]}${pl.rival ? ' · <span style="color:#ff6b7d">RIVAL</span>' : pl.enemy ? ' · <span style="color:#ff6b7d">Ennemi juré</span>' : pl.prodige ? ' · <span style="color:#ffc83c">PRODIGE</span>' : pl.sig ? ' · <span style="color:#ffc83c">BOSS</span>' : ''}`;
       if (setup.kind === 'team') label = `${C.COUNTRIES[pl.country].name} · ` + label;
     } else if (lp !== null) { const r = rankOf(lp); label = `<span style="color:${r.glow}">${r.label}</span>`; box.querySelector('.emb').innerHTML = emblem(lp, 84); }
     else if (game.doubles) { label = 'Équipe ' + (p === 0 ? 'bleue' : 'rouge'); box.querySelector('.emb').innerHTML = ''; }
@@ -1073,7 +1073,7 @@ function tutoRender() {
   const el = $('#tuto');
   if (tuto.step >= TUTO.length) {
     el.classList.add('done');
-    el.querySelector('.tstep').textContent = 'TUTORIEL TERMINÉ';
+    el.querySelector('.tstep').textContent = 'Tutoriel terminé';
     el.querySelector('.ttitle').textContent = 'Bravo !';
     el.querySelector('.ttext').innerHTML = 'Tu connais les bases. Lance un match contre l\'IA ou défie un pote en ligne.';
     el.querySelector('.tprog div').style.width = '100%';
@@ -1198,6 +1198,22 @@ function loop(now) {
 requestAnimationFrame(loop);
 
 // accès debug / tests
+// les emojis donnent un air « fait à la va-vite » : on les retire des menus (sauf les emotes du salon)
+const EMOJI = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\uFE0F\u200D]/gu;
+function stripEmoji(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (!EMOJI.test(n.nodeValue)) continue; EMOJI.lastIndex = 0;
+    const el = n.parentElement; if (el && el.closest('.lb-em, .lb-bub, #lb-emotes')) continue;
+    n.nodeValue = n.nodeValue.replace(EMOJI, '').replace(/^\s+/, n.previousSibling ? ' ' : '').replace(/\s{2,}/g, ' ');
+  }
+}
+for (const id of ['menu', 'end', 'pause', 'ceremony', 'toasts', 'victory']) {
+  const el = document.getElementById(id); if (!el) continue;
+  stripEmoji(el);
+  new MutationObserver(ms => { for (const m of ms) { if (m.type === 'characterData') stripEmoji(m.target.parentElement || el); else for (const n of m.addedNodes) if (n.nodeType === 1) stripEmoji(n); else if (n.nodeType === 3 && n.parentElement) stripEmoji(n.parentElement); } })
+    .observe(el, { childList: true, subtree: true, characterData: true });
+}
 window.__pp = { profile, get replay() { return replay; }, startReplay, forceReplay: () => startReplay(recorder.clip(4.5), null), get game() { return game; }, get demo() { return demo; }, get tuto() { return tuto; }, tutoUpdate: d => tutoUpdate(d), R, startAI, startTuto, AI };
 show('scr-main');
 applyCosmetics();
@@ -1287,12 +1303,12 @@ function renderCareer() {
   let hero = '', acc = '#c84dff';
   if (c.tour) {
     acc = evAccent(c.tour.ev);
-    hero = `<div class="hk">EN COURS</div><div class="ht">${esc(c.tour.ev.name)}</div><div class="hs">${c.tour.done || c.tour.out ? 'Tournoi terminé' : roundLabel(c.tour, C.myMatch())}</div>
+    hero = `<div class="hk">En cours</div><div class="ht">${esc(c.tour.ev.name)}</div><div class="hs">${c.tour.done || c.tour.out ? 'Tournoi terminé' : roundLabel(c.tour, C.myMatch())}</div>
       <button class="mbtn accent" data-act="tour"><span><b>${c.tour.done || c.tour.out ? 'Voir le tableau' : 'Reprendre le tournoi'}</b><small>Tableau, adversaire, jouer ou simuler</small></span></button>`;
   } else {
     const main = evs.find(e => !C.lockReason(e) && !e.kind) || evs.find(e => !C.lockReason(e)) || evs[0];
     if (main) acc = evAccent(main);
-    hero = `<div class="hk">${c.week === C.WEEKS ? 'SEMAINE FINALE' : 'CETTE SEMAINE'} · ${C.weekDate(c.season, c.week).label.toUpperCase()}</div>`;
+    hero = `<div class="hk">${c.week === C.WEEKS ? 'Semaine finale' : 'Cette semaine'}, ${C.weekDate(c.season, c.week).label}</div>`;
     if (c.injury) hero += `<div class="warnbox">🩹 <b>Blessé : ${esc(c.injury.name)}</b>, encore ${c.injury.weeks} sem. d'arrêt.</div>`;
     if (c.energy < 35) hero += `<div class="warnbox">⚠ ${C.formLabel(c.energy)} : une semaine de repos te remet en forme.</div>`;
     const sorted = [...evs].sort((a, b) => (!!C.lockReason(a) - !!C.lockReason(b)));
@@ -1319,18 +1335,18 @@ function renderCareer() {
   const socBadge = C.postIdeas().some(x => x.deal) ? '💰 Offre de partenariat' : S.moment && S.moment.w === c.week && C.postsLeft() > 0 ? '🔥 Moment à poster' : `${C.postsLeft()} post${C.postsLeft() > 1 ? 's' : ''} dispo`;
   $('#hub').innerHTML = `
     <div class="tile hero" style="--acc:${acc}">${hero}</div>
-    <div class="tile t-rank" data-nav data-goto="scr-rank"><small>CLASSEMENT MONDIAL</small><div class="bign">${rk}<sup>e</sup></div>
+    <div class="tile t-rank" data-nav data-goto="scr-rank"><small>Classement mondial</small><div class="bign">${rk}<sup>e</sup></div>
       <div class="mv ${mv > 0 ? 'up' : mv < 0 ? 'dn' : ''}">${mv > 0 ? '▲ ' + mv : mv < 0 ? '▼ ' + (-mv) : '='} cette semaine</div><div class="foot">${C.rankPoints(me)} pts ITTF</div></div>
-    <div class="tile t-form"><small>ÉTAT DU JOUEUR</small><div class="gauges">${gauge(e, ecol, 'Forme', C.formLabel(e))}${gauge(cf, ccol, 'Confiance', C.confLabel(cf))}</div></div>
-    <div class="tile t-player" data-nav data-goto="scr-cplayer"><small>TON JOUEUR</small><div class="ovr"><b>${ov}</b><span>${C.flag(me.country, 30, 20)}${esc(me.name)}<i>${C.STYLE_NAMES[me.style]} · ${me.age || 17} ans</i></span></div>
+    <div class="tile t-form"><small>État du joueur</small><div class="gauges">${gauge(e, ecol, 'Forme', C.formLabel(e))}${gauge(cf, ccol, 'Confiance', C.confLabel(cf))}</div></div>
+    <div class="tile t-player" data-nav data-goto="scr-cplayer"><small>Ton joueur</small><div class="ovr"><b>${ov}</b><span>${C.flag(me.country, 30, 20)}${esc(me.name)}<i>${C.STYLE_NAMES[me.style]} · ${me.age || 17} ans</i></span></div>
       <div class="foot ${c.upPoints || c.perkPts ? 'hot' : ''}">${c.upPoints ? `⬆ ${c.upPoints} point${c.upPoints > 1 ? 's' : ''} à dépenser` : c.perkPts ? `★ ${c.perkPts} talent${c.perkPts > 1 ? 's' : ''} à débloquer` : 'Attributs, talents, vestiaire'}</div></div>
-    <div class="tile t-train ${canT ? 'hot' : ''}" data-nav data-goto="scr-ctrain"><small>ENTRAÎNEMENT</small><div class="mid">🏋</div><div class="foot">${canT ? 'Séance disponible' : c.tour ? 'Pendant le tournoi : non' : 'Déjà fait cette semaine'}</div></div>
-    <div class="tile t-soc" data-nav data-goto="scr-social"><small>MÉDIAS</small><div class="bign sm">${fansN(c.fans)}</div><div class="mv">fans</div><div class="foot">${socBadge}</div></div>
-    <div class="tile t-money" data-nav data-goto="scr-team"><small>FINANCES & ÉQUIPE</small><div class="bign sm">${eur(c.money)}</div>
+    <div class="tile t-train ${canT ? 'hot' : ''}" data-nav data-goto="scr-ctrain"><small>Entraînement</small><div class="mid">🏋</div><div class="foot">${canT ? 'Séance disponible' : c.tour ? 'Pendant le tournoi : non' : 'Déjà fait cette semaine'}</div></div>
+    <div class="tile t-soc" data-nav data-goto="scr-social"><small>Médias</small><div class="bign sm">${fansN(c.fans)}</div><div class="mv">fans</div><div class="foot">${socBadge}</div></div>
+    <div class="tile t-money" data-nav data-goto="scr-team"><small>Finances & équipe</small><div class="bign sm">${eur(c.money)}</div>
       <div class="foot">${sp ? `<span style="color:${sp.color}">★ ${esc(sp.name)}</span>` : 'Pas de sponsor principal'}${c.coach ? ` · 🧢 ${C.COACHES[c.coach].name}` : ''}</div></div>
-    <div class="tile t-news"><small>ACTUALITÉS</small>${c.news.slice(0, 4).map(n => `<div class="nw">${esc(n)}</div>`).join('') || '<div class="nw">Rien de neuf pour l\'instant.</div>'}</div>
-    <div class="tile t-agenda" data-nav data-goto="scr-cal"><small>AGENDA · SAISON ${c.season}</small><div class="agr">${ag.join('') || '<div class="nw">Fin de saison</div>'}</div></div>
-    <div class="tile t-rival" data-nav data-goto="scr-cplayer"><small>RIVAUX</small>${C.rivals().map(({ p, type }) => { const h = c.h2h[p.id] || { w: 0, l: 0 };
+    <div class="tile t-news"><small>Actualités</small>${c.news.slice(0, 4).map(n => `<div class="nw">${esc(n)}</div>`).join('') || '<div class="nw">Rien de neuf pour l\'instant.</div>'}</div>
+    <div class="tile t-agenda" data-nav data-goto="scr-cal"><small>Agenda de la saison ${c.season}</small><div class="agr">${ag.join('') || '<div class="nw">Fin de saison</div>'}</div></div>
+    <div class="tile t-rival" data-nav data-goto="scr-cplayer"><small>Rivaux</small>${C.rivals().map(({ p, type }) => { const h = c.h2h[p.id] || { w: 0, l: 0 };
       return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${esc(C.lastName(p))}</b></span><span>${C.rankOf(p.id)}e · <b>${h.w}–${h.l}</b></span></div>`; }).join('')}</div>`;
   bindCareerButtons($('#scr-career'));
   $('#hub').querySelectorAll('[data-goto]').forEach(t => t.addEventListener('click', () => { initAudio(); sfx.ui(); show(t.dataset.goto); }));
@@ -1342,14 +1358,14 @@ function renderCPlayer() {
   const me = c.me, st = me.stats;
   $('#cp-card').innerHTML = `<div class="fut"><div class="fo">${C.overall(st)}</div><div class="fp">${C.STYLE_NAMES[me.style].toUpperCase()}</div>${C.flag(me.country, 46, 31)}
     <div class="fn">${esc(me.name)}</div><div class="fs">${C.STAT_KEYS.map(k => `<span><b>${st[k]}</b>${C.STAT_NAMES[k].slice(0, 3).toUpperCase()}</span>`).join('')}</div>
-    <div class="fmeta">${me.hand === 1 ? 'DROITIER' : 'GAUCHER'} · ${me.age || 17} ANS · ${C.peakLabel(me.age || 17).toUpperCase()}</div></div>`;
-  $('#car-up').textContent = c.upPoints ? `· ${c.upPoints} POINT${c.upPoints > 1 ? 'S' : ''} À DÉPENSER` : '';
+    <div class="fmeta">${me.hand === 1 ? 'Droitier' : 'Gaucher'}, ${me.age || 17} ans, ${C.peakLabel(me.age || 17).toLowerCase()}</div></div>`;
+  $('#car-up').textContent = c.upPoints ? `· ${c.upPoints} point${c.upPoints > 1 ? 's' : ''} à dépenser` : '';
   $('#car-stats').innerHTML = C.STAT_KEYS.map(k => {
     const v = st[k], cost = C.upgradeCost(v), can = c.upPoints >= cost && v < 99;
     return `<div class="statrow"><span>${C.STAT_NAMES[k]}</span><div class="xbar"><div style="width:${v}%"></div></div><b>${v}</b>
       <button class="mbtn small ${can ? 'accent' : 'locked'}" data-act="up" data-k="${k}" title="Coût : ${cost}"><b>+</b></button></div>`;
   }).join('') + `<div style="font-size:12px;color:#a99cc9;margin-top:4px">Chaque match gagné rapporte 3 points (1 si perdu), un titre jusqu'à 15.</div>`;
-  $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">TES RIVAUX</small>` + C.rivals().map(({ p, type }) => {
+  $('#car-rival').innerHTML = `<div class="rivalbox"><small style="letter-spacing:3px;color:#ff6b7d;font-weight:900">Tes rivaux</small>` + C.rivals().map(({ p, type }) => {
     const h = c.h2h[p.id] || { w: 0, l: 0 };
     return `<div class="rvl"><span>${type === 'Rival' ? '⚔' : type === 'Jeune prodige' ? '⭐' : '🔥'} <b>${pname(p)}</b> <small>${type}</small></span><span>${C.rankOf(p.id)}e · <b>${h.w} – ${h.l}</b></span></div>`;
   }).join('') + '</div>';
@@ -1365,8 +1381,8 @@ function renderCNav(id) {
   document.querySelector('#menu').classList.toggle('incareer', on);
   if (!on) return;
   const me = c.me;
-  el.innerHTML = `<div class="cn-top"><div class="cn-id">${C.flag(me.country, 34, 23)}<div><b>${esc(me.name)}</b><small>${C.overall(me.stats)} GÉN · ${C.rankOf('me')}E MONDIAL</small></div></div>
-    <div class="cn-r"><span>${C.weekDate(c.season, c.week).label.toUpperCase()}</span><span>SAISON ${c.season} · SEM. ${c.week}/${C.WEEKS}</span><b>${eur(c.money)}</b></div></div>
+  el.innerHTML = `<div class="cn-top"><div class="cn-id">${C.flag(me.country, 34, 23)}<div><b>${esc(me.name)}</b><small>Note ${C.overall(me.stats)}, ${C.rankOf('me')}e mondial</small></div></div>
+    <div class="cn-r"><span>${C.weekDate(c.season, c.week).label}</span><span>Saison ${c.season}, semaine ${c.week} sur ${C.WEEKS}</span><b>${eur(c.money)}</b></div></div>
     <div class="cn-tabs"><span class="kb pad lbrb">${input.padName ? 'LB' : 'A'}</span>${CTABS.map((t, i) => `<button class="cn-t ${i === ti ? 'on' : ''}" data-ti="${i}">${t.label}</button>`).join('')}<span class="kb pad lbrb">${input.padName ? 'RB' : 'E'}</span></div>`;
   el.querySelectorAll('.cn-t').forEach(b => b.addEventListener('click', () => { initAudio(); sfx.ui(); show(CTABS[+b.dataset.ti].go()); }));
 }
@@ -1382,23 +1398,23 @@ function scoutCard(o) {
   if (o.pair) {
     const [a, b] = o.members.map(id => C.getP(id));
     const P = C.getP(d.kind === 'mixed' ? c.mpartner : c.partner);
-    return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">PAIRE ADVERSE</small>
+    return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">Paire adverse</small>
       <div class="who">${C.flag(o.country, 30, 20)}${esc(o.name)}</div>
-      <div class="row2">NIVEAU DE LA PAIRE ${Math.round(o.rating)}</div>
+      <div class="row2">Niveau de la paire ${Math.round(o.rating)}</div>
       <ul><li>${pname(a)} · ${a.woman ? 'niveau ' + Math.round(a.rating) : C.rankOf(a.id) + 'e mondial'}</li><li>${pname(b)} · ${b.woman ? 'niveau ' + Math.round(b.rating) : C.rankOf(b.id) + 'e mondial'}</li>
       <li>Ta paire : <b>${esc(c.me.name)} / ${esc(P.name)}</b> · niveau ${Math.round(C.getP('me').rating)}</li><li>Complicité : <b>${((d.kind === 'mixed' ? c.mchem : c.chem) || 0).toFixed(1)} / 6</b></li></ul></div>`;
   }
   const h = c.h2h[o.id] || { w: 0, l: 0 }, sc = C.scout(o);
   let tie = '';
   if (d && d.kind === 'team') { const m = C.myMatch(), O = C.getP(m.a === 'me' ? m.b : m.a); tie = `<div class="sig" style="color:#ff9a3c;background:rgba(255,154,60,.1)">🌍 ${C.COUNTRIES[c.me.country].name} contre ${esc(O.name)} : tu joues le premier simple, tes coéquipiers jouent la suite. Il faut 3 victoires.</div>`; }
-  return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">PROCHAIN ADVERSAIRE</small>
+  return `<div class="scard"><small style="letter-spacing:3px;color:#a99cc9;font-weight:900">Prochain adversaire</small>
     <div class="who">${C.flag(o.country, 36, 24)}${esc(o.name)}</div>
-    <div class="row2">${C.rankOf(o.id)}E MONDIAL · NIVEAU ${Math.round(C.rating(o))} · ${C.STYLE_NAMES[o.style].toUpperCase()} · ${o.hand === 1 ? 'DROITIER' : 'GAUCHER'}</div>
+    <div class="row2">${C.rankOf(o.id)}E MONDIAL · NIVEAU ${Math.round(C.rating(o))} · ${C.STYLE_NAMES[o.style].toUpperCase()} · ${o.hand === 1 ? 'Droitier' : 'Gaucher'}</div>
     <ul><li>Points forts : <b>${sc.best.join(', ')}</b></li><li>Points faibles : <b>${sc.worst.join(', ')}</b></li>
     <li>Face-à-face : <b>${h.w} – ${h.l}</b></li><li>Toi : niveau <b>${C.rating(c.me)}</b> · forme <b>${C.formLabel(c.energy).toLowerCase()}</b> (${c.energy} %)</li></ul>
     ${c.coach >= 2 ? `<div class="sig" style="color:#6ee7a8;background:rgba(110,231,168,.1)">🧢 Coach : ${coachTip(o, sc)}</div>` : ''}
     ${o.sig ? `<div class="sig">⚡ BOSS · ${C.SIGNATURES[o.sig].name} : ${C.SIGNATURES[o.sig].desc}</div>` : ''}
-    ${o.rival ? '<div class="rv">⚔ C\'EST TON RIVAL</div>' : o.prodige ? '<div class="rv">⭐ LE JEUNE PRODIGE</div>' : o.enemy ? '<div class="rv">🔥 TON ENNEMI JURÉ</div>' : ''}${tie}</div>`;
+    ${o.rival ? '<div class="rv">C\'est ton rival</div>' : o.prodige ? '<div class="rv">Le jeune prodige</div>' : o.enemy ? '<div class="rv">Ton ennemi juré</div>' : ''}${tie}</div>`;
 }
 
 function renderTour() {
@@ -1406,8 +1422,8 @@ function renderTour() {
   if (!d) { show('scr-career'); return; }
   if (c.press) { show('scr-press'); return; }
   const T = C.TIERS[d.tier];
-  const sizeTxt = d.kind === 'exhib' ? 'EXHIBITION' : d.kind === 'qualif' ? 'QUALIFICATIONS' : d.groups ? '16 JOUEURS · 4 POULES PUIS TABLEAU FINAL' : (d.kind === 'double' || d.kind === 'mixed') ? `${d.size} PAIRES` : d.kind === 'team' ? `${d.size} NATIONS` : `${d.size} JOUEURS`;
-  $('#tour-head').innerHTML = `${tierTag(d.tier)}${d.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ''}<div><div class="big">${esc(d.ev.name)}</div><div class="meta">${sizeTxt} · SAISON ${c.season} · SEMAINE ${c.week}</div></div>`;
+  const sizeTxt = d.kind === 'exhib' ? 'Exhibition' : d.kind === 'qualif' ? 'Qualifications' : d.groups ? '16 joueurs, 4 poules puis tableau final' : (d.kind === 'double' || d.kind === 'mixed') ? `${d.size} PAIRES` : d.kind === 'team' ? `${d.size} NATIONS` : `${d.size} JOUEURS`;
+  $('#tour-head').innerHTML = `${tierTag(d.tier)}${d.kind === 'double' ? '<span class="tier" style="background:#ddd5f2">DOUBLE</span>' : ''}<div><div class="big">${esc(d.ev.name)}</div><div class="meta">${sizeTxt} · Saison ${c.season} · SEMAINE ${c.week}</div></div>`;
   $('#tour-head').style.borderLeftColor = T.color;
   // tableau : tous les tours, les suivants vides
   const nR = d.kind === 'exhib' || d.kind === 'qualif' ? 0 : Math.log2(d.size);
@@ -1436,7 +1452,7 @@ function renderTour() {
     const r = d.result || {};
     side = r.medal ? `<div class="champ">${medalSVG(r.medal, 90)}<b>Médaille ${C.medalTxt(r.medal)}</b>${esc(d.ev.name)}<br>+${eur(r.prize || 0)}</div>`
       : r.champion ? `<div class="champ"><div class="cup">🏆</div><b>Champion${d.kind === 'team' ? 's' : ''} !</b>${esc(d.ev.name)}<br>${d.kind === 'team' || d.kind === 'olympics' ? '' : `+${r.pts} points · `}+${eur(r.prize || 0)}</div>`
-      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">TOUR ATTEINT : ${(r.reached || '').toUpperCase()}</div>${d.kind === 'team' || d.kind === 'olympics' ? 'Pas de points de classement sur cette épreuve.' : `+${r.pts || 0} points ${d.kind === 'double' ? 'au classement double' : 'au classement'} · +${eur(r.prize || 0)} net`}${r.gross ? `<div class="row2" style="margin-top:6px">PRIZE MONEY ${eur(r.gross)} · AGENT −${eur(r.comm)} · IMPÔTS −${eur(r.tax)}</div>` : ''}</div>`;
+      : `<div class="scard"><div class="who">Éliminé</div><div class="row2">Tour atteint : ${(r.reached || '').toUpperCase()}</div>${d.kind === 'team' || d.kind === 'olympics' ? 'Pas de points de classement sur cette épreuve.' : `+${r.pts || 0} points ${d.kind === 'double' ? 'au classement double' : 'au classement'} · +${eur(r.prize || 0)} net`}${r.gross ? `<div class="row2" style="margin-top:6px">Prize money ${eur(r.gross)} · AGENT −${eur(r.comm)} · IMPÔTS −${eur(r.tax)}</div>` : ''}</div>`;
     side += `<button class="mbtn accent" data-act="next"><span><b>Semaine suivante</b><small>Les autres tournois sont simulés</small></span></button>`;
   }
   $('#tour-next').innerHTML = side;
@@ -1544,7 +1560,7 @@ function careerEnd(win, a, b) {
   const tieTxt = d.kind === 'team' ? `<br>Rencontre : <b>${nat} ${m.a === 'me' ? m.sc[0] : m.sc[1]} – ${m.a === 'me' ? m.sc[1] : m.sc[0]} ${esc(oppEnt.name)}</b> (${win ? 'tu as gagné ton simple' : 'tu as perdu ton simple'})` : '';
   const tieWon = m.w === 'me';
   if (r && r.medal) txt = `🏅 <b>Médaille ${C.medalTxt(r.medal)} aux ${esc(d.ev.name)} !</b> +${eur(r.prize)}.`;
-  else if (r && r.champion) txt = d.kind === 'team' ? `🏆 <b>${nat} championne du monde par équipes !</b> +${eur(r.prize)}.` : `🏆 <b>CHAMPION du ${esc(d.ev.name)} !</b> +${r.pts} points au classement, +${eur(r.prize)} de prize money.`;
+  else if (r && r.champion) txt = d.kind === 'team' ? `🏆 <b>${nat} championne du monde par équipes !</b> +${eur(r.prize)}.` : `🏆 <b>Champion du ${esc(d.ev.name)} !</b> +${r.pts} points au classement, +${eur(r.prize)} de prize money.`;
   else if (!tieWon && d.kind === 'olympics' && !bronze && C.myMatch()) txt = `Défaite en demi-finale. <b>Il reste le match pour le bronze !</b>`;
   else if (!tieWon && d.stage === 'groups') txt = `Défaite en poule contre <b>${esc(o.name)}</b>. Il reste des matchs pour se qualifier.`;
   else if (!tieWon && d.groups && m.g !== undefined && !C.myMatch() && !d.rounds.some(r => r.some(x => x.a === 'me' || x.b === 'me'))) txt = `❌ Éliminé en phase de poules.`;
@@ -1612,7 +1628,7 @@ function renderCTrain() {
 $('#ct-quick').addEventListener('click', () => {
   if (!C.canTrain()) return;
   sfx.ui(); const k = choice('ct-stat'), r = C.train(k, 0.45);
-  toast('🏋', 'ENTRAÎNEMENT', C.STAT_NAMES[k], r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Tu progresses, continue.');
+  toast('🏋', 'Entraînement', C.STAT_NAMES[k], r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Tu progresses, continue.');
   renderCTrain();
 });
 $('#ct-robot').addEventListener('click', () => {
@@ -1643,7 +1659,7 @@ function finishCareerTraining(T) {
   if (ks[1]) C.trainExtra(ks[1], q);
   setTimeout(() => {
     quitToMenu('scr-ctrain');
-    toast('🏋', `SÉANCE TERMINÉE · ${T.ok}/${T.total}`, C.STAT_NAMES[k], r && r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Bonne séance, la progression continue.');
+    toast('🏋', `Séance terminée · ${T.ok}/${T.total}`, C.STAT_NAMES[k], r && r.up ? `+${r.up} ! Maintenant ${C.career.me.stats[k]}` : 'Bonne séance, la progression continue.');
   }, 900);
 }
 
@@ -1660,7 +1676,7 @@ function renderTeam() {
     const S = K[slot];
     h += `<h3 class="slot">${C.SLOT_NAMES[slot]}</h3>`;
     h += S ? `<div class="scard" style="border-left-color:${S.color};padding:10px 14px"><div class="who" style="color:${S.color};font-size:18px">${esc(S.name)}</div>
-      <div class="row2">${eur(S.weekly)} / SEMAINE · ${S.left} SEMAINES RESTANTES</div>
+      <div class="row2">${eur(S.weekly)} par semaine, encore ${S.left} semaines</div>
       <ul><li>Objectif : <b>${C.goalText(S.goal)}</b> ${S.done ? '✅' : ''} → prime ${eur(S.reward)}</li>${S.min ? `<li>Obligation : jouer ${S.min} tournois pendant le contrat (${(c.eventsTotal || 0) - (S.evStart || 0)}/${S.min})</li>` : ''}${S.brand ? `<li>Matériel ${S.brand} fourni gratuitement</li>` : ''}</ul></div>` : '<div class="infobox">Aucun contrat.</div>';
     const offers = C.sponsorOffers(slot).slice(-2).reverse();
     h += offers.map(o => `<button class="mbtn small" data-sp="${o.id}"><span><b style="color:${o.color}">${esc(o.name)}${S ? ' (remplace)' : ''}</b><small>${eur(o.weekly)} / sem. · ${C.goalText(o.goal)} → ${eur(o.reward)}${o.min ? ' · ' + o.min + ' tournois min.' : ''}${o.brand ? ' · matériel offert' : ''}</small></span></button>`).join('');
@@ -1704,12 +1720,12 @@ function trophySVG(tier, size = 64) {
 }
 function flushPending() {
   if (!C.career) return;
-  C.takePending().forEach((m, k) => setTimeout(() => toast('★', 'JALON DE CARRIÈRE', m.name, m.desc), 300 + k * 900));
+  C.takePending().forEach((m, k) => setTimeout(() => toast('★', 'Jalon de carrière', m.name, m.desc), 300 + k * 900));
 }
 function ceremony(d) {
   const el = $('#ceremony'), T = C.TIERS[d.tier];
   el.querySelector('.cer-tr').innerHTML = d.result && d.result.medal ? medalSVG(d.result.medal, 190) : trophySVG(d.tier, 190);
-  el.querySelector('.cer-k').textContent = T.name.toUpperCase() + ' · SAISON ' + C.career.season;
+  el.querySelector('.cer-k').textContent = T.name.toUpperCase() + ' · Saison ' + C.career.season;
   const md = d.result && d.result.medal;
   el.querySelector('.cer-t').textContent = md ? `Médaille ${C.medalTxt(md)} !` : d.tier === 'worlds' ? 'Champion du monde !' : d.kind === 'team' ? 'Champions du monde !' : d.kind === 'olympics' ? 'Champion olympique !' : 'Champion !';
   el.querySelector('.cer-s').textContent = d.kind === 'team' ? `${C.COUNTRIES[C.career.me.country].name} remporte les ${d.ev.name}` : md ? `${C.career.me.name} aux ${d.ev.name}` : `${C.career.me.name} remporte le ${d.ev.name}`;
@@ -1739,7 +1755,7 @@ function renderSeason() {
   const c = C.career, r = c && c.review;
   if (!r) { show('scr-career'); return; }
   const row = (k, v) => `<div class="sv"><small>${k}</small><b>${v}</b></div>`;
-  $('#season-box').innerHTML = `<div class="sreview"><small class="k">BILAN DE LA SAISON ${r.season}</small>
+  $('#season-box').innerHTML = `<div class="sreview"><small class="k">Bilan de la saison ${r.season}</small>
     <div class="big">${r.rank === 1 ? 'Numéro 1 mondial !' : r.rank <= 10 ? 'Dans l\'élite mondiale' : r.rank <= 50 ? 'Une belle saison' : 'Saison d\'apprentissage'}</div>
     <div class="svs">${row('Classement final', r.rank + 'e')}${row('Victoires', `${r.wins} – ${r.losses}`)}${row('Titres', r.titles.length)}${row('Gains', eur(r.money))}${row('Niveau', r.ov)}${row('Héritage', r.legacy + ' pts')}</div>
     ${r.titles.length ? `<div class="infobox">🏆 ${r.titles.map(esc).join(' · ')}</div>` : ''}
@@ -1757,7 +1773,7 @@ function renderHof() {
   const rec = (k, v) => `<div class="sv"><small>${k}</small><b>${v}</b></div>`;
   const seasons = (c.seasons || []).map(s => `<div class="rk-row" style="grid-template-columns:90px 90px 1fr 110px 110px"><b>Saison ${s.season}</b><span>${s.rank}e</span><span>${s.titles.length} titre${s.titles.length > 1 ? 's' : ''}</span><span>${s.wins} – ${s.losses}</span><b>${eur(s.money)}</b></div>`).join('');
   const legends = (c.legends || []).slice(-12).reverse().map(l => `<div class="rk-row" style="grid-template-columns:1fr 120px 120px 100px"><span class="n">${pname(l)}</span><span>${l.slams} Grand Smash</span><span>${l.worlds} titre mondial</span><span>retraite S${l.season}</span></div>`).join('');
-  $('#hof').innerHTML = `<div class="sreview ${inHof ? 'gold' : ''}"><small class="k">HALL OF FAME</small>
+  $('#hof').innerHTML = `<div class="sreview ${inHof ? 'gold' : ''}"><small class="k">Hall of Fame</small>
     <div class="big">${inHof ? `${esc(c.me.name)} est une légende` : 'En route vers la légende'}</div>
     <div class="hofbar"><i style="width:${Math.min(100, L)}%"></i><span>${L} / 100 points d'héritage</span></div>
     <small style="color:#a99cc9">Points : titres (Feeder 1, Contender 2, Champions 4, Grand Smash 10, Mondiaux 12), semaines n°1 (+1), semaines dans le top 10 (+0,2).</small>
@@ -1780,7 +1796,7 @@ function simCareerMatch() {
   if (r.o.rival) c.news.unshift(r.won ? `⚔ ${c.me.name} bat son rival ${r.o.name} !` : `⚔ ${r.o.name} prend le dessus sur ${c.me.name}.`);
   C.save();
   r.won ? sfx.crowd(2) : sfx.ui();
-  toast(r.won ? '✅' : '❌', `MATCH SIMULÉ · ${roundName.toUpperCase()}`, `${r.won ? 'Victoire' : 'Défaite'} ${r.sets[0]}–${r.sets[1]}`, `${C.gameScores(r.sets).map(g => g.join('-')).join(' · ')} · ${r.o.name}`);
+  toast(r.won ? '✅' : '❌', `Match simulé · ${roundName.toUpperCase()}`, `${r.won ? 'Victoire' : 'Défaite'} ${r.sets[0]}–${r.sets[1]}`, `${C.gameScores(r.sets).map(g => g.join('-')).join(' · ')} · ${r.o.name}`);
   if (d.result && (d.result.champion || d.result.medal)) setTimeout(() => ceremony(d), 500);
   show('scr-tour');
   setTimeout(flushPending, 1200);
@@ -1791,8 +1807,8 @@ function walkout(o, d, isFinal, bronze) {
   game.stateT = 7.6; R.intro = 7.3;
   const el = $('#walkout');
   const lines = [
-    { k: bronze ? `MATCH POUR LE BRONZE · ${d.ev.name.toUpperCase()}` : isFinal ? `FINALE · ${d.ev.name.toUpperCase()}` : `${d.ev.name.toUpperCase()} · ${roundLabel(d, C.myMatch()).toUpperCase()}`, p: o, col: '#ff3d6b' },
-    { k: 'ET FACE À LUI', p: c.me, col: '#3d8bff' },
+    { k: bronze ? `Match pour le bronze · ${d.ev.name.toUpperCase()}` : isFinal ? `FINALE · ${d.ev.name.toUpperCase()}` : `${d.ev.name.toUpperCase()} · ${roundLabel(d, C.myMatch()).toUpperCase()}`, p: o, col: '#ff3d6b' },
+    { k: 'Et face à lui', p: c.me, col: '#3d8bff' },
   ];
   const showLine = (L, t) => setTimeout(() => {
     if (!game) return;
@@ -1816,10 +1832,10 @@ function renderPerks() {
   $('#perks').innerHTML = `<div class="ptree">` + C.PERK_TREE.map(t => `<div class="pcol" style="--pc:${t.color}"><h3>${t.name}</h3>` + t.perks.map(p => {
     const S = C.perkState(p.id);
     return `<button class="mbtn perk ${S.own ? 'own' : S.can ? 'accent' : S.open ? '' : 'locked'}" data-perk="${p.id}"><span><b>${S.own ? '✓ ' : S.open ? '' : '🔒 '}${p.name}</b>
-      <small>${p.desc}${S.own ? '' : ` · ${p.cost} pt${p.cost > 1 ? 's' : ''}`}${p.sig ? ' · COUP SIGNATURE' : ''}</small></span></button>`;
+      <small>${p.desc}${S.own ? '' : ` · ${p.cost} pt${p.cost > 1 ? 's' : ''}`}${p.sig ? ' · Coup signature' : ''}</small></span></button>`;
   }).join('<i class="plink"></i>') + '</div>').join('') + `</div><div class="infobox">Tu gagnes des points de talent avec chaque titre, chaque jalon de carrière et chaque nouvelle saison. Les talents d'une branche se débloquent dans l'ordre.</div>`;
   document.querySelectorAll('#perks [data-perk]').forEach(b => b.addEventListener('click', () => {
-    if (C.buyPerk(b.dataset.perk)) { sfx.unlock(); toast('⚡', 'TALENT DÉBLOQUÉ', b.querySelector('b').textContent.replace('✓ ', ''), b.querySelector('small').textContent.split(' · ')[0]); const k = focusIdx; renderPerks(); focusIdx = k; refreshFocus(); }
+    if (C.buyPerk(b.dataset.perk)) { sfx.unlock(); toast('⚡', 'Talent débloqué', b.querySelector('b').textContent.replace('✓ ', ''), b.querySelector('small').textContent.split(' · ')[0]); const k = focusIdx; renderPerks(); focusIdx = k; refreshFocus(); }
   }));
 }
 
@@ -1835,7 +1851,7 @@ function medalSVG(md, size = 64) {
 function renderPress() {
   const c = C.career, P = c && c.press;
   if (!P) { show(c && c.tour ? 'scr-tour' : 'scr-career'); return; }
-  $('#press-box').innerHTML = `<div class="press"><small class="k">CONFÉRENCE DE PRESSE${P.media ? ' · QUESTION DE ' + esc(P.media).toUpperCase() : ''}</small><div class="mics">🎙️ 🎙️ 🎙️</div><div class="q">« ${esc(P.q)} »</div></div>`;
+  $('#press-box').innerHTML = `<div class="press"><small class="k">Conférence de presse${P.media ? ' · Question de ' + esc(P.media).toUpperCase() : ''}</small><div class="mics">🎙️ 🎙️ 🎙️</div><div class="q">« ${esc(P.q)} »</div></div>`;
   $('#press-ans').innerHTML = P.answers.map((a, i) => `<button class="mbtn ${i === 2 ? 'gold' : ''}" data-ans="${i}"><span><b>${a.tone}</b><small>« ${esc(a.t)} »</small></span></button>`).join('');
   document.querySelectorAll('#press-ans [data-ans]').forEach(b => b.addEventListener('click', () => {
     const r = C.answerPress(+b.dataset.ans);
@@ -1894,7 +1910,7 @@ function renderJubile() {
   const R0 = c.retired, L = R0.legacy, hof = L >= 100;
   const rv = C.rivals().map(({ p, type }) => { const h = c.h2h[p.id] || { w: 0, l: 0 }; return `${esc(p.name)} (${type.toLowerCase()}) : <b>${h.w} – ${h.l}</b>`; }).join(' · ');
   const rec = (k, v) => `<div class="sv"><small>${k}</small><b>${v}</b></div>`;
-  $('#jubile').innerHTML = `<div class="sreview ${hof ? 'gold' : ''}"><small class="k">JUBILÉ · ${(c.seasons || []).length} SAISONS SUR LE CIRCUIT</small>
+  $('#jubile').innerHTML = `<div class="sreview ${hof ? 'gold' : ''}"><small class="k">JUBILÉ · ${(c.seasons || []).length} Saisons sur le circuit</small>
     <div class="big">${hof ? `${esc(c.me.name)}, légende du ping` : `Merci ${esc(c.me.name)} !`}</div>
     <div style="color:#ddd5f2;margin-bottom:8px">${C.flag(c.me.country, 30, 20)} ${C.COUNTRIES[c.me.country].name} · retraite à ${R0.age} ans · ${hof ? '<b style="color:#ffc83c">Entre au Hall of Fame</b>' : `${L} / 100 points d'héritage`}</div>
     <div class="svs">${rec('Meilleur classement', (c.bestRank || R0.bestRank) + 'e')}${rec('Semaines n°1', c.weeksNo1 || 0)}${rec('Titres', c.titles.filter(t => !t.dbl).length)}${rec('Grand Smash', by('slam'))}${rec('Titres mondiaux', by('worlds'))}${rec('Gains', eur(c.earned || 0))}</div>
@@ -1944,7 +1960,7 @@ function coachTipFor(id) {
   sc.querySelectorAll('.coachtip').forEach(e => e.remove());
   const el = document.createElement('div');
   el.className = 'coachtip';
-  el.innerHTML = `<span>🧢</span><div><small>TON COACH</small>${TIPS[id]}</div><button class="mbtn small" data-nav><span><b>Compris</b></span></button>`;
+  el.innerHTML = `<span>🧢</span><div><small>Ton coach</small>${TIPS[id]}</div><button class="mbtn small" data-nav><span><b>Compris</b></span></button>`;
   sc.prepend(el);
   el.querySelector('button').addEventListener('click', () => { c.tips = c.tips || {}; c.tips[id] = true; C.save(); el.remove(); sfx.ui(); focusIdx = 0; refreshFocus(); });
   focusIdx = 0; refreshFocus();
@@ -1987,7 +2003,7 @@ function renderSocial() {
   document.querySelectorAll('#social [data-post]').forEach(b => b.addEventListener('click', () => {
     const r = C.publish(b.dataset.post); if (!r) return;
     socTab = r.pl; r.viral ? sfx.crowd(2) : sfx.unlock();
-    toast(C.PLATFORMS[r.pl].icon, r.viral ? 'C\'EST VIRAL !' : 'PUBLIÉ', `+${fansN(r.gain)} abonnés`, `❤ ${fansN(r.likes)}${r.views ? ' · 👁 ' + fansN(r.views) : ''}${r.money ? ' · +' + eur(r.money) : ''}`);
+    toast(C.PLATFORMS[r.pl].icon, r.viral ? 'C\'Est viral !' : 'PUBLIÉ', `+${fansN(r.gain)} abonnés`, `❤ ${fansN(r.likes)}${r.views ? ' · 👁 ' + fansN(r.views) : ''}${r.money ? ' · +' + eur(r.money) : ''}`);
     renderSocial(); focusIdx = 0; refreshFocus();
   }));
 }
@@ -2011,11 +2027,11 @@ function renderPCardScreen() {
   const form = (p.form || '').split('').map(x => `<i class="fm ${x === 'V' ? 'v' : 'd'}">${x}</i>`).join('');
   $('#pcard-box').innerHTML = `<div class="scard" style="border-left-color:${p.rival || p.enemy ? '#ff3d5a' : p.sig ? '#ffc83c' : '#c84dff'}">
     <div class="who" style="font-size:34px">${C.flag(p.country, 48, 32)}${esc(p.name)}</div>
-    <div class="row2">${C.COUNTRIES[p.country].name.toUpperCase()} · ${p.age || '?'} ANS · ${C.rankOf(p.id)}E MONDIAL · ${C.rankPoints(p)} PTS · ${C.STYLE_NAMES[p.style].toUpperCase()} · ${p.hand === 1 ? 'DROITIER' : 'GAUCHER'}</div>
+    <div class="row2">${C.COUNTRIES[p.country].name.toUpperCase()} · ${p.age || '?'} ANS · ${C.rankOf(p.id)}E MONDIAL · ${C.rankPoints(p)} PTS · ${C.STYLE_NAMES[p.style].toUpperCase()} · ${p.hand === 1 ? 'Droitier' : 'Gaucher'}</div>
     <div class="cgrid" style="margin:0"><div>${C.STAT_KEYS.map(k => `<div class="statrow" style="grid-template-columns:110px 1fr 34px"><span>${C.STAT_NAMES[k]}</span><div class="xbar"><div style="width:${p.stats[k]}%"></div></div><b>${p.stats[k]}</b></div>`).join('')}</div>
     <div><ul><li>Niveau : <b>${Math.round(C.rating(p))}</b></li><li>Forme récente : ${form || '—'}</li><li>Titres depuis le début de ta carrière : <b>${tit || 'aucun'}</b></li>
     <li>Face-à-face avec toi : <b>${h.w} – ${h.l}</b></li><li>Points forts : ${sc.best.join(', ')} · points faibles : ${sc.worst.join(', ')}</li></ul>
-    ${p.sig ? `<div class="sig">⚡ ${C.SIGNATURES[p.sig].name} : ${C.SIGNATURES[p.sig].desc}</div>` : ''}${p.rival ? '<div class="rv">⚔ TON RIVAL</div>' : p.enemy ? '<div class="rv">🔥 ENNEMI JURÉ</div>' : p.prodige ? '<div class="rv">⭐ JEUNE PRODIGE</div>' : ''}</div></div></div>`;
+    ${p.sig ? `<div class="sig">⚡ ${C.SIGNATURES[p.sig].name} : ${C.SIGNATURES[p.sig].desc}</div>` : ''}${p.rival ? '<div class="rv">⚔ Ton rival</div>' : p.enemy ? '<div class="rv">🔥 Ennemi juré</div>' : p.prodige ? '<div class="rv">⭐ Jeune prodige</div>' : ''}</div></div></div>`;
 }
 function startSparring(k) {
   const c = C.career, ov = C.overall(C.effStats());
@@ -2035,7 +2051,7 @@ $('#sv-export').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify({ pingpong: 1, slots: data })], { type: 'application/json' }));
   a.download = 'pingpong-sauvegardes.json'; a.click(); sfx.ui();
-  toast('💾', 'SAUVEGARDE', 'Export terminé', 'Garde ce fichier en sécurité');
+  toast('💾', 'Sauvegarde', 'Export terminé', 'Garde ce fichier en sécurité');
 });
 $('#sv-import').addEventListener('click', () => $('#sv-file').click());
 $('#sv-file').addEventListener('change', async e => {
@@ -2045,7 +2061,7 @@ $('#sv-file').addEventListener('change', async e => {
     const slots = j.slots || (j.me ? { 1: j } : null);
     if (!slots) throw new Error('format');
     let n = 0; for (const [k, v] of Object.entries(slots)) { if (v && v.me) { localStorage.setItem(`pingpong-career-v2-s${k}`, JSON.stringify(v)); n++; } }
-    toast('💾', 'SAUVEGARDE', 'Import réussi', `${n} carrière${n > 1 ? 's' : ''} restaurée${n > 1 ? 's' : ''}`);
-  } catch (err) { toast('⚠️', 'SAUVEGARDE', 'Fichier invalide', 'Ce n\'est pas une sauvegarde PingPong'); }
+    toast('💾', 'Sauvegarde', 'Import réussi', `${n} carrière${n > 1 ? 's' : ''} restaurée${n > 1 ? 's' : ''}`);
+  } catch (err) { toast('⚠️', 'Sauvegarde', 'Fichier invalide', 'Ce n\'est pas une sauvegarde PingPong'); }
   e.target.value = ''; renderSlots(); refreshFocus();
 });

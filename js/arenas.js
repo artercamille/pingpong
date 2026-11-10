@@ -5,7 +5,7 @@ import * as THREE from 'three';
 // ------------------------------------------------------------------ définitions (paramètres de setVenue)
 export const ARENA_VENUES = {
   neotokyo: {
-    bloom: 0.75, grade: { sat: 1.15, con: 1.08, tint: [1, 0.96, 1.05] }, floorStyle: 'asphalt', floorRough: 0.25, mirrorTint: 0x7a7a7a, kit: 'tokyo', title: 'NEO TOKYO', sub: 'ROOFTOP SERIES', pattern: 'grid', floor: '#15111f', outer: 0x17161d, outerRough: 0.22, outerMetal: 0.35, outerSize: [46, 40],
+    bloom: 0.75, grade: { sat: 1.15, con: 1.08, tint: [1, 0.96, 1.05] }, coneColor: 0xff7ad8, coneOpacity: 0.7, dustColor: 0xffa8e8, floorStyle: 'asphalt', floorRough: 0.25, mirrorTint: 0x7a7a7a, kit: 'tokyo', title: 'NEO TOKYO', sub: 'ROOFTOP SERIES', pattern: 'grid', floor: '#15111f', outer: 0x17161d, outerRough: 0.22, outerMetal: 0.35, outerSize: [46, 40],
     accent: '#ff2bd6', neon: 0xff2bd6, neon2: 0x2be8ff, legs: 0x2be8ff, light: 0xff2bd6, amb: 16, bg: 0x0b0620, fog: 0.012,
     hemi: 0.45, hemiSky: 0x8a5fe6, hemiGround: 0x10081a, key: 1.1, spots: 0.85, ceiling: false, cones: false, screens: true, stands: 'sides',
     standCol: 0x16131e, seats: 0x2a1a40, table: '#0f1626', boardBg: '#0a0612', exposure: 1.1,
@@ -13,7 +13,7 @@ export const ARENA_VENUES = {
     items: ['NEO TOKYO', '@logo', 'ピンポン', 'ROOFTOP SERIES', '卓球'],
   },
   beach: {
-    bloom: 0.55, sunEnv: true, grade: { sat: 1.12, con: 1.05, tint: [1.05, 0.98, 0.92] }, floorStyle: 'deck', floorRough: 0.7, mirrorTint: 0x606060, kit: 'beach', title: 'SUNSET BEACH', sub: 'MIAMI OPEN AIR', pattern: 'waves', floor: '#1d6f8f', outer: 0xc89a68, outerRough: 0.95, outerSize: [56, 48],
+    bloom: 0.55, sunEnv: true, grade: { sat: 1.12, con: 1.05, tint: [1.05, 0.98, 0.92] }, dust: false, floorStyle: 'deck', floorRough: 0.7, mirrorTint: 0x606060, kit: 'beach', title: 'SUNSET BEACH', sub: 'MIAMI OPEN AIR', pattern: 'waves', floor: '#1d6f8f', outer: 0xc89a68, outerRough: 0.95, outerSize: [56, 48],
     accent: '#ffd23c', neon: 0xff8a3c, neon2: 0xffd23c, legs: 0xff6a3c, light: 0xff8a50, amb: 8, bg: 0xff8a5a, fog: 0.009,
     hemi: 0.7, hemiSky: 0xffb890, hemiGround: 0x8a5a40, key: 1.25, spots: 0.55, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0xd8d2c8, seats: 0x3cb6c8, table: '#1f4fa8', boardBg: '#fff6e8', boardFg: '#1a3a6a', exposure: 0.84,
@@ -21,7 +21,7 @@ export const ARENA_VENUES = {
     items: ['SUNSET BEACH', '@logo', 'MIAMI OPEN AIR', 'SUMMER TOUR'],
   },
   underground: {
-    bloom: 0.8, grade: { sat: 1.1, con: 1.12, vig: 0.5 }, floorStyle: 'concrete', floorRough: 0.3, mirrorTint: 0x9a9a9a, kit: 'club', title: 'UNDERGROUND', sub: 'NIGHT SESSION', pattern: 'grid', floor: '#09090b', outer: 0x121214, outerRough: 0.35, outerMetal: 0.3,
+    bloom: 0.8, grade: { sat: 1.1, con: 1.12, vig: 0.5 }, crowdHype: 0.75, dustColor: 0xb0ffc8, floorStyle: 'concrete', floorRough: 0.3, mirrorTint: 0x9a9a9a, kit: 'club', title: 'UNDERGROUND', sub: 'NIGHT SESSION', pattern: 'grid', floor: '#09090b', outer: 0x121214, outerRough: 0.35, outerMetal: 0.3,
     accent: '#3dff6e', neon: 0x3dff6e, neon2: 0xff3dc8, legs: 0x18181c, light: 0x3dff6e, amb: 12, bg: 0x020402, fog: 0.02,
     hemi: 0.3, hemiSky: 0x3dff6e, hemiGround: 0x050505, key: 1.1, spots: 1.0, ceiling: false, cones: true, screens: false, stands: 'sides',
     standCol: 0x111111, seats: 0x1a1a1a, table: '#101012', boardBg: '#050505', exposure: 1.05,
@@ -29,7 +29,7 @@ export const ARENA_VENUES = {
     items: ['UNDERGROUND', '@logo', 'PING PONG CLUB', 'NIGHT SESSION'],
   },
   orbit: {
-    bloom: 0.65, grade: { sat: 1.05, con: 1.1, tint: [0.95, 1, 1.06] }, floorStyle: 'metal', floorRough: 0.3, mirrorTint: 0xa0a0a0, kit: 'space', title: 'ORBITAL', sub: 'STATION ZÉRO-G', pattern: 'hex', floor: '#141a24', outer: 0x1c222c, outerRough: 0.3, outerMetal: 0.7, outerSize: [46, 40],
+    bloom: 0.65, grade: { sat: 1.05, con: 1.1, tint: [0.95, 1, 1.06] }, coneColor: 0x8fe0ff, coneOpacity: 0.6, dustColor: 0xbfefff, floorStyle: 'metal', floorRough: 0.3, mirrorTint: 0xa0a0a0, kit: 'space', title: 'ORBITAL', sub: 'STATION ZÉRO-G', pattern: 'hex', floor: '#141a24', outer: 0x1c222c, outerRough: 0.3, outerMetal: 0.7, outerSize: [46, 40],
     accent: '#7fe3ff', neon: 0x7fe3ff, neon2: 0xffffff, legs: 0x9aa6b8, light: 0x7fe3ff, amb: 14, bg: 0x000000, fog: 0.003,
     hemi: 0.45, hemiSky: 0x6fa0ff, hemiGround: 0x0a0c12, key: 1.25, spots: 0.9, ceiling: false, cones: false, screens: true, stands: 'sides',
     standCol: 0x262c38, seats: 0x1f6fd6, table: '#0f1a30', boardBg: '#081018', exposure: 1.08, sky: 'space',
@@ -37,7 +37,7 @@ export const ARENA_VENUES = {
     items: ['ORBITAL', '@logo', 'STATION ZÉRO-G', 'PING PONG SPATIAL'],
   },
   sakura: {
-    bloom: 0.6, grade: { sat: 1.1, con: 1.05, tint: [1.04, 0.98, 1] }, floorStyle: 'darkwood', floorRough: 0.28, mirrorTint: 0x9a9a9a, kit: 'sakura', title: 'SAKURA', sub: 'TEMPLE MATSURI', pattern: 'planks', floor: '#5a3622', outer: 0x5a564c, outerRough: 0.95, outerSize: [60, 60],
+    bloom: 0.6, grade: { sat: 1.1, con: 1.05, tint: [1.04, 0.98, 1] }, coneColor: 0xffc890, coneOpacity: 0.55, dustColor: 0xffd0e0, floorStyle: 'darkwood', floorRough: 0.28, mirrorTint: 0x9a9a9a, kit: 'sakura', title: 'SAKURA', sub: 'TEMPLE MATSURI', pattern: 'planks', floor: '#5a3622', outer: 0x5a564c, outerRough: 0.95, outerSize: [60, 60],
     accent: '#ff9ad8', neon: 0xff7ab8, neon2: 0xffc83c, legs: 0xc8202e, light: 0xffb070, amb: 12, bg: 0x4a2a5a, fog: 0.011,
     hemi: 0.75, hemiSky: 0xffa8cc, hemiGround: 0x2a2a20, key: 1.25, spots: 0.6, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0x4a2c18, seats: 0x8a1a1a, table: '#1d3a2c', boardBg: '#1c0808', boardFg: '#ffe8d0', exposure: 1.02,
@@ -45,7 +45,7 @@ export const ARENA_VENUES = {
     items: ['SAKURA', '@logo', 'TEMPLE MATSURI', '桜'],
   },
   aurora: {
-    bloom: 0.7, grade: { sat: 1.08, con: 1.06, tint: [0.95, 1, 1.05] }, floorStyle: 'ice', floorRough: 0.15, mirrorTint: 0xb0c8d8, kit: 'aurora', title: 'AURORA', sub: 'CERCLE POLAIRE', pattern: 'ice', floor: '#a9d6ec', floorText: '#0a3a5a', outer: 0xb8cad8, outerRough: 0.75, outerSize: [70, 70],
+    bloom: 0.7, grade: { sat: 1.08, con: 1.06, tint: [0.95, 1, 1.05] }, dustColor: 0xdff4ff, floorStyle: 'ice', floorRough: 0.15, mirrorTint: 0xb0c8d8, kit: 'aurora', title: 'AURORA', sub: 'CERCLE POLAIRE', pattern: 'ice', floor: '#a9d6ec', floorText: '#0a3a5a', outer: 0xb8cad8, outerRough: 0.75, outerSize: [70, 70],
     accent: '#14b88a', neon: 0x3dffb0, neon2: 0x8a5aff, legs: 0x2a4a6a, light: 0x6affd0, amb: 10, bg: 0x06121e, fog: 0.008,
     hemi: 0.55, hemiSky: 0x5a90d8, hemiGround: 0x8ab0d0, key: 0.9, spots: 0.75, ceiling: false, cones: false, screens: false, stands: 'sides',
     standCol: 0x2a3a4a, seats: 0x1a4a6a, table: '#14304a', boardBg: '#06121c', exposure: 0.88,
@@ -245,6 +245,15 @@ const BUILD = {
     for (const [x, z] of [[30, -60], [-50, -40], [45, 50]]) { const geo = new THREE.CylinderGeometry(1.8, 0.2, 90, 12, 1, true); geo.translate(0, 45, 0); const b = new THREE.Mesh(geo, beamM); b.position.set(x, 10, z); g.add(b); sbeams.push(b); }
     // avions qui clignotent
     const planes = [0, 1].map(k => { const p = halo(k ? 0xff4040 : 0xffffff, 1.2, 1); p.position.set(0, 45 + k * 8, -80); g.add(p); return p; });
+    // dragon holographique qui ondule au-dessus de la ville
+    const dragon = [], dN = 46;
+    const dGeo = new THREE.SphereGeometry(1, 12, 8);
+    for (let k = 0; k < dN; k++) {
+      const u = k / dN, col = new THREE.Color().setHSL(0.55 + u * 0.35, 1, 0.6);
+      const m = new THREE.Mesh(dGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55 * (1 - u * 0.5), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false }));
+      const sc = k === 0 ? 1.3 : 1.05 * Math.sin(Math.min(1, (1 - u) * 1.4) * Math.PI * 0.5) + 0.12; m.scale.setScalar(sc); g.add(m); dragon.push(m);
+    }
+    const dHalo = halo(0x60d8ff, 9, 0.35); g.add(dHalo);
     const blink = basic(0xff2020, { fog: false });
     const blinks = tops.map(p => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), blink); m.position.copy(p); g.add(m); return m; });
     const rain = fallers(1400, [18, 14, 20], 0x9fb8ff, 0.05, 0.55); g.add(rain);
@@ -254,6 +263,8 @@ const BUILD = {
       sbeams.forEach((b, k) => { b.rotation.z = Math.sin(t * 0.25 + k * 2) * 0.5; b.rotation.x = Math.cos(t * 0.2 + k) * 0.3; });
       planes.forEach((p, k) => { p.position.x = ((t * (4 + k) + k * 60) % 220) - 110; p.material.opacity = Math.sin(t * 5 + k) > 0.3 ? 1 : 0.1; });
       towerTop.material.opacity = Math.sin(t * 2) > 0 ? 0.9 : 0.25;
+      for (let k = 0; k < dN; k++) { const u = t * 0.18 - k * 0.022; const r2 = 34 + Math.sin(u * 3) * 6; dragon[k].position.set(Math.cos(u) * r2, 7.5 + Math.sin(u * 5 + k * 0.25) * 2, Math.sin(u) * r2 - 8); }
+      dHalo.position.copy(dragon[0].position);
       flick.forEach((m, k) => { const f = Math.sin(t * 37 + k * 9) > 0.97 || (Math.sin(t * 0.7 + k) > 0.985) ? 0.35 : 1; m.color.setScalar(f); });
     } };
   },
@@ -415,6 +426,10 @@ const BUILD = {
       head.add(beam); const lens = halo(col, 1.2, 0.9); lens.position.y = -0.3; head.add(lens);
       heads.push({ head, k, z });
     }
+    // canons à CO2 sur la scène : panaches blancs sur les gros points
+    const co2Tex = tex(64, 256, (c2, w, h) => { for (let k = 0; k < 40; k++) { const y = Math.random() * h, r = 10 + (1 - y / h) * 22; const gr2 = c2.createRadialGradient(w / 2, y, 0, w / 2, y, r); gr2.addColorStop(0, 'rgba(255,255,255,0.25)'); gr2.addColorStop(1, 'rgba(255,255,255,0)'); c2.fillStyle = gr2; c2.fillRect(0, 0, w, h); } });
+    const jets = [-4.4, -1.5, 1.5, 4.4].map(x => { const geo = new THREE.PlaneGeometry(1.4, 6); geo.translate(0, 3, 0); const j = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: co2Tex, transparent: true, opacity: 0, depthWrite: false, fog: false })); j.position.set(x, 1.4, -14.2); g.add(j); return j; });
+    let jetT = 0;
     const ballGlow = halo(0xffffff, 3, 0.35); ballGlow.position.set(0, 9, 0); g.add(ballGlow);
     const strobe = new THREE.PointLight(0xffffff, 0, 40, 1.4); strobe.position.set(0, 9, 0); g.add(strobe);
     let st = 0;
@@ -425,6 +440,8 @@ const BUILD = {
       leds.forEach((m, k) => { const on = (Math.floor(beat) + k) % 4 === 0; m.color.setHex(on ? 0xffffff : k % 2 ? 0x3dff6e : 0xff3dc8); });
       for (const L of lasers) { const s = Math.sign(L.z); L.l.rotation.set(s * (0.75 + Math.sin(t * 0.7 + L.k) * 0.35), 0, Math.sin(t * 0.9 + L.k * 0.7) * 0.9); L.m.opacity = 0.35 + 0.3 * Math.max(0, Math.sin(beat * Math.PI)); }
       st -= dt; if (cheer > 0.5 && st <= 0) st = 0.09;
+      if (cheer > 1.2 && jetT <= 0) jetT = 1.4;
+      jetT -= dt; for (const j of jets) { const u = Math.max(0, jetT) / 1.4; j.material.opacity = u > 0 ? Math.min(1, u * 2.5) * 0.9 : 0; j.scale.set(1 + (1 - u) * 1.5, 0.4 + (1 - u) * 0.9, 1); j.lookAt(0, j.position.y, 0); }
       if (((t * 20) | 0) !== this._eqF) { this._eqF = (t * 20) | 0; drawEq(t); }
       for (const sm of smokes) { sm.lookAt(0, sm.position.y, 4 * Math.sign(sm.position.z || 1)); sm.position.x += Math.sin(t * 0.2 + sm.id) * 0.004; }
       strobe.intensity = st > 0.045 ? 60 : 0;
@@ -585,6 +602,8 @@ const BUILD = {
       const l = new THREE.Mesh(lanternGeo, lantern); l.position.set(sx * 4.8, 2.5, z); g.add(l);
       for (const dy of [0.33, -0.33]) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.06, 12), post); cap.position.set(sx * 4.8, 2.5 + dy, z); g.add(cap); }
     }
+    const moon = new THREE.Mesh(new THREE.CircleGeometry(6, 48), basic(0xfff4e0, { fog: false })); moon.position.set(-22, 20, -100); moon.lookAt(0, 20, 0); g.add(moon);
+    const moonGlow = halo(0xffe0f0, 40, 0.35); moonGlow.position.set(-22, 20, -99); g.add(moonGlow);
     clouds(g, 12, 80, 100, 12, 26, 0xffb0c0, 0.7);
     // seconde pagode et lucioles
     const pag2 = pag.clone(); pag2.position.set(30, 0, -42); pag2.scale.setScalar(0.8); g.add(pag2);

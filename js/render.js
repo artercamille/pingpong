@@ -497,6 +497,15 @@ export class Renderer {
     this.sparks = new Particles(this.scene, 500, true);
     this.confettiP = new Particles(this.scene, 1600, false);
     this.fireP = new Particles(this.scene, 3200, true);
+    // flashs d'appareils photo dans le public + poussière qui danse dans la lumière des projecteurs
+    this.flashP = new Particles(this.scene, 400, true);
+    {
+      const n = 700, p = new Float32Array(n * 3);
+      for (let k = 0; k < n; k++) p.set([(Math.random() - 0.5) * 9, Math.random() * 7, (Math.random() - 0.5) * 15], k * 3);
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+      this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xfff2dd, size: 0.018, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }));
+      this.scene.add(this.dust);
+    }
     this.celeb = null;
     this.flash = 0; this.intro = 0;
 
@@ -513,7 +522,9 @@ export class Renderer {
       fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uVig, uSat, uCon; uniform vec3 uTint; varying vec2 vUv;
         float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         void main(){
+          vec2 dd = (vUv - 0.5); float ca = dot(dd, dd) * 0.006;
           vec4 c = texture2D(tDiffuse, vUv);
+          c.r = texture2D(tDiffuse, vUv + dd * ca).r; c.b = texture2D(tDiffuse, vUv - dd * ca).b;
           float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
           c.rgb = mix(vec3(l), c.rgb, uSat);
           c.rgb = (c.rgb - 0.5) * uCon + 0.5;
@@ -686,7 +697,7 @@ export class Renderer {
       grd.addColorStop(0, 'rgba(255,250,240,0)'); grd.addColorStop(0.2, 'rgba(255,250,240,0.05)'); grd.addColorStop(1, 'rgba(255,250,240,0)');
       g.fillStyle = grd; g.fillRect(0, 0, w, h);
     });
-    const coneMat = new THREE.MeshBasicMaterial({ map: coneTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    const coneMat = new THREE.MeshBasicMaterial({ map: coneTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }); this.coneMat = coneMat;
     for (const [x, z] of [[-2.2, -4], [2.2, -4], [-2.2, 4], [2.2, 4]]) {
       const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 2.8, 11, 24, 1, true), coneMat);
       cone.position.set(x * 0.8, 5.5, z * 0.8); s.add(cone); (this.cones = this.cones || []).push(cone);
@@ -932,7 +943,7 @@ export class Renderer {
     if (this.ola >= 0) { this.ola += dt; if (this.ola > 6.5) this.ola = -1; }
     if (!this.crowd.visible) return;
     // les bras n'ont besoin d'être recalculés à chaque image que si le public bouge
-    const busy = this.cheer > 0.02 || this.clap > 0 || this.ola >= 0 || this.ovation;
+    const busy = this.cheer > 0.02 || this.clap > 0 || this.ola >= 0 || this.ovation || this.crowdHype;
     this.crowdFrame++;
     if (!busy && this.crowdFrame % 4 && dt > 0) return;
     const t = this.time, items = this.crowdItems, M = this._m, Q = this._q, P = this._v, S = this._s, UP = this._up, D = this._d;
@@ -955,6 +966,7 @@ export class Renderer {
       let wave = false, stand = 0, jump = 0, clap = false, phone = false;
       if (this.ovation) { stand = 1; wave = it.phone < 0 || Math.sin(t * 0.5 + it.ph) > 0.2; phone = it.phone >= 0 && !wave; jump = Math.max(0, Math.sin(t * 7 * it.sp + it.ph)) * 0.1; }
       else if (it.ex < cheer * 0.85) { stand = 1; wave = true; jump = Math.max(0, Math.sin(t * 8 * it.sp + it.ph)) * 0.14 * cheer; }
+      else if (this.crowdHype && it.ex < this.crowdHype) { stand = 1; wave = Math.sin(t * 1.3 + it.ph) > 0.3; jump = Math.max(0, Math.sin(t * 13.4 + it.ph * 0.2)) * 0.09; }
       else if (this.clap > 0 && it.ex < 0.92) clap = true;
       if (olaA !== null) { let da = Math.abs(((it.ang - olaA) % 6.283 + 9.425) % 6.283 - 3.1416); if (da < 0.45) { const k = 1 - da / 0.45; stand = Math.max(stand, k); if (k > 0.4) wave = true, clap = false; } }
       if (!stand && !clap && night && this.pressure && it.phone >= 0 && it.ex < 0.25) phone = true;
@@ -1142,6 +1154,15 @@ export class Renderer {
     this.sparks.update(dt);
     this.confettiP.update(dt, 2.5, this.time);
     this.fireP.update(dt);
+    this.flashP.update(dt);
+    // flashs : quelques-uns en continu, une rafale sur les gros points et pendant la célébration
+    const fr = (this.celeb ? 40 : this.cheer > 0.9 ? 30 : this.pressure ? 4 : 1.2) * dt;
+    for (let n = fr; n > 0; n -= 1) {
+      if (n < 1 && Math.random() > n) break;
+      const it = this.crowdItems[(Math.random() * (this.crowdN ?? this.crowdItems.length)) | 0];
+      if (it && (!it.g || it.g.visible) && this.crowd.visible) this.flashP.spawn(it.x, it.y + 0.55, it.z, 0, 0, 0, [1, 1, 1], 0.09, 0.35, 0);
+    }
+    { const P = this.dust.geometry.attributes.position.array; for (let i = 0; i < P.length; i += 3) { P[i] += Math.sin(this.time * 0.3 + i) * dt * 0.05; P[i + 1] += dt * 0.04 * Math.sin(i + this.time * 0.2); if (P[i + 1] > 7) P[i + 1] = 0; if (P[i + 1] < 0) P[i + 1] = 7; } this.dust.geometry.attributes.position.needsUpdate = true; }
     if (this.celeb && game.players) this.updateCelebration(dt, game);
     this.flash = Math.max(0, this.flash - dt * 1.6);
     this.mats.neon.emissiveIntensity = 3 + this.flash * 2.5;
@@ -1426,7 +1447,10 @@ export class Renderer {
     this.hemi.color.setHex(v.hemiSky ?? 0x6b4fa8); this.hemi.groundColor.setHex(v.hemiGround ?? 0x0a0812); this.hemi.intensity = v.hemi ?? 0.35;
     this.key.intensity = v.key ?? 1.25;
     for (const sp of this.spots) sp.intensity = sp.userData.base * (v.spots ?? 1);
-    for (const c of this.cones) c.visible = v.cones !== false;
+    for (const c of this.cones) c.visible = v.cones !== false || !!v.coneColor;
+    this.coneMat.color.setHex(v.coneColor ?? 0xffffff); this.coneMat.opacity = v.coneOpacity ?? 1;
+    this.dust.material.color.setHex(v.dustColor ?? 0xfff2dd); this.dust.visible = v.dust !== false;
+    this.crowdHype = v.crowdHype || 0;
     this.ceilingG.visible = v.ceiling !== false;
     for (const g of this.screenGs || []) g.visible = v.screens !== false;
     this.gymKit.visible = !!v.gym; this.flagKit.visible = !!v.flags; this.showKit.visible = !!v.show;

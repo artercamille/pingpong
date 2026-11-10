@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PingPong — World Championships</title>
-<link rel="stylesheet" href="css/style.css?v=2611100129">
-<link rel="stylesheet" href="css/menu.css?v=2611100129">
-<link rel="stylesheet" href="css/ui.css?v=2611100129">
-<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611100129", "./js/arenas.js": "./js/arenas.js?v=2611100129", "./js/audio.js": "./js/audio.js?v=2611100129", "./js/career.js": "./js/career.js?v=2611100129", "./js/floors.js": "./js/floors.js?v=2611100129", "./js/game.js": "./js/game.js?v=2611100129", "./js/input.js": "./js/input.js?v=2611100129", "./js/main.js": "./js/main.js?v=2611100129", "./js/music.js": "./js/music.js?v=2611100129", "./js/net.js": "./js/net.js?v=2611100129", "./js/physics.js": "./js/physics.js?v=2611100129", "./js/players.js": "./js/players.js?v=2611100129", "./js/profile.js": "./js/profile.js?v=2611100129", "./js/render.js": "./js/render.js?v=2611100129", "./js/replay.js": "./js/replay.js?v=2611100129", "./js/venues.js": "./js/venues.js?v=2611100129", "./js/voice.js": "./js/voice.js?v=2611100129"}}</script>
+<link rel="stylesheet" href="css/style.css?v=2611100145">
+<link rel="stylesheet" href="css/menu.css?v=2611100145">
+<link rel="stylesheet" href="css/ui.css?v=2611100145">
+<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611100145", "./js/arenas.js": "./js/arenas.js?v=2611100145", "./js/audio.js": "./js/audio.js?v=2611100145", "./js/career.js": "./js/career.js?v=2611100145", "./js/floors.js": "./js/floors.js?v=2611100145", "./js/game.js": "./js/game.js?v=2611100145", "./js/input.js": "./js/input.js?v=2611100145", "./js/main.js": "./js/main.js?v=2611100145", "./js/music.js": "./js/music.js?v=2611100145", "./js/net.js": "./js/net.js?v=2611100145", "./js/physics.js": "./js/physics.js?v=2611100145", "./js/players.js": "./js/players.js?v=2611100145", "./js/profile.js": "./js/profile.js?v=2611100145", "./js/render.js": "./js/render.js?v=2611100145", "./js/replay.js": "./js/replay.js?v=2611100145", "./js/venues.js": "./js/venues.js?v=2611100145", "./js/voice.js": "./js/voice.js?v=2611100145"}}</script>
 <script src="lib/peerjs.min.js"></script>
 </head>
 <body>
@@ -66,42 +66,19 @@
     <div id="pcard"></div>
     <div id="cnav" class="hidden"></div>
     <section class="screen" id="scr-main">
-      <button class="mbtn big gold" id="btn-career">
-        <i><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0z"/><path d="M7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4M12 14v4M8 21h8M9 18h6"/></svg></i>
-        <span><b>Carrière</b><small>Du 200e mondial au titre de champion du monde</small></span>
-      </button>
-      <button class="mbtn big" data-go="scr-ai">
-        <i><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="6.5"/><path d="M13.5 13.5l6 6"/><circle cx="19" cy="5" r="2"/></svg></i>
-        <span><b>Jouer contre l'IA</b><small>Match rapide en solo</small></span>
-      </button>
-      <button class="mbtn big" data-go="scr-online">
-        <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></i>
-        <span><b>En ligne</b><small>Défie un pote, chacun sur son PC</small></span>
-      </button>
-      <button class="mbtn" data-go="scr-train">
-        <i><svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M9 8V5h6v3"/></svg></i>
-        <span><b>Entraînement</b><small>Robot lanceur de balles</small></span>
-      </button>
-      <button class="mbtn" id="btn-tuto">
-        <i><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/></svg></i>
-        <span><b>Tutoriel</b><small>Apprends les bases en 2 minutes</small></span>
-      </button>
-      <button class="mbtn" data-go="scr-locker">
-        <i><svg viewBox="0 0 24 24"><path d="M7 3h10l1 4H6z"/><path d="M5 7h14v14H5z"/><path d="M12 11v6"/></svg></i>
-        <span><b>Vestiaire</b><small>Raquettes, traînées et salles</small></span>
-      </button>
-      <button class="mbtn" data-go="scr-options">
-        <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></i>
-        <span><b>Options</b><small>Son, caméra, aide</small></span>
-      </button>
-      <button class="mbtn" data-go="scr-ctrl">
-        <i><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 014 4v1a4 4 0 01-7 2.6L14 15h-4l-1 .6A4 4 0 012 13v-1a4 4 0 014-4z"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r=".6"/><circle cx="18" cy="13.5" r=".6"/></svg></i>
-        <span><b>Commandes</b><small>Manette et clavier</small></span>
-      </button>
-      <button class="mbtn" data-go="scr-profile">
-        <i><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></i>
-        <span><b>Profil</b><small id="profile-name">Joueur</small></span>
-      </button>
+      <div class="hcards">
+        <button class="mbtn hcard" id="btn-career" style="background-image:url(assets/ui/career.jpg)"><em class="tag">Mode principal</em><span><b>Carrière</b><small>Du 200e mondial au titre de champion du monde</small></span></button>
+        <button class="mbtn hcard" data-go="scr-ai" style="background-image:url(assets/ui/quick.jpg)"><span><b>Match rapide</b><small>Contre l'IA, en simple ou en double</small></span></button>
+        <button class="mbtn hcard" data-go="scr-online" style="background-image:url(assets/ui/online.jpg)"><span><b>En ligne</b><small>Défie tes potes, chacun sur son PC</small></span></button>
+      </div>
+      <nav class="htabs">
+        <button class="mbtn tab" data-go="scr-train"><span><b>Entraînement</b></span></button>
+        <button class="mbtn tab" id="btn-tuto"><span><b>Tutoriel</b></span></button>
+        <button class="mbtn tab" data-go="scr-locker"><span><b>Vestiaire</b></span></button>
+        <button class="mbtn tab" data-go="scr-profile"><span><b>Profil</b><small id="profile-name" hidden>Joueur</small></span></button>
+        <button class="mbtn tab" data-go="scr-options"><span><b>Options</b></span></button>
+        <button class="mbtn tab" data-go="scr-ctrl"><span><b>Commandes</b></span></button>
+      </nav>
     </section>
 
     <section class="screen hidden" id="scr-ai">
@@ -390,7 +367,7 @@
   </div>
   <div id="daily"></div>
   <div class="mfoot">
-    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611100129</span>
+    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611100145</span>
     <span class="navhelp"><span class="kb" data-k="ok"></span> Valider <span class="kb" data-k="back"></span> Retour</span>
   </div>
 </div>
@@ -427,6 +404,6 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2611100129"></script>
+<script type="module" src="js/main.js?v=2611100145"></script>
 </body>
 </html>

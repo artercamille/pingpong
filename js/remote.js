@@ -40,8 +40,9 @@ export class PhoneHub {
     if (!code) { code = ''; for (let i = 0; i < 5; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; }
     this.code = code;
     try { sessionStorage.setItem('pp-tel-code', code); } catch (e) {}
-    this.status = 'opening'; this.onChange();
+    this.status = 'opening';
     this.peer = new window.Peer(PREFIX + 'tel-' + code, ICE);
+    this.onChange();
     this.peer.on('open', () => { this.status = 'ready'; this.onChange(); });
     this.peer.on('connection', conn => this.accept(conn));
     this.peer.on('disconnected', () => { try { this.peer.reconnect(); } catch (e) {} });

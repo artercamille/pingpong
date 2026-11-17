@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PingPong — World Championships</title>
-<link rel="stylesheet" href="css/style.css?v=2611180003">
-<link rel="stylesheet" href="css/menu.css?v=2611180003">
-<link rel="stylesheet" href="css/ui.css?v=2611180003">
-<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611180003", "./js/arenas.js": "./js/arenas.js?v=2611180003", "./js/audio.js": "./js/audio.js?v=2611180003", "./js/career.js": "./js/career.js?v=2611180003", "./js/floors.js": "./js/floors.js?v=2611180003", "./js/game.js": "./js/game.js?v=2611180003", "./js/input.js": "./js/input.js?v=2611180003", "./js/main.js": "./js/main.js?v=2611180003", "./js/music.js": "./js/music.js?v=2611180003", "./js/net.js": "./js/net.js?v=2611180003", "./js/phone.js": "./js/phone.js?v=2611180003", "./js/physics.js": "./js/physics.js?v=2611180003", "./js/players.js": "./js/players.js?v=2611180003", "./js/profile.js": "./js/profile.js?v=2611180003", "./js/remote.js": "./js/remote.js?v=2611180003", "./js/render.js": "./js/render.js?v=2611180003", "./js/replay.js": "./js/replay.js?v=2611180003", "./js/venues.js": "./js/venues.js?v=2611180003", "./js/voice.js": "./js/voice.js?v=2611180003"}}</script>
+<link rel="stylesheet" href="css/style.css?v=2611180020">
+<link rel="stylesheet" href="css/menu.css?v=2611180020">
+<link rel="stylesheet" href="css/ui.css?v=2611180020">
+<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611180020", "./js/arenas.js": "./js/arenas.js?v=2611180020", "./js/audio.js": "./js/audio.js?v=2611180020", "./js/career.js": "./js/career.js?v=2611180020", "./js/floors.js": "./js/floors.js?v=2611180020", "./js/game.js": "./js/game.js?v=2611180020", "./js/input.js": "./js/input.js?v=2611180020", "./js/main.js": "./js/main.js?v=2611180020", "./js/music.js": "./js/music.js?v=2611180020", "./js/net.js": "./js/net.js?v=2611180020", "./js/phone.js": "./js/phone.js?v=2611180020", "./js/physics.js": "./js/physics.js?v=2611180020", "./js/players.js": "./js/players.js?v=2611180020", "./js/profile.js": "./js/profile.js?v=2611180020", "./js/remote.js": "./js/remote.js?v=2611180020", "./js/render.js": "./js/render.js?v=2611180020", "./js/replay.js": "./js/replay.js?v=2611180020", "./js/venues.js": "./js/venues.js?v=2611180020", "./js/voice.js": "./js/voice.js?v=2611180020"}}</script>
 <script src="lib/peerjs.min.js"></script>
 <script src="lib/qrcode.js"></script>
 </head>
@@ -124,6 +124,10 @@
         <i><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5"/></svg></i>
         <span><b>Rejoindre une partie</b><small>Entre le code de ton pote</small></span>
       </button>
+      <button class="mbtn" data-go="scr-phone">
+        <i><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></i>
+        <span><b>Jouer avec mon téléphone</b><small>Relie ton téléphone avant de créer ou rejoindre : il sert de raquette en ligne aussi</small></span>
+      </button>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
 
@@ -145,6 +149,7 @@
       <div id="lb-teams"></div>
       <div class="lb-low">
         <div id="lb-feed"></div>
+        <div id="lb-phone"></div>
         <div class="lb-emotes" id="lb-emotes"></div>
       </div>
       <div class="lb-bar">
@@ -391,7 +396,7 @@
   </div>
   <div id="daily"></div>
   <div class="mfoot">
-    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611180003</span>
+    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611180020</span>
     <span class="navhelp"><span class="kb" data-k="ok"></span> Valider <span class="kb" data-k="back"></span> Retour</span>
   </div>
 </div>
@@ -428,6 +433,6 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2611180003"></script>
+<script type="module" src="js/main.js?v=2611180020"></script>
 </body>
 </html>

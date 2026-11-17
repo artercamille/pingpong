@@ -595,9 +595,16 @@
 @keyframes lbIn { from { opacity: 0; transform: translateY(8px); } }
 @keyframes lbBub { 0% { transform: scale(.4); opacity: 0; } 12% { transform: scale(1.1); opacity: 1; } 20% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
 
-.lb-low { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; margin: 18px 0 12px; }
+.lb-low { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: end; margin: 18px 0 12px; }
+#lb-phone { display: flex; gap: 12px; align-items: center; max-width: 290px; padding: 10px 14px; background: rgba(12,9,22,.6); border-radius: 6px; font-size: 13px; color: #ddd5f2; }
+#lb-phone b { display: block; font-size: 14px; color: #fff; margin-bottom: 2px; }
+#lb-phone small { display: block; line-height: 1.35; opacity: .8; }
+#lb-phone .lq { width: 78px; height: 78px; flex: none; background: #fff; border-radius: 4px; padding: 3px; }
+#lb-phone .lq svg { width: 100%; height: 100%; display: block; }
+#lb-phone.on { border-left: 3px solid #5be08a; }
+.lb-tel { color: #5be08a; font-weight: 800; }
 #lb-feed { min-height: 92px; font-size: 13.5px; font-weight: 700; color: #ddd5f2; display: flex; flex-direction: column; gap: 3px; padding: 10px 14px; background: rgba(12,9,22,.6); border-radius: 6px; }
-.lb-emotes { display: flex; gap: 6px; }
+.lb-emotes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .lb-em { width: 50px; height: 50px; font-size: 22px; font-weight: 900; color: #fff; background: rgba(40,32,64,.9); border: 1px solid rgba(255,255,255,.08); border-radius: 50%; cursor: pointer; transition: transform .12s; font-family: inherit; }
 .lb-em:hover, .lb-em.focus { transform: scale(1.15); border-color: #fff; box-shadow: 0 0 0 2px var(--neon); }
 .lb-bar { display: flex; gap: 10px; align-items: stretch; }

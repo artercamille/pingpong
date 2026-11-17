@@ -526,7 +526,7 @@ $('#ai-go').addEventListener('click', () => { sfx.ui(); startAI(); });
 let LB = null;
 const EMOTES = ['👋', '🔥', '😂', '😤', '🏓', 'GG'];
 const paddleColor = id => '#' + ((COSMETICS.paddle.find(p => p.id === id) || COSMETICS.paddle[0]).color).toString(16).padStart(6, '0');
-function meCard() { return { name: myName(), lp: profile.lp || 0, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail, ready: false, ping: 0 }; }
+function meCard() { return { name: myName(), lp: profile.lp || 0, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail, ready: false, ping: 0, phone: phones.has(0) }; }
 function lbFeed(t) { if (!LB) return; LB.feed.unshift(t); LB.feed = LB.feed.slice(0, 5); renderLB(); }
 
 $('#host-go').addEventListener('click', () => {
@@ -568,12 +568,13 @@ function lbHostMsg(msg, from) {
       if (k == null) { net.sendTo(from, { t: 'full', lobby: true }); return; }
       LB.conns.set(from, k);
     }
-    LB.slots[k] = { name: (msg.name || 'Invité').slice(0, 14), lp: +msg.lp || 0, level: Math.max(1, Math.min(99, +msg.level || 1)), paddle: String(msg.paddle || ''), trail: msg.trail, ready: false, ping: Math.round(from.rtt || 0) };
+    LB.slots[k] = { name: (msg.name || 'Invité').slice(0, 14), lp: +msg.lp || 0, level: Math.max(1, Math.min(99, +msg.level || 1)), paddle: String(msg.paddle || ''), trail: msg.trail, ready: false, ping: Math.round(from.rtt || 0), phone: !!msg.phone };
     lbFeed(`✅ ${LB.slots[k].name} a rejoint le salon`); sfx.ui();
   } else if (k == null) return;
   else if (msg.t === 'ready') { LB.slots[k].ready = !!msg.v; lbFeed(msg.v ? `✔ ${LB.slots[k].name} est prêt` : `✖ ${LB.slots[k].name} n'est plus prêt`); }
   else if (msg.t === 'emote') { lbEmote(k, msg.e); net.send({ t: 'lemote', lobby: true, k, e: msg.e }); return; }
   else if (msg.t === 'swap') { lbSwap(k); }
+  else if (msg.t === 'phone') { LB.slots[k].phone = !!msg.v; if (msg.v) lbFeed(`${LB.slots[k].name} joue avec son téléphone`); }
   lbBroadcast();
 }
 function lbSwap(k) {
@@ -655,7 +656,7 @@ $('#join-go').addEventListener('click', () => {
       if (msg.t === 'full') { resetNet(); show('scr-join'); $('#join-status').textContent = 'Le salon est complet ou la partie a déjà commencé.'; }
     };
     net.onClose = () => { if (LB) { resetNet(); show('scr-join'); $('#join-status').textContent = 'L\'hôte a fermé le salon.'; } };
-    net.send({ t: 'hello', lobby: true, name: myName(), lp: profile.lp, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail });
+    net.send({ t: 'hello', lobby: true, name: myName(), lp: profile.lp, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail, phone: phones.has(0) });
   }, err => { $('#join-status').textContent = err; });
 });
 $('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#join-go').click(); });
@@ -697,12 +698,37 @@ function lbCard(p, k) {
   return `<div class="lbp ${me ? 'me' : ''} ${p.ready ? 'ok' : ''}" style="--pc:${col}">${bub}
     <div class="lb-av"><span>${esc((p.name || '?')[0].toUpperCase())}</span></div>
     <div class="lb-info"><b>${esc(p.name)}${p.host ? ' <em>HÔTE</em>' : ''}${me ? ' <em class="you">TOI</em>' : ''}</b>
-      <small>${emblem(+p.lp || 0, 22)} ${r.label} · Niv. ${+p.level || 1}</small></div>
+      <small>${emblem(+p.lp || 0, 22)} ${r.label} · Niv. ${+p.level || 1}${p.phone ? ' · <span class="lb-tel">Téléphone</span>' : ''}</small></div>
     <div class="lb-side">${k === 0 && LB.host || p.host ? '' : `<span class="ping p${bars}" title="${p.ping} ms"><i></i><i></i><i></i></span>`}
       <span class="lb-st">${p.ready ? 'Prêt' : 'Pas prêt'}</span></div></div>`;
 }
+// salon : petit QR code pour relier son téléphone avant le match
+function renderLobbyPhone() {
+  const el = $('#lb-phone'); if (!el) return;
+  phones.start();
+  if (phones.has(0)) { el.className = 'on'; el.innerHTML = '<b>Téléphone relié</b><small>Tu joues avec ton téléphone : fais tes gestes, ton joueur se déplace seul.</small>'; return; }
+  el.className = '';
+  if (!phones.code) { el.innerHTML = '<b>Jouer au téléphone</b><small>Préparation…</small>'; return; }
+  if (el.dataset.code !== phones.code || !el.querySelector('svg')) {
+    const q = window.qrcode ? window.qrcode(0, 'M') : null;
+    let svg = '';
+    if (q) { q.addData(phones.url()); q.make(); svg = q.createSvgTag({ cellSize: 3, margin: 1, scalable: true }); }
+    el.innerHTML = `<div class="lq">${svg}</div><div><b>Jouer au téléphone</b><small>Scanne ce code avec ton téléphone pour t'en servir comme raquette (code ${phones.code}).</small></div>`;
+    el.dataset.code = phones.code;
+  }
+}
+// prévient le salon quand on relie ou débranche son téléphone
+function lobbyPhoneChanged() {
+  if (!LB) return;
+  const v = phones.has(0), me = LB.slots[LB.you];
+  if (me && me.phone === v) { renderLobbyPhone(); return; }
+  if (me) me.phone = v;
+  if (LB.host) lbBroadcast(); else if (net) net.send({ t: 'phone', lobby: true, v });
+  renderLB();
+}
 function renderLB() {
   if (!LB) return;
+  renderLobbyPhone();
   const dbl = LB.mode === 'double';
   $('#lb-mode').textContent = dbl ? 'Double · 2 contre 2' : 'Simple · classé';
   $('#lb-kicker').textContent = LB.host ? 'Ton salon' : 'Salon en ligne';
@@ -1205,6 +1231,7 @@ phones.onChange = ev => {
   if (ev && ev.type === 'leave') toast('', `Joueur ${ev.slot + 1}`, 'Téléphone déconnecté', 'Rescanne le QR code pour le reconnecter.');
   lastPad = null;
   if (curScreen === 'scr-phone') renderPhone();
+  lobbyPhoneChanged();
 };
 phones.onSwing = (k, sw) => {
   const el = document.querySelector(`#ph-slots [data-slot="${k}"] .ph-last`);

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0c0a16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PingPong · Raquette</title>
+<style>
+@font-face { font-family: 'Archivo'; src: url('assets/fonts/archivo-latin-wdth-normal.woff2') format('woff2-variations'); font-weight: 100 900; font-stretch: 62% 125%; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Archivo'; src: url('assets/fonts/archivo-latin-wdth-italic.woff2') format('woff2-variations'); font-weight: 100 900; font-stretch: 62% 125%; font-style: italic; font-display: swap; }
+:root { --pc: #ff3d6e; --acc2: #ff7a45; --txt2: rgba(255,255,255,.66); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: #0c0a16; color: #fff; font-family: 'Archivo', system-ui, sans-serif; overscroll-behavior: none; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+body { background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--pc) 28%, transparent), transparent 60%), #0c0a16; }
+.scr { position: fixed; inset: 0; display: none; flex-direction: column; padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom)); }
+.scr.on { display: flex; }
+.logo { font-size: 30px; font-weight: 900; font-style: italic; font-stretch: 75%; letter-spacing: -.5px; }
+.logo span { color: var(--pc); }
+h1 { font-size: 40px; line-height: 1.02; font-weight: 900; font-style: italic; font-stretch: 75%; letter-spacing: -.5px; margin: 0 0 12px; }
+p { font-size: 17px; line-height: 1.45; color: var(--txt2); margin: 0 0 14px; }
+p b { color: #fff; }
+.grow { flex: 1; }
+.btn { display: block; width: 100%; border: 0; border-radius: 16px; padding: 20px; font: inherit; font-size: 22px; font-weight: 900; font-style: italic; font-stretch: 80%; color: #fff;
+  background: linear-gradient(90deg, var(--pc), var(--acc2)); box-shadow: 0 14px 40px color-mix(in srgb, var(--pc) 40%, transparent); }
+.btn:active { transform: scale(.98); }
+.btn.alt { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); font-size: 17px; padding: 15px; }
+.err { color: #ff8a8a; font-size: 15px; min-height: 20px; margin: 10px 0 0; }
+input.code { width: 100%; font: inherit; font-size: 44px; font-weight: 900; font-style: italic; text-align: center; letter-spacing: 12px; text-transform: uppercase; padding: 14px; border: 0; border-radius: 16px;
+  background: rgba(255,255,255,.08); color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); margin-bottom: 14px; }
+.grip { display: flex; justify-content: center; margin: 10px 0 18px; }
+.grip svg { width: 150px; height: 190px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 900; font-style: italic; font-stretch: 80%; padding: 8px 14px; border-radius: 999px; background: color-mix(in srgb, var(--pc) 25%, transparent); box-shadow: inset 0 0 0 1px var(--pc); }
+.chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); }
+.net { font-size: 13px; color: var(--txt2); display: flex; align-items: center; gap: 6px; }
+.net i { width: 8px; height: 8px; border-radius: 50%; background: #ffb020; }
+.net.ok i { background: #4fd18b; }
+.net.bad i { background: #ff5a5a; }
+.stage { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 8px; }
+#shot { font-size: 64px; font-weight: 900; font-style: italic; font-stretch: 75%; letter-spacing: -1px; line-height: 1; min-height: 64px; }
+#grade { font-size: 22px; font-weight: 800; min-height: 26px; }
+#grade.g3 { color: #4fd18b; } #grade.g2 { color: #9fe870; } #grade.g1 { color: #ffb020; } #grade.g0 { color: #ff6b6b; }
+#shot.pop { animation: pop .35s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes pop { from { transform: scale(1.35); opacity: .3; } }
+#hint { font-size: 17px; color: rgba(255,255,255,.85); line-height: 1.4; max-width: 340px; min-height: 48px; }
+#score { font-size: 46px; font-weight: 900; font-style: italic; font-stretch: 80%; }
+#score small { display: block; font-size: 14px; font-weight: 600; font-style: normal; color: var(--txt2); }
+.serve { width: 100%; padding: 22px 16px; border-radius: 18px; background: color-mix(in srgb, var(--pc) 22%, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 2px var(--pc); font-size: 20px; font-weight: 900; font-style: italic; font-stretch: 80%; display: none; }
+.serve.on { display: block; animation: blink 1s infinite alternate; }
+@keyframes blink { to { box-shadow: inset 0 0 0 2px #fff; } }
+.meter { width: 100%; height: 10px; border-radius: 5px; background: rgba(255,255,255,.08); overflow: hidden; margin: 6px 0 14px; }
+.meter div { height: 100%; width: 0; background: linear-gradient(90deg, var(--pc), var(--acc2)); border-radius: 5px; transition: width .05s linear; }
+.pad { display: none; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.pad.on { display: grid; }
+.pad button { height: 74px; border: 0; border-radius: 16px; font: inherit; font-size: 28px; font-weight: 900; color: #fff; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.pad button:active { background: rgba(255,255,255,.2); }
+.pad .ok { background: linear-gradient(90deg, var(--pc), var(--acc2)); font-size: 19px; font-style: italic; }
+.pad .bk { font-size: 17px; }
+.row { display: flex; gap: 10px; }
+.row .btn { flex: 1; }
+</style>
+</head>
+<body>
+
+<section class="scr on" id="s-start">
+  <div class="logo">PING<span>PONG</span></div>
+  <div class="grow"></div>
+  <h1>Ton téléphone devient ta raquette</h1>
+  <p>Comme à la Wii : tu fais le geste, ton joueur frappe. Tu te déplaces tout seul, tu n'as qu'à viser le bon moment.</p>
+  <div id="code-box" style="display:none"><p>Entre le code affiché sur le PC, dans l'écran <b>Téléphone</b>.</p><input class="code" id="code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+  <button class="btn" id="go">Commencer</button>
+  <p class="err" id="err"></p>
+</section>
+
+<section class="scr" id="s-cal">
+  <div class="top"><div class="chip"><i></i><span class="pname">Connexion…</span></div><div class="net" id="net1"><i></i><span>Connexion…</span></div></div>
+  <div class="grow"></div>
+  <div class="grip"><svg viewBox="0 0 150 190" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="45" y="10" width="60" height="112" rx="12"/><line x1="66" y1="20" x2="84" y2="20"/>
+    <path d="M38 118c0 0 2 22 12 34c10 12 40 14 52 4c8-7 12-22 12-36" stroke="var(--pc)"/><path d="M45 92c-8 2-12 10-8 22" stroke="var(--pc)"/>
+    <path d="M75 140v36" stroke-dasharray="4 8" opacity=".5"/></svg></div>
+  <h1>Tiens-le comme une raquette</h1>
+  <p>Le téléphone bien droit dans la main, l'écran vers toi, pointé vers la télé ou le PC. Puis appuie sur <b>Calibrer</b>.</p>
+  <button class="btn" id="cal">Calibrer</button>
+  <p class="err" id="err2"></p>
+</section>
+
+<section class="scr" id="s-play">
+  <div class="top"><div class="chip"><i></i><span class="pname">Joueur</span></div><div class="net" id="net2"><i></i><span>Connecté</span></div></div>
+  <div class="stage">
+    <div id="score"></div>
+    <div id="shot"></div>
+    <div id="grade"></div>
+    <div id="hint">Fais un geste pour tester.</div>
+    <div class="serve" id="serve">Lance la balle : lève le téléphone d'un coup sec, ou touche ici</div>
+  </div>
+  <div class="meter"><div id="meter"></div></div>
+  <div class="pad" id="pad">
+    <button class="bk" data-b="back">Retour</button><button data-b="up">↑</button><button class="bk" data-b="start">Pause</button>
+    <button data-b="left">←</button><button class="ok" data-b="ok">Valider</button><button data-b="right">→</button>
+    <button class="bk" data-b="lb">◀ Onglet</button><button data-b="down">↓</button><button class="bk" data-b="rb">Onglet ▶</button>
+  </div>
+  <div class="row"><button class="btn alt" id="pause">Pause</button><button class="btn alt" id="recal">Recalibrer</button><button class="btn alt" id="sens">Gestes : normaux</button></div>
+</section>
+
+<script src="lib/peerjs.min.js"></script>
+<script src="js/phone.js?v=2611180003"></script>
+</body>
+</html>

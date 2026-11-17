@@ -4,7 +4,8 @@ import { Game, SHOT_LABEL, MAX_CHARGE, IDEAL_REL, TIMING, RING_T, gradePress } f
 import { music } from './music.js';
 import { announcer } from './voice.js';
 import { AI, AI_NAMES } from './ai.js';
-import { Input } from './input.js';
+import { Input, emptyInput } from './input.js';
+import { PhoneHub, SLOT_COLORS } from './remote.js';
 import { Net } from './net.js';
 import { initAudio, sfx, setMuted, setCrowd, setMuffle, setVolumes } from './audio.js';
 import { profile, save as saveProfile, rankOf, emblem, levelOf, cosmetic, COSMETICS, ACHIEVEMENTS, unlock, recordMatch, isUnlocked, daily, dailyProgress } from './profile.js';
@@ -58,6 +59,7 @@ function show(id) {
   renderDaily(id === 'scr-main');
   if (id === 'scr-profile') renderProfile();
   if (id === 'scr-locker') renderLocker();
+  if (id === 'scr-phone') { phones.start(); renderPhone(); }
   curScreen = id;
   R.menuShift = id === 'scr-main' ? 0 : 1;
   if (id === 'scr-main') renderHome();
@@ -241,7 +243,7 @@ function applySettings() {
   const S = profile.settings;
   setVolumes({ master: S.master / 10, sfx: S.sfx / 10, crowd: S.crowd / 10, music: S.music / 10 });
   announcer.enabled = !!S.voice;
-  R.camMode = CAMS[S.camera] || 'raquette';
+  R.camMode = setup && setup.twoP && game ? 'tv' : (CAMS[S.camera] || 'raquette');
   R.setQuality(S.gfx ?? 1);
   input.invertY = !!S.invert;
   if (game) game.assist = S.assist;
@@ -368,6 +370,7 @@ function hooks() {
   return {
     feedback: (i, label, q, shot) => {
       if (!game) return;
+      { const k = phoneSlotOf(i); if (k >= 0) phones.send(k, { t: 'fb', label, q, shot: shot || '' }); }
       if (i === game.me) showFeedback(label, q, shot);
       else showOpp(label, shot);
     },
@@ -1171,16 +1174,86 @@ function tutoUpdate(dt) {
 }
 $('#btn-tuto').addEventListener('click', () => { initAudio(); sfx.ui(); startTuto(); });
 
+// ------------------------------------------------------------------ téléphone-raquette
+const phones = new PhoneHub();
+let phoneSyncT = 0;
+const SWING_NAME = { top: 'Lift', plat: 'Frappe', coupe: 'Coupé', lob: 'Lob' };
+function phoneSlotOf(i) {
+  if (!game || !setup) return -1;
+  if (setup.twoP) return i <= 1 ? i : -1;
+  return i === game.me ? 0 : -1;
+}
+function syncPhones() {
+  if (!phones.count) return;
+  const now = performance.now(); if (now - phoneSyncT < 120) return; phoneSyncT = now;
+  for (let k = 0; k < 2; k++) {
+    if (!phones.has(k)) continue;
+    const pk = !game || !setup ? -1 : setup.twoP ? k : (k === 0 ? game.me : -1);
+    let st;
+    if (!game || game.paused || endPending || replay) st = { mode: 'menu' };
+    else if (pk < 0) st = { mode: 'wait' };
+    else {
+      const tm = game.team(pk);
+      st = { mode: 'game', serve: game.state === 'serve' && game.server() === pk, toss: game.state === 'toss' && game.server() === pk,
+        score: [game.match.score[tm], game.match.score[1 - tm]], sets: [game.match.sets[tm], game.match.sets[1 - tm]], opp: game.names[1 - tm] };
+    }
+    phones.setState(k, st);
+  }
+}
+phones.onChange = ev => {
+  if (ev && ev.type === 'join') { sfx.ui(); toast('', `Joueur ${ev.slot + 1}`, 'Téléphone connecté', 'Tiens-le comme une raquette et calibre-le.'); }
+  if (ev && ev.type === 'leave') toast('', `Joueur ${ev.slot + 1}`, 'Téléphone déconnecté', 'Rescanne le QR code pour le reconnecter.');
+  lastPad = null;
+  if (curScreen === 'scr-phone') renderPhone();
+};
+phones.onSwing = (k, sw) => {
+  const el = document.querySelector(`#ph-slots [data-slot="${k}"] .ph-last`);
+  if (el) { el.textContent = `${SWING_NAME[sw.type]} · puissance ${Math.round(sw.speed * 100)} %`; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+};
+function renderPhone() {
+  const box = $('#ph-qr');
+  if (phones.code && box.dataset.code !== phones.code && window.qrcode) {
+    const q = window.qrcode(0, 'M'); q.addData(phones.url()); q.make();
+    box.innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    box.dataset.code = phones.code;
+  }
+  $('#ph-code').textContent = phones.code || '·····';
+  $('#ph-url').textContent = phones.status === 'error' ? 'Connexion au serveur impossible : vérifie ta connexion internet.'
+    : phones.code ? `Pas d'appareil photo ? Ouvre ${phones.url().replace(/^https?:\/\//, '').replace(/\?.*$/, '')} et entre le code ${phones.code}.` : 'Préparation de la connexion…';
+  $('#ph-slots').innerHTML = [0, 1].map(k => {
+    const S = phones.slots[k];
+    return `<div class="ph-slot ${S ? 'on' : ''}" data-slot="${k}" style="--pc:${SLOT_COLORS[k]}"><i></i><div><b>Joueur ${k + 1}</b><small>${S ? (S.name ? esc(S.name) + ' · connecté' : 'Connecté') : 'En attente d\'un téléphone'}</small><span class="ph-last">${S ? 'Fais un geste pour tester' : ''}</span></div></div>`;
+  }).join('');
+  $('#ph-duo').classList.toggle('locked', phones.count < 2);
+}
+function startTwoP() {
+  if (phones.count < 2) { toast('', 'Match à deux', 'Il manque un téléphone', 'Le joueur 2 doit scanner le QR code.'); return; }
+  const bestOf = choice('ai-format');
+  const n2 = (phones.slots[1] && phones.slots[1].name) || 'Joueur 2';
+  setup = { mode: 'ai', level: 1, bestOf, twoP: true, aiName: n2, aiStyle: '' };
+  matchArena = pickArena(choice('ai-arena'));
+  game = new Game({ mode: 'ai', ctrl: ['human', 'human'], me: 0, names: [myName(), n2], assist: 2, bestOf, firstServer: Math.random() < 0.5 ? 0 : 1, hooks: hooks() });
+  enterGame();
+  applySettings();
+}
+$('#ph-duo').addEventListener('click', () => { initAudio(); sfx.ui(); startTwoP(); });
+$('#ph-solo').addEventListener('click', () => { initAudio(); sfx.ui(); show('scr-ai'); });
+
 // ------------------------------------------------------------------ boucle
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   const inp = input.poll();
+  phones.frame();
+  phones.mergeInto(inp, 0);
+  // le téléphone 2 peut aussi naviguer dans les menus et mettre en pause
+  { const r2 = phones.cur[1]; if (r2 && (r2.menuBtn && (!game || game.paused) || r2.pressed.start)) { for (const n of Object.keys(r2.pressed)) if (r2.pressed[n]) inp.pressed[n] = true; if (r2.mx) inp.mx = r2.mx; if (r2.my) inp.my = r2.my; } }
+  syncPhones();
   const pad = $('#padstatus');
-  const hasPad = !!input.padName;
+  const hasPad = !!input.padName + phones.count * 2;
   if (hasPad !== lastPad) {
     lastPad = hasPad;
-    pad.textContent = hasPad ? '🎮 Manette connectée' : '⌨️ Clavier — branche une manette et appuie sur un bouton';
+    pad.textContent = phones.count ? (phones.count > 1 ? '2 téléphones connectés' : 'Téléphone connecté') : input.padName ? '🎮 Manette connectée' : '⌨️ Clavier — branche une manette et appuie sur un bouton';
     pad.classList.toggle('ok', hasPad);
     refreshGlyphs();
     if (tuto) tutoRender();
@@ -1223,7 +1296,10 @@ function loop(now) {
     updateMomentum();
     updateAmbience();
     updateRing(dt);
-    game.update(dt, inp);
+    game.autoMove = [];
+    if (phones.has(0)) game.autoMove[game.me] = true;
+    if (setup.twoP && phones.has(1)) game.autoMove[1] = true;
+    game.update(dt, setup.twoP ? (i => i === 0 ? inp : (phones.cur[1] || emptyInput())) : inp);
     if (!window.__noRender) R.update(game, dt);
     updateHUD(dt);
   } else if (ready) {
@@ -1255,7 +1331,7 @@ for (const id of ['menu', 'end', 'pause', 'ceremony', 'toasts', 'victory']) {
   new MutationObserver(ms => { for (const m of ms) { if (m.type === 'characterData') stripEmoji(m.target.parentElement || el); else for (const n of m.addedNodes) if (n.nodeType === 1) stripEmoji(n); else if (n.nodeType === 3 && n.parentElement) stripEmoji(n.parentElement); } })
     .observe(el, { childList: true, subtree: true, characterData: true });
 }
-window.__pp = { profile, get replay() { return replay; }, startReplay, forceReplay: () => startReplay(recorder.clip(4.5), null), get game() { return game; }, get demo() { return demo; }, get tuto() { return tuto; }, tutoUpdate: d => tutoUpdate(d), R, startAI, startTuto, AI };
+window.__pp = { profile, get replay() { return replay; }, startReplay, forceReplay: () => startReplay(recorder.clip(4.5), null), get game() { return game; }, get demo() { return demo; }, get tuto() { return tuto; }, tutoUpdate: d => tutoUpdate(d), R, startAI, startTuto, AI, phones, startTwoP };
 show('scr-main');
 applyCosmetics();
 applySettings();

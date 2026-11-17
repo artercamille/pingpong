@@ -73,3 +73,7 @@ Le jeu est ensuite disponible sur `https://artercamille.github.io/pingpong/`.
 ## Mise en ligne
 
 Avant chaque commit : `python3 tools/version.py` (ajoute un numéro de version aux fichiers JS/CSS pour que les navigateurs ne gardent pas une ancienne version en cache).
+
+## Téléphone-raquette
+
+Écran **Téléphone** du menu : un QR code relie jusqu’à deux téléphones (page `remote.html`). Les capteurs du téléphone exigent une adresse https : publier le jeu avec GitHub Pages (Settings → Pages → branche `main`, dossier racine).

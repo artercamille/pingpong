@@ -230,7 +230,7 @@ export class Game {
   update(dt, localInput) {
     if (this.paused) return;
     for (let i = 0; i < this.n; i++) {
-      if (this.ctrl[i] === 'human') this.inputs[i] = localInput;
+      if (this.ctrl[i] === 'human') this.inputs[i] = typeof localInput === 'function' ? localInput(i) : localInput;
       else if (this.ctrl[i] === 'ai' && this.ai[i]) this.inputs[i] = this.ai[i].update(dt);
     }
 
@@ -380,7 +380,16 @@ export class Game {
       wx += clamp((w.x - pl.x) * 4, -1, 1) * MOVE_SPEED * 0.6;
       wz += clamp((w.z - pl.z) * 4, -1, 1) * MOVE_SPEED * 0.6;
     }
-    if (this.ctrl[i] === 'human' && pr && pr.idealX !== undefined && !serving) {
+    // téléphone-raquette : déplacement entièrement automatique, comme dans Wii Sports
+    const auto = this.autoMove && this.autoMove[i] && this.ctrl[i] === 'human' && !serving;
+    if (auto && Math.hypot(inp.mx, inp.my) < 0.25) {
+      let tx, tz, pull;
+      if (pr && pr.idealX !== undefined && this.state === 'rally' && (!this.doubles || this.nextHitter() === i)) { tx = pr.idealX; tz = pr.idealZ; pull = 1; }
+      else if (this.doubles && this.state === 'rally') { const w = this.waitSpot(i); tx = w.x; tz = w.z; pull = 0.7; }
+      else { tx = pl.side * pl.hand * -0.15; tz = pl.side * 2.1; pull = 0.45; }
+      wx = clamp((tx - pl.x) * 6, -1, 1) * MOVE_SPEED * pull;
+      wz = clamp((tz - pl.z) * 6, -1, 1) * MOVE_SPEED * pull * 0.8;
+    } else if (this.ctrl[i] === 'human' && pr && pr.idealX !== undefined && !serving) {
       const stick = Math.hypot(inp.mx, inp.my);
       const A = [[0, 0], [0.35, 0.12], [0.75, 0.3]][this.assist] || [0.35, 0.12];
       let pull = stick < 0.25 ? A[0] : A[1];
@@ -401,7 +410,7 @@ export class Game {
       pl.x = this.doubles ? pl.side * clamp(pl.x * pl.side, 0.15, 0.8) : clamp(pl.x, -0.85, 0.85);
     }
     pl.z = d * pl.side;
-    if (pl.charging || serving || this.ctrl[i] === 'human') { pl.aimX = inp.aimX; pl.aimY = inp.aimY; }
+    if (!inp.remote && (pl.charging || serving || this.ctrl[i] === 'human')) { pl.aimX = inp.aimX; pl.aimY = inp.aimY; }
     pl.sideSpin = (inp.btn.sideR ? 1 : 0) - (inp.btn.sideL ? 1 : 0);
   }
 
@@ -416,6 +425,7 @@ export class Game {
     const pl = this.players[i], inp = this.inputs[i];
     if (inp.pressed.super && this.momentum[i] >= 1 && !pl.superArmed) this.armSuper(i);
     if (this.state === 'serve' && this.server() === i) {
+      if (inp.toss) { this.toss(i, 'top'); return; }
       for (const t of SHOTS) if (inp.pressed[t]) { this.toss(i, t); return; }
       return;
     }
@@ -444,24 +454,46 @@ export class Game {
       let err;
       if (b.v.y < 0 && b.p.y <= SERVE_Y) err = -(SERVE_Y - b.p.y) / Math.max(0.5, -b.v.y);
       else { const r = predict(b, 1.2, bb => bb.v.y < 0 && bb.p.y <= SERVE_Y); err = r ? r.t : 0.5; }
+      err += inp.lag || 0;
       if (err > RING_T) return;
       const g = gradePress(err, this.pressScale(i));
       this.lastPress = { i, grade: g.grade, label: g.label, t: this.simTime };
-      this.serveHit(i, pl.chargeType || t, 0.4 + 0.4 * g.q, g.q, g.grade === 3 ? 'SERVICE PARFAIT' : 'SERVICE ' + g.label);
+      let st = pl.chargeType || t, pw = 0.4 + 0.4 * g.q;
+      if (inp.remote) { st = t; pw = 0.3 + 0.3 * g.q + 0.35 * (inp.power || 0); pl.aimX = clamp((inp.aimYaw || 0), -1, 1); pl.aimY = clamp((inp.power || 0) * 1.4 - 0.5, -1, 1); }
+      this.serveHit(i, st, pw, g.q, g.grade === 3 ? 'SERVICE PARFAIT' : 'SERVICE ' + g.label);
       pl.charging = false;
       return;
     }
     if (this.state !== 'rally' || !this.rally || this.nextHitter() !== i || pl.pressType) return;
-    const pr = this.pred[i];
-    if (this.rally.pending) { pl.pressType = t; pl.pressT = this.simTime; pl.pressErr = null; return; }
+    const pr = this.pred[i], lag = inp.lag || 0;
+    pl.pressPower = inp.remote ? (inp.power || 0) : null;
+    if (this.rally.pending) {
+      pl.pressType = t; pl.pressT = this.simTime;
+      // geste du téléphone arrivé après le passage de la balle : on retrouve le vrai moment du geste
+      pl.pressErr = lag ? this.rally.pending - (this.simTime - lag) : null;
+      if (inp.remote) this.remoteAim(i, pl.pressErr || 0, inp);
+      if (pl.pressErr != null) this.startSwing(i, (this.ball.p.x - pl.x) * pl.side * pl.hand >= -0.05, t);
+      return;
+    }
     if (!pr || pr.serve) return;
-    const err = pr.t - this.simTime;
+    const err = pr.t - this.simTime + lag;
     if (err > RING_T) return; // le cercle n'est pas encore là : on ignore
     pl.pressType = t; pl.pressT = this.simTime; pl.pressErr = err;
     pl.pressFore = (pr.x - pl.x) * pl.side * pl.hand >= -0.05;
+    if (inp.remote) this.remoteAim(i, err, inp);
     { const gp = gradePress(err, this.pressScale(i)); this.lastPress = { i, grade: gp.grade, label: gp.label, t: this.simTime }; }
     if (err > 0.1) pl.swingAt = pr.t - 0.08; else this.startSwing(i, pl.pressFore, t);
     this.net && this.net.send({ t: 'swing', i, fore: pl.pressFore, type: t });
+  }
+
+  // visée au téléphone, façon Wii Sports : frapper en avance envoie la balle croisée, en retard le long de la ligne ;
+  // l'orientation du téléphone au moment du geste ajoute sa part ; la vitesse du geste donne la profondeur
+  remoteAim(i, err, inp) {
+    const pl = this.players[i];
+    const e = clamp(err / 0.16, -1, 1), fore = pl.pressFore ?? true;
+    pl.aimX = clamp(-e * (fore ? 1 : -1) * pl.hand * 0.75 + (inp.aimYaw || 0) * 0.7, -1, 1);
+    const p = inp.power || 0;
+    pl.aimY = pl.pressType === 'lob' ? 0 : clamp(p * 1.6 - 0.6, -0.8, 1);
   }
 
   // mental : sur les balles décisives, la fenêtre de timing dépend du mental
@@ -659,7 +691,7 @@ export class Game {
       const err = pl.pressErr != null ? pl.pressErr : -(this.simTime - r.pending);
       const g = gradePress(err, this.pressScale(p));
       if (pl.pressErr == null) { this.lastPress = { i: p, grade: g.grade, label: g.label, t: this.simTime }; this.startSwing(p, dx >= 0, pl.pressType); }
-      type = pl.pressType; q = g.q; label = g.label; power = 0.4 + 0.45 * g.q;
+      type = pl.pressType; q = g.q; label = g.label; power = pl.pressPower != null ? 0.3 + 0.35 * g.q + 0.35 * pl.pressPower : 0.4 + 0.45 * g.q;
       // rythme : les coups parfaits enchaînés rendent tes frappes plus rapides et plus précises
       pl.flow = g.grade === 3 ? Math.min(6, (pl.flow || 0) + 1) : 0;
       if (pl.flow >= 2) { power = Math.min(1, power + 0.04 * pl.flow); label = g.grade === 3 ? `PARFAIT x${pl.flow}` : label; }

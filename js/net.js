@@ -1,11 +1,11 @@
 // Connexion en ligne pair-à-pair (WebRTC via PeerJS).
 // Simple : 2 joueurs. Double : l'hôte accepte jusqu'à 3 invités et relaie les messages (topologie en étoile).
-const PREFIX = 'aurapingpong-v1-';
+export const PREFIX = 'aurapingpong-v1-';
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 // ?peer=hote:port permet d'utiliser son propre serveur PeerJS (tests en local)
 const custom = new URLSearchParams(location.search).get('peer');
-const ICE = {
+export const ICE = {
   ...(custom ? { host: custom.split(':')[0], port: +(custom.split(':')[1] || 9000), path: '/', secure: false } : {}),
   config: {
     iceServers: [

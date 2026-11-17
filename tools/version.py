@@ -17,4 +17,9 @@ s = re.sub(r'(href="css/[\w-]+\.css)(\?v=\d+)?"', lambda m: f'{m.group(1)}?v={v}
 s = re.sub(r'<script type="module" src="js/main\.js(\?v=\d+)?"></script>', f'<script type="module" src="js/main.js?v={v}"></script>', s)
 s = re.sub(r'<span id="ver">[^<]*</span>', f'<span id="ver">v{v}</span>', s)
 open(p, 'w', encoding='utf-8').write(s)
+r = os.path.join(root, 'remote.html')
+if os.path.exists(r):
+    t = open(r, encoding='utf-8').read()
+    t = re.sub(r'src="js/phone\.js(\?v=\w+)?"', f'src="js/phone.js?v={v}"', t)
+    open(r, 'w', encoding='utf-8').write(t)
 print('version', v)

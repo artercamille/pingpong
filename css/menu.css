@@ -603,6 +603,7 @@
 #lb-phone .lq svg { width: 100%; height: 100%; display: block; }
 #lb-phone.on { border-left: 3px solid #5be08a; }
 .lb-tel { color: #5be08a; font-weight: 800; }
+.lb-notel { color: #ff7a7a; font-weight: 800; }
 #lb-feed { min-height: 92px; font-size: 13.5px; font-weight: 700; color: #ddd5f2; display: flex; flex-direction: column; gap: 3px; padding: 10px 14px; background: rgba(12,9,22,.6); border-radius: 6px; }
 .lb-emotes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .lb-em { width: 50px; height: 50px; font-size: 22px; font-weight: 900; color: #fff; background: rgba(40,32,64,.9); border: 1px solid rgba(255,255,255,.08); border-radius: 50%; cursor: pointer; transition: transform .12s; font-family: inherit; }

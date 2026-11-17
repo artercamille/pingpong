@@ -95,8 +95,8 @@
     if (st.mode === 'menu') h = 'Utilise les flèches pour naviguer dans les menus du jeu.';
     else if (st.mode === 'wait') h = 'Tu es prêt. Le match à deux se lance depuis l\'écran Téléphone du PC.';
     else if (st.toss) h = 'Frappe !';
-    else if (st.serve) h = 'À toi de servir.';
-    else h = 'Frappe quand la balle arrive sur toi.';
+    else if (st.serve) h = 'À toi de servir : fais ton geste, la balle est lancée et frappée toute seule.';
+    else h = 'Fais ton geste quand la balle arrive : tôt = croisé, tard = le long de la ligne.';
     $('#hint').textContent = h;
   }
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

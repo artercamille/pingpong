@@ -307,7 +307,11 @@ export class Game {
     if (this.state === 'toss') {
       const s = this.server();
       const sp = this.players[s];
-      if (this.local(s) && this.ball.v.y < 0 && this.ball.p.y < 0.88) {
+      if (this.local(s) && sp.wiiServe && this.ball.v.y < 0 && this.ball.p.y <= SERVE_Y) {
+        const w = sp.wiiServe; sp.wiiServe = null; sp.charging = false;
+        sp.aimX = clamp(w.aimYaw, -1, 1); sp.aimY = clamp(w.power * 1.4 - 0.5, -1, 1);
+        this.serveHit(s, w.type, 0.35 + 0.45 * w.power, 0.9, '');
+      } else if (this.local(s) && this.ball.v.y < 0 && this.ball.p.y < 0.88) {
         const pl = this.players[s];
         const type = pl.charging ? pl.chargeType : 'top';
         const pw = pl.charging ? this.power(pl) : 0.35;
@@ -334,11 +338,11 @@ export class Game {
     const pt = this.team(p);
     const pl = this.players[p], s = pl.side;
     const zc = pl.z - s * PLANE_OFF;
-    let bounced = this.rally.phase === 'inPlay', bad = false;
+    let bounced = this.rally.phase === 'inPlay', bad = false, short = false;
     const res = predict(this.ball, 2.5, (b, t, ev) => {
       for (const e of ev) {
         if (e.type === 'floor') { bad = true; return true; }
-        if (e.type === 'table' && e.side === pt) { if (bounced) { bad = true; return true; } bounced = true; }
+        if (e.type === 'table' && e.side === pt) { if (bounced) { bad = true; short = true; return true; } bounced = true; }
       }
       if (!bounced) return false;
       const ahead = s * (zc - b.p.z);
@@ -346,6 +350,20 @@ export class Game {
       if (b.v.y < 0 && b.p.y < 0.66 && ahead < 0.55) return true;
       return false;
     });
+    if (short && this.autoMove && this.autoMove[p]) {
+      // balle courte (elle rebondirait deux fois avant d'arriver au joueur) : en mode Wiimote, on va la chercher au-dessus de la table
+      let b2 = this.rally.phase === 'inPlay';
+      const sh = predict(this.ball, 2.5, (b, t, ev) => {
+        for (const e of ev) if (e.type === 'table' && e.side === pt) { if (b2 && t > 0.02) return true; b2 = true; }
+        return b2 && b.v.y < 0 && b.p.y < 0.92;
+      });
+      if (sh) {
+        const C = sh.ball.p, sh2 = s * pl.hand;
+        const back = (C.x - pl.x) * sh2 < -0.15;
+        this.pred[p] = { t: this.simTime + sh.t, x: C.x, y: C.y, z: C.z, idealX: back ? C.x + sh2 * 0.4 : C.x - sh2 * 0.42, idealZ: s * clamp(s * C.z + PLANE_OFF, 1.5, 4.2), short: true };
+      }
+      return;
+    }
     if (!res || bad) return;
     // point de frappe idéal : on recalcule où il faudrait se placer
     const C = res.ball.p;
@@ -382,13 +400,20 @@ export class Game {
     }
     // téléphone-raquette : déplacement entièrement automatique, comme dans Wii Sports
     const auto = this.autoMove && this.autoMove[i] && this.ctrl[i] === 'human' && !serving;
-    if (auto && Math.hypot(inp.mx, inp.my) < 0.25) {
-      let tx, tz, pull;
-      if (pr && pr.idealX !== undefined && this.state === 'rally' && (!this.doubles || this.nextHitter() === i)) { tx = pr.idealX; tz = pr.idealZ; pull = 1; }
-      else if (this.doubles && this.state === 'rally') { const w = this.waitSpot(i); tx = w.x; tz = w.z; pull = 0.7; }
-      else { tx = pl.side * pl.hand * -0.15; tz = pl.side * 2.1; pull = 0.45; }
-      wx = clamp((tx - pl.x) * 6, -1, 1) * MOVE_SPEED * pull;
-      wz = clamp((tz - pl.z) * 6, -1, 1) * MOVE_SPEED * pull * 0.8;
+    if (auto) {
+      // le joueur va tout seul exactement où il faut frapper, vite et sans à-coups
+      let tx, tz, fast = false;
+      const mine = this.state === 'rally' && this.rally && (!this.doubles || this.nextHitter() === i);
+      if (pr && pr.idealX !== undefined && mine && !this.rally.contactTried) { tx = pr.idealX; tz = pr.idealZ; fast = true; pl.wiiT = { x: tx, z: tz }; }
+      else if (mine && pl.wiiT && !this.rally.contactTried) { tx = pl.wiiT.x; tz = pl.wiiT.z; fast = true; }
+      else if (this.doubles && this.state === 'rally') { const w = this.waitSpot(i); tx = w.x; tz = w.z; }
+      else { tx = pl.side * pl.hand * -0.2; tz = pl.side * 2.0; }
+      if (!mine) pl.wiiT = null;
+      const sp = MOVE_SPEED * (fast ? 1.6 : 1.1);
+      const ex = tx - pl.x, ez = tz - pl.z;
+      wx = clamp(ex * 9, -1, 1) * sp; wz = clamp(ez * 9, -1, 1) * sp;
+      // dernier instant : on colle à la bonne place (pas de balle ratée parce que le joueur est à côté)
+      if (fast && pr && pr.t - this.simTime < 0.3 && Math.abs(ex) < 0.7) { const kk = Math.min(1, dt * 16); pl.x += ex * kk; pl.z += ez * kk; wx *= 0.3; wz *= 0.3; }
     } else if (this.ctrl[i] === 'human' && pr && pr.idealX !== undefined && !serving) {
       const stick = Math.hypot(inp.mx, inp.my);
       const A = [[0, 0], [0.35, 0.12], [0.75, 0.3]][this.assist] || [0.35, 0.12];
@@ -426,7 +451,12 @@ export class Game {
     if (inp.pressed.super && this.momentum[i] >= 1 && !pl.superArmed) this.armSuper(i);
     if (this.state === 'serve' && this.server() === i) {
       if (inp.toss) { this.toss(i, 'top'); return; }
-      for (const t of SHOTS) if (inp.pressed[t]) { this.toss(i, t); return; }
+      for (const t of SHOTS) if (inp.pressed[t]) {
+        this.toss(i, t);
+        // Wiimote : un seul geste suffit, le lancer et la frappe s'enchaînent tout seuls
+        if (this.autoMove && this.autoMove[i] && this.ctrl[i] === 'human') pl.wiiServe = { type: t, power: inp.remote ? (inp.power || 0) : 0.55, aimYaw: inp.aimYaw || 0 };
+        return;
+      }
       return;
     }
     if (this.ctrl[i] === 'human') { this.humanPress(i); return; }
@@ -444,6 +474,7 @@ export class Game {
   // joueur humain : un appui = un coup, jugé par le cercle de timing
   humanPress(i) {
     const pl = this.players[i], inp = this.inputs[i];
+    if (this.autoMove && this.autoMove[i]) { this.wiiPress(i); return; }
     if (pl.swingAt && this.simTime >= pl.swingAt) { pl.swingAt = 0; this.startSwing(i, pl.pressFore, pl.pressType); }
     let t = null;
     for (const k of SHOTS) if (inp.pressed[k]) { t = k; break; }
@@ -486,14 +517,50 @@ export class Game {
     this.net && this.net.send({ t: 'swing', i, fore: pl.pressFore, type: t });
   }
 
+  // mode Wiimote (façon Wii Sports) : pas de jugement de timing. Un geste pendant que la balle arrive = la balle est frappée.
+  // Le moment du geste ne sert qu'à viser (tôt = croisé, tard = le long de la ligne), la vitesse du geste donne la puissance.
+  wiiPress(i) {
+    const pl = this.players[i], inp = this.inputs[i];
+    if (pl.swingAt && this.simTime >= pl.swingAt) { pl.swingAt = 0; this.startSwing(i, pl.pressFore, pl.pressType); }
+    let t = null;
+    for (const k of SHOTS) if (inp.pressed[k]) { t = k; break; }
+    if (!t) return;
+    const pw = inp.remote ? (inp.power || 0) : 0.55;
+    if (this.state === 'toss' && this.server() === i) {
+      if (pl.wiiServe) return;
+      pl.wiiServe = { type: t, power: pw, aimYaw: inp.aimYaw || 0 };
+      return;
+    }
+    if (this.state !== 'rally' || !this.rally || this.nextHitter() !== i || pl.pressType) return;
+    const pr = this.pred[i];
+    let err;
+    if (this.rally.pending) err = -(this.simTime - this.rally.pending);
+    else if (pr && !pr.serve) err = pr.t - this.simTime + (inp.lag || 0);
+    else return;
+    if (err > RING_T) return; // trop loin : geste ignoré, on peut refaire un geste
+    pl.pressType = t; pl.pressT = this.simTime; pl.pressErr = 0; pl.pressPower = pw; pl.wiiErr = err;
+    pl.pressFore = pr ? (pr.x - pl.x) * pl.side * pl.hand >= -0.05 : true;
+    this.remoteAim(i, err, inp);
+    if (this.rally.pending) this.startSwing(i, (this.ball.p.x - pl.x) * pl.side * pl.hand >= -0.05, t);
+    else if (pr && pr.t - this.simTime > 0.1) pl.swingAt = pr.t - 0.08; else this.startSwing(i, pl.pressFore, t);
+    this.net && this.net.send({ t: 'swing', i, fore: pl.pressFore, type: t });
+  }
+
+  // Wiimote : pas de note affichée, mais un geste fait bien trop tôt ou trop tard rend le coup moins sûr
+  wiiGrade(pl) {
+    const d = Math.abs((pl.wiiErr ?? 0.15) - 0.15);
+    return { q: d < 0.15 ? 1 : d < 0.3 ? 0.82 : 0.62, label: '', grade: 2 };
+  }
+
   // visée au téléphone, façon Wii Sports : frapper en avance envoie la balle croisée, en retard le long de la ligne ;
   // l'orientation du téléphone au moment du geste ajoute sa part ; la vitesse du geste donne la profondeur
   remoteAim(i, err, inp) {
     const pl = this.players[i];
-    const e = clamp(err / 0.16, -1, 1), fore = pl.pressFore ?? true;
+    const wii = this.autoMove && this.autoMove[i];
+    const e = wii ? clamp((err - 0.15) / 0.3, -1, 1) : clamp(err / 0.16, -1, 1), fore = pl.pressFore ?? true;
     pl.aimX = clamp(-e * (fore ? 1 : -1) * pl.hand * 0.75 + (inp.aimYaw || 0) * 0.7, -1, 1);
     const p = inp.power || 0;
-    pl.aimY = pl.pressType === 'lob' ? 0 : clamp(p * 1.6 - 0.6, -0.8, 1);
+    pl.aimY = pl.pressType === 'lob' ? 0 : wii ? clamp(p * 1.2 - 0.5, -0.6, 0.8) : clamp(p * 1.6 - 0.6, -0.8, 1);
   }
 
   // mental : sur les balles décisives, la fenêtre de timing dépend du mental
@@ -571,7 +638,7 @@ export class Game {
   toss(i, type) {
     const pl = this.players[i];
     setBall(this.ball, { p: this.handPos(i), v: { x: 0, y: 2.4, z: 0 }, w: { x: 0, y: 0, z: 0 } });
-    this.state = 'toss';
+    this.state = 'toss'; pl.wiiServe = null;
     pl.charging = true; pl.chargeType = type; pl.chargeT = 0;
     sfx.toss();
     this.net && this.net.send({ t: 'toss', i, b: copyBall(this.ball), type });
@@ -669,12 +736,15 @@ export class Game {
     const ahead = pl.side * (zc - b.z);           // distance de la balle devant le plan
     let contact = forced || (pl.side * (prevZ - zc) < 0 && ahead <= 0);
     if (!contact && this.ball.v.y < 0 && b.y < 0.66 && ahead < 0.55 && ahead > -0.1) contact = true;
+    const wiiP = this.autoMove && this.autoMove[p] && this.ctrl[p] === 'human';
+    if (!contact && wiiP && this.pred[p] && this.pred[p].short && this.ball.v.y < 0 && b.y < 0.92 && ahead < 1.4) contact = true;
     if (!contact) return;
     r.contactTried = true;
 
     const dx = (b.x - pl.x) * pl.side * pl.hand;   // > 0 : coup droit
     const M = pl.mods;
-    const reach = REACH * (M ? 0.9 + 0.2 * M.speed + (hasSig(M, 'sprinter') ? 0.15 : 0) : 1);
+    const wii = !!(this.autoMove && this.autoMove[p] && this.ctrl[p] === 'human');
+    const reach = wii ? 1.4 : REACH * (M ? 0.9 + 0.2 * M.speed + (hasSig(M, 'sprinter') ? 0.15 : 0) : 1);
     if (Math.abs(dx) > reach || b.y < 0.45 || b.y > 2.3) {
       this.hooks.feedback && this.hooks.feedback(p, 'HORS DE PORTÉE', 0);
       pl.releaseType = null;
@@ -689,10 +759,11 @@ export class Game {
         return;
       }
       const err = pl.pressErr != null ? pl.pressErr : -(this.simTime - r.pending);
-      const g = gradePress(err, this.pressScale(p));
+      const g = wii ? this.wiiGrade(pl) : gradePress(err, this.pressScale(p));
       if (pl.pressErr == null) { this.lastPress = { i: p, grade: g.grade, label: g.label, t: this.simTime }; this.startSwing(p, dx >= 0, pl.pressType); }
       type = pl.pressType; q = g.q; label = g.label; power = pl.pressPower != null ? 0.3 + 0.35 * g.q + 0.35 * pl.pressPower : 0.4 + 0.45 * g.q;
       // rythme : les coups parfaits enchaînés rendent tes frappes plus rapides et plus précises
+      if (wii) power = 0.35 + 0.6 * (pl.pressPower || 0);
       pl.flow = g.grade === 3 ? Math.min(6, (pl.flow || 0) + 1) : 0;
       if (pl.flow >= 2) { power = Math.min(1, power + 0.04 * pl.flow); label = g.grade === 3 ? `PARFAIT x${pl.flow}` : label; }
       pl.pressType = null; pl.swingAt = 0; r.pending = 0;
@@ -727,7 +798,7 @@ export class Game {
 
     // placement : idéalement la balle à ~42 cm sur le côté
     const off = Math.abs(Math.abs(dx) - 0.42);
-    const posQ = 1 - clamp((off - 0.18) / 0.6, 0, 0.55);
+    const posQ = wii ? 1 : 1 - clamp((off - 0.18) / 0.6, 0, 0.55);
     if (posQ < 0.8 && q >= 0.85) label = 'MAL PLACÉ';
     q *= posQ;
 
@@ -736,6 +807,7 @@ export class Game {
     pl.contact = { x: b.x, y: b.y, z: b.z, t: this.simTime };
     pl.lastGrade = label;
     const sup = !!pl.superArmed; pl.superArmed = false;
+    pl.wiiShot = wii;
     const shot = this.buildShot(p, type, power, sup ? 1 : q, false, sup);
     if (shot.variant) type = shot.variant;
     this.ball.v = shot.v; this.ball.w = shot.w;
@@ -764,7 +836,8 @@ export class Game {
     const late = this.simTime - r.pending;
     if (this.ctrl[p] === 'human') {
       if (pl.pressType) { r.contactTried = false; this.checkContact(p, b.z - pl.side * 1, true); r.pending = 0; return; }
-      if (late > 0.2 || b.y < 0.42) { r.contactTried = true; r.pending = 0; this.missed(p, (b.x - pl.x) * pl.side * pl.hand); }
+      const wii = this.autoMove && this.autoMove[p];
+      if (late > (wii ? 0.3 : 0.2) || b.y < (wii ? 0.3 : 0.42)) { r.contactTried = true; r.pending = 0; this.missed(p, (b.x - pl.x) * pl.side * pl.hand); }
       return;
     }
     const behind = pl.side * (b.z - (pl.z - pl.side * PLANE_OFF));
@@ -852,10 +925,15 @@ export class Game {
     side *= s;
 
     // imprécision : timing raté + puissance
-    const e = sup || target ? 0 : ((1 - q) * 1.0 + power * power * (serve ? 0.12 : 0.4) + (serve ? 0 : 0.03)) * eMul;
+    const wiiS = !serve && !target && pl.wiiShot;
+    if (wiiS) eMul *= 0.7;
+    // Wiimote : plus l'échange dure et plus on frappe fort, plus ça devient risqué
+    const e = sup || target ? 0 : ((1 - q) * 1.0 + power * power * (serve ? 0.12 : 0.4) + (serve ? 0 : 0.03) + (wiiS ? Math.min(0.3, (this.rallyCount || 0) * 0.012) : 0)) * eMul;
     tx += gauss() * e * (serve ? 0.25 : 0.45);
     depth += gauss() * e * (serve ? 0.2 : 0.4) + e * 0.15 * power;
     if (serve) { tx = clamp(tx, -0.66, 0.66); depth = clamp(depth, 0.3, 1.25); }
+    // Wiimote : la balle reste sur la table (comme dans Wii Sports, on ne rate presque jamais un coup bien parti)
+    if (wiiS) { const r = 1 - q, big = Math.max(0, power - 0.75); tx = clamp(tx, -0.62 - 0.5 * r - 0.3 * big, 0.62 + 0.5 * r + 0.3 * big); depth = clamp(depth, 0.45 - 0.6 * r, 1.18 + 0.6 * r + 0.5 * big); }
     const tz = -s * depth;
 
     const sol = solveShot({ pos: { ...b.p }, target: { x: tx, z: tz }, speed, top, side, serve });

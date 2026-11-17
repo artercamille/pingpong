@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PingPong — World Championships</title>
-<link rel="stylesheet" href="css/style.css?v=2611180020">
-<link rel="stylesheet" href="css/menu.css?v=2611180020">
-<link rel="stylesheet" href="css/ui.css?v=2611180020">
-<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611180020", "./js/arenas.js": "./js/arenas.js?v=2611180020", "./js/audio.js": "./js/audio.js?v=2611180020", "./js/career.js": "./js/career.js?v=2611180020", "./js/floors.js": "./js/floors.js?v=2611180020", "./js/game.js": "./js/game.js?v=2611180020", "./js/input.js": "./js/input.js?v=2611180020", "./js/main.js": "./js/main.js?v=2611180020", "./js/music.js": "./js/music.js?v=2611180020", "./js/net.js": "./js/net.js?v=2611180020", "./js/phone.js": "./js/phone.js?v=2611180020", "./js/physics.js": "./js/physics.js?v=2611180020", "./js/players.js": "./js/players.js?v=2611180020", "./js/profile.js": "./js/profile.js?v=2611180020", "./js/remote.js": "./js/remote.js?v=2611180020", "./js/render.js": "./js/render.js?v=2611180020", "./js/replay.js": "./js/replay.js?v=2611180020", "./js/venues.js": "./js/venues.js?v=2611180020", "./js/voice.js": "./js/voice.js?v=2611180020"}}</script>
+<link rel="stylesheet" href="css/style.css?v=2611180047">
+<link rel="stylesheet" href="css/menu.css?v=2611180047">
+<link rel="stylesheet" href="css/ui.css?v=2611180047">
+<script type="importmap">{"imports": {"three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/", "./js/ai.js": "./js/ai.js?v=2611180047", "./js/arenas.js": "./js/arenas.js?v=2611180047", "./js/audio.js": "./js/audio.js?v=2611180047", "./js/career.js": "./js/career.js?v=2611180047", "./js/floors.js": "./js/floors.js?v=2611180047", "./js/game.js": "./js/game.js?v=2611180047", "./js/input.js": "./js/input.js?v=2611180047", "./js/main.js": "./js/main.js?v=2611180047", "./js/music.js": "./js/music.js?v=2611180047", "./js/net.js": "./js/net.js?v=2611180047", "./js/phone.js": "./js/phone.js?v=2611180047", "./js/physics.js": "./js/physics.js?v=2611180047", "./js/players.js": "./js/players.js?v=2611180047", "./js/profile.js": "./js/profile.js?v=2611180047", "./js/remote.js": "./js/remote.js?v=2611180047", "./js/render.js": "./js/render.js?v=2611180047", "./js/replay.js": "./js/replay.js?v=2611180047", "./js/venues.js": "./js/venues.js?v=2611180047", "./js/voice.js": "./js/voice.js?v=2611180047"}}</script>
 <script src="lib/peerjs.min.js"></script>
 <script src="lib/qrcode.js"></script>
 </head>
@@ -124,9 +124,9 @@
         <i><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5"/></svg></i>
         <span><b>Rejoindre une partie</b><small>Entre le code de ton pote</small></span>
       </button>
-      <button class="mbtn" data-go="scr-phone">
+      <button class="mbtn" id="wii-host">
         <i><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></i>
-        <span><b>Jouer avec mon téléphone</b><small>Relie ton téléphone avant de créer ou rejoindre : il sert de raquette en ligne aussi</small></span>
+        <span><b>Salon Wiimote</b><small>Tout le monde joue avec son téléphone, comme dans Wii Sports</small></span>
       </button>
       <button class="mbtn ghost" data-go="scr-main"><span><b>Retour</b></span></button>
     </section>
@@ -134,6 +134,7 @@
     <section class="screen hidden" id="scr-host">
       <h2>Créer un salon</h2>
       <div class="opt" id="host-mode" data-values="Simple (classé)|Double (2 contre 2)" data-v="simple|double" data-i="0"><span class="ol">Mode</span><span class="ov"></span></div>
+      <div class="opt" id="host-ctrl" data-values="Libre (manette, clavier ou téléphone)|Wiimote (tout le monde au téléphone)" data-v="free|wii" data-i="0"><span class="ol">Contrôles</span><span class="ov"></span></div>
       <div class="opt" id="host-format" data-values="1 manche|3 manches|5 manches|7 manches" data-v="1|3|5|7" data-i="1"><span class="ol">Format</span><span class="ov"></span></div>
       <div class="opt" id="host-arena" data-values="Aléatoire|Finale (violet)|Néo-Tokyo (toit)|Sunset Beach|Underground (club)|Orbital (espace)|Sakura (temple)|Aurora (banquise)" data-v="random|finale|neotokyo|beach|underground|orbit|sakura|aurora" data-i="0"><span class="ol">Salle</span><span class="ov"></span></div>
       <button class="mbtn accent" id="host-go"><span><b>Ouvrir le salon</b><small>Tu reçois un code à envoyer à tes potes</small></span></button>
@@ -396,7 +397,7 @@
   </div>
   <div id="daily"></div>
   <div class="mfoot">
-    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611180020</span>
+    <span id="padstatus">🎮 Aucune manette</span><span id="ver">v2611180047</span>
     <span class="navhelp"><span class="kb" data-k="ok"></span> Valider <span class="kb" data-k="back"></span> Retour</span>
   </div>
 </div>
@@ -433,6 +434,6 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=2611180020"></script>
+<script type="module" src="js/main.js?v=2611180047"></script>
 </body>
 </html>

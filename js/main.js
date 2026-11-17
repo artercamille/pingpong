@@ -460,8 +460,8 @@ function renderTrain(ok, T) {
 }
 $('#tr-go').addEventListener('click', () => { initAudio(); sfx.ui(); startTraining(); });
 
-function startOnline(me, bestOf, firstServer, names, dbl = null) {
-  setup = { mode: 'online', me, bestOf, dbl };
+function startOnline(me, bestOf, firstServer, names, dbl = null, wii = false) {
+  setup = { mode: 'online', me, bestOf, dbl, wii };
   let ctrl;
   if (dbl) ctrl = dbl.kinds.map((k, i) => i === me ? 'human' : (k === 'ai' && net.isHost ? 'ai' : 'remote'));
   else ctrl = me === 0 ? ['human', 'remote'] : ['remote', 'human'];
@@ -529,6 +529,8 @@ const paddleColor = id => '#' + ((COSMETICS.paddle.find(p => p.id === id) || COS
 function meCard() { return { name: myName(), lp: profile.lp || 0, level: levelOf(profile.xp).level, paddle: profile.cos.paddle, trail: profile.cos.trail, ready: false, ping: 0, phone: phones.has(0) }; }
 function lbFeed(t) { if (!LB) return; LB.feed.unshift(t); LB.feed = LB.feed.slice(0, 5); renderLB(); }
 
+// raccourci : salon Wiimote (tout le monde au téléphone)
+$('#wii-host').addEventListener('click', () => { const o = $('#host-ctrl'); o.dataset.i = '1'; optRender(o); show('scr-host'); });
 $('#host-go').addEventListener('click', () => {
   initAudio(); sfx.ui();
   if (!window.Peer) { $('#host-status').textContent = 'PeerJS introuvable.'; return; }
@@ -536,7 +538,7 @@ $('#host-go').addEventListener('click', () => {
   net = new Net();
   const mode = choice('host-mode');
   net.maxGuests = mode === 'double' ? 3 : 1;
-  LB = { host: true, mode, bestOf: choice('host-format'), arena: pickArena(choice('host-arena')), code: '', slots: [{ ...meCard(), host: true }, null, ...(mode === 'double' ? [null, null] : [])], conns: new Map(), you: 0, feed: ['Salon créé · connexion au serveur…'] };
+  LB = { host: true, mode, wii: choice('host-ctrl') === 'wii', bestOf: choice('host-format'), arena: pickArena(choice('host-arena')), code: '', slots: [{ ...meCard(), host: true }, null, ...(mode === 'double' ? [null, null] : [])], conns: new Map(), you: 0, feed: ['Salon créé · connexion au serveur…'] };
   const fo = $('#lb-format'); fo.dataset.i = String([1, 3, 5, 7].indexOf(LB.bestOf)); optRender(fo);
   show('scr-lobby'); renderLB();
   net.host(code => {
@@ -571,10 +573,10 @@ function lbHostMsg(msg, from) {
     LB.slots[k] = { name: (msg.name || 'Invité').slice(0, 14), lp: +msg.lp || 0, level: Math.max(1, Math.min(99, +msg.level || 1)), paddle: String(msg.paddle || ''), trail: msg.trail, ready: false, ping: Math.round(from.rtt || 0), phone: !!msg.phone };
     lbFeed(`✅ ${LB.slots[k].name} a rejoint le salon`); sfx.ui();
   } else if (k == null) return;
-  else if (msg.t === 'ready') { LB.slots[k].ready = !!msg.v; lbFeed(msg.v ? `✔ ${LB.slots[k].name} est prêt` : `✖ ${LB.slots[k].name} n'est plus prêt`); }
+  else if (msg.t === 'ready') { if (msg.v && LB.wii && !LB.slots[k].phone) { lbBroadcast(); return; } LB.slots[k].ready = !!msg.v; lbFeed(msg.v ? `✔ ${LB.slots[k].name} est prêt` : `✖ ${LB.slots[k].name} n'est plus prêt`); }
   else if (msg.t === 'emote') { lbEmote(k, msg.e); net.send({ t: 'lemote', lobby: true, k, e: msg.e }); return; }
   else if (msg.t === 'swap') { lbSwap(k); }
-  else if (msg.t === 'phone') { LB.slots[k].phone = !!msg.v; if (msg.v) lbFeed(`${LB.slots[k].name} joue avec son téléphone`); }
+  else if (msg.t === 'phone') { LB.slots[k].phone = !!msg.v; if (!msg.v && LB.wii) { LB.slots[k].ready = false; lbCancel(); } if (msg.v) lbFeed(`${LB.slots[k].name} joue avec son téléphone`); }
   lbBroadcast();
 }
 function lbSwap(k) {
@@ -591,8 +593,8 @@ function lbBroadcast() {
   if (!LB || !LB.host) return;
   // tout le monde prêt → compte à rebours
   const humans = LB.slots.filter(Boolean);
-  if (!LB.count && humans.length >= 2 && humans.every(p => p.ready)) lbStartCount();
-  for (const [c, k] of LB.conns) net.sendTo(c, { t: 'lstate', lobby: true, mode: LB.mode, bestOf: LB.bestOf, arena: LB.arena, code: LB.code, slots: LB.slots, you: k, feed: LB.feed, count: LB.count ? LB.count.n : 0 });
+  if (!LB.count && humans.length >= 2 && humans.every(p => p.ready && (!LB.wii || p.phone))) lbStartCount();
+  for (const [c, k] of LB.conns) net.sendTo(c, { t: 'lstate', lobby: true, mode: LB.mode, wii: LB.wii, bestOf: LB.bestOf, arena: LB.arena, code: LB.code, slots: LB.slots, you: k, feed: LB.feed, count: LB.count ? LB.count.n : 0 });
   renderLB();
 }
 function lbStartCount() {
@@ -615,8 +617,8 @@ function lbLaunch() {
     const g = L.slots[1], c = [...L.conns.keys()][0];
     const names = [myName(), g.name];
     oppName = g.name; opp = { lp: g.lp, paddle: g.paddle, trail: g.trail };
-    net.sendTo(c, { t: 'start', lobby: true, bestOf, firstServer, names, lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail, arena: L.arena });
-    LB = null; matchArena = L.arena; startOnline(0, bestOf, firstServer, names); return;
+    net.sendTo(c, { t: 'start', lobby: true, wii: !!L.wii, bestOf, firstServer, names, lp: profile.lp, paddle: profile.cos.paddle, trail: profile.cos.trail, arena: L.arena });
+    LB = null; matchArena = L.arena; startOnline(0, bestOf, firstServer, names, null, !!L.wii); return;
   }
   const pool = [...AI_NAMES].sort(() => Math.random() - 0.5);
   const first = n => n.split(' ')[0];
@@ -624,9 +626,9 @@ function lbLaunch() {
   const playerNames = [0, 1, 2, 3].map(k => L.slots[k] ? L.slots[k].name : pool[k]);
   const names = [`${first(playerNames[0])} / ${first(playerNames[2])}`, `${first(playerNames[1])} / ${first(playerNames[3])}`];
   const dbl = { kinds, playerNames };
-  for (const [c, k] of L.conns) net.sendTo(c, { t: 'start', lobby: true, mode: 'double', me: k, bestOf, firstServer, names, dbl, arena: L.arena });
+  for (const [c, k] of L.conns) net.sendTo(c, { t: 'start', lobby: true, wii: !!L.wii, mode: 'double', me: k, bestOf, firstServer, names, dbl, arena: L.arena });
   opp = { lp: 0 }; LB = null; matchArena = L.arena;
-  startOnline(0, bestOf, firstServer, names, dbl);
+  startOnline(0, bestOf, firstServer, names, dbl, !!L.wii);
 }
 function lbEmote(k, e) {
   if (!LB || !EMOTES.includes(e)) return;
@@ -649,10 +651,10 @@ $('#join-go').addEventListener('click', () => {
     LB = { host: false, mode: 'simple', bestOf: 3, code, slots: [null, null], you: 1, feed: ['Connexion au salon…'] };
     show('scr-lobby'); renderLB();
     net.onMessage = msg => {
-      if (msg.t === 'lstate' && LB) { Object.assign(LB, { mode: msg.mode, bestOf: msg.bestOf, arena: msg.arena, code: msg.code || code, slots: msg.slots, you: msg.you, feed: msg.feed }); LB.countN = msg.count; renderLB(); return; }
+      if (msg.t === 'lstate' && LB) { Object.assign(LB, { mode: msg.mode, wii: !!msg.wii, bestOf: msg.bestOf, arena: msg.arena, code: msg.code || code, slots: msg.slots, you: msg.you, feed: msg.feed }); LB.countN = msg.count; renderLB(); return; }
       if (msg.t === 'lemote' && LB) { LB.bubbles = LB.bubbles || {}; LB.bubbles[msg.k] = { e: msg.e, t: performance.now() }; renderLB(); setTimeout(() => renderLB(), 2100); return; }
-      if (msg.t === 'start' && msg.mode === 'double') { LB = null; opp = { lp: 0 }; matchArena = COSMETICS.arena.some(a => a.id === msg.arena) ? msg.arena : null; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl); return; }
-      if (msg.t === 'start') { LB = null; matchArena = COSMETICS.arena.some(a => a.id === msg.arena) ? msg.arena : null; opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names); return; }
+      if (msg.t === 'start' && msg.mode === 'double') { LB = null; opp = { lp: 0 }; matchArena = COSMETICS.arena.some(a => a.id === msg.arena) ? msg.arena : null; startOnline(msg.me, msg.bestOf, msg.firstServer, msg.names, msg.dbl, !!msg.wii); return; }
+      if (msg.t === 'start') { LB = null; matchArena = COSMETICS.arena.some(a => a.id === msg.arena) ? msg.arena : null; opp = { lp: msg.lp ?? 0, paddle: msg.paddle, trail: msg.trail }; startOnline(1, msg.bestOf, msg.firstServer, msg.names, null, !!msg.wii); return; }
       if (msg.t === 'full') { resetNet(); show('scr-join'); $('#join-status').textContent = 'Le salon est complet ou la partie a déjà commencé.'; }
     };
     net.onClose = () => { if (LB) { resetNet(); show('scr-join'); $('#join-status').textContent = 'L\'hôte a fermé le salon.'; } };
@@ -666,6 +668,7 @@ $('#lb-ready').addEventListener('click', () => {
   if (!LB) return; initAudio();
   const me = LB.slots[LB.you]; if (!me) return;
   const v = !me.ready; sfx.ui();
+  if (v && LB.wii && !phones.has(0)) { toast('', 'Salon Wiimote', 'Relie ton téléphone d\'abord', 'Scanne le QR code du salon avec ton téléphone.'); return; }
   if (LB.host) { me.ready = v; if (!v) lbCancel(); lbFeed(v ? `✔ ${me.name} est prêt` : `✖ ${me.name} n'est plus prêt`); lbBroadcast(); }
   else { me.ready = v; renderLB(); net.send({ t: 'ready', lobby: true, v }); }
 });
@@ -698,7 +701,7 @@ function lbCard(p, k) {
   return `<div class="lbp ${me ? 'me' : ''} ${p.ready ? 'ok' : ''}" style="--pc:${col}">${bub}
     <div class="lb-av"><span>${esc((p.name || '?')[0].toUpperCase())}</span></div>
     <div class="lb-info"><b>${esc(p.name)}${p.host ? ' <em>HÔTE</em>' : ''}${me ? ' <em class="you">TOI</em>' : ''}</b>
-      <small>${emblem(+p.lp || 0, 22)} ${r.label} · Niv. ${+p.level || 1}${p.phone ? ' · <span class="lb-tel">Téléphone</span>' : ''}</small></div>
+      <small>${emblem(+p.lp || 0, 22)} ${r.label} · Niv. ${+p.level || 1}${p.phone ? ' · <span class="lb-tel">Téléphone</span>' : LB && LB.wii ? ' · <span class="lb-notel">Sans téléphone</span>' : ''}</small></div>
     <div class="lb-side">${k === 0 && LB.host || p.host ? '' : `<span class="ping p${bars}" title="${p.ping} ms"><i></i><i></i><i></i></span>`}
       <span class="lb-st">${p.ready ? 'Prêt' : 'Pas prêt'}</span></div></div>`;
 }
@@ -723,6 +726,7 @@ function lobbyPhoneChanged() {
   const v = phones.has(0), me = LB.slots[LB.you];
   if (me && me.phone === v) { renderLobbyPhone(); return; }
   if (me) me.phone = v;
+  if (me && !v && LB.wii && me.ready) { me.ready = false; if (LB.host) lbCancel(); else net && net.send({ t: 'ready', lobby: true, v: false }); }
   if (LB.host) lbBroadcast(); else if (net) net.send({ t: 'phone', lobby: true, v });
   renderLB();
 }
@@ -730,9 +734,9 @@ function renderLB() {
   if (!LB) return;
   renderLobbyPhone();
   const dbl = LB.mode === 'double';
-  $('#lb-mode').textContent = dbl ? 'Double · 2 contre 2' : 'Simple · classé';
+  $('#lb-mode').textContent = (LB.wii ? 'Wiimote · ' : '') + (dbl ? 'Double · 2 contre 2' : 'Simple · classé');
   $('#lb-kicker').textContent = LB.host ? 'Ton salon' : 'Salon en ligne';
-  $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span>${LB.arena ? `<span>🏟 ${esc((COSMETICS.arena.find(a => a.id === LB.arena) || {}).name || '')}</span>` : ''}<span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
+  $('#lb-tags').innerHTML = `<span>${LB.bestOf} manche${LB.bestOf > 1 ? 's' : ''}</span>${LB.arena ? `<span>🏟 ${esc((COSMETICS.arena.find(a => a.id === LB.arena) || {}).name || '')}</span>` : ''}<span>${LB.slots.filter(Boolean).length}/${LB.slots.length} joueurs</span>${LB.wii ? '<span>Tout le monde au téléphone</span>' : ''}${dbl ? '<span>IA sur les places vides</span>' : '<span>Points de classement en jeu</span>'}`;
   $('#lb-code').textContent = LB.code || '·····';
   // structure construite une seule fois ; ensuite on ne remplace que les cartes qui ont changé (pas de clignotement)
   const T = $('#lb-teams'), key = dbl ? 'd' : 's';
@@ -759,7 +763,7 @@ function renderLB() {
   rb.classList.toggle('isready', !!(me && me.ready));
   const humans = LB.slots.filter(Boolean).length;
   rb.querySelector('b').textContent = me && me.ready ? '✔ Prêt — annuler' : 'Je suis prêt';
-  rb.querySelector('small').textContent = humans < 2 ? 'En attente d\'au moins un autre joueur' : 'La partie se lance quand tout le monde est prêt';
+  rb.querySelector('small').textContent = LB.wii && !phones.has(0) ? 'Relie d\'abord ton téléphone avec le QR code' : humans < 2 ? 'En attente d\'au moins un autre joueur' : 'La partie se lance quand tout le monde est prêt';
   $('#lb-swap').classList.toggle('hidden', !dbl);
   const fo = $('#lb-format'); fo.classList.toggle('hidden', !LB.host);
   const n = LB.host ? (LB.count ? LB.count.n : 0) : LB.countN || 0;
@@ -789,7 +793,7 @@ function onNetMessage(msg) {
 }
 function restartOnline(fs) {
   const names = game.names;
-  startOnline(setup.me, setup.bestOf, fs, names, setup.dbl);
+  startOnline(setup.me, setup.bestOf, fs, names, setup.dbl, setup.wii);
 }
 
 // ------------------------------------------------------------------ fin / pause
@@ -1039,6 +1043,8 @@ function updateRing(dt) {
   const ax = Math.min(innerWidth - 70, Math.max(70, anchor.x)), ay = Math.min(innerHeight - 70, Math.max(70, anchor.y));
   el.style.transform = `translate(${ax}px, ${ay}px)`;
   updateServeHud(human);
+  // mode Wiimote : pas de cercle de timing
+  if (game.autoMove && game.autoMove[me]) { el.className = ''; return; }
   const lp = game.lastPress;
   if (lp && lp.i === me && lp !== ringLastPress) {
     ringLastPress = lp; ringFlash = 0.5; ringLbl = 0.9;
@@ -1324,7 +1330,7 @@ function loop(now) {
     updateAmbience();
     updateRing(dt);
     game.autoMove = [];
-    if (phones.has(0)) game.autoMove[game.me] = true;
+    if (phones.has(0) || setup.wii) game.autoMove[game.me] = true;
     if (setup.twoP && phones.has(1)) game.autoMove[1] = true;
     game.update(dt, setup.twoP ? (i => i === 0 ? inp : (phones.cur[1] || emptyInput())) : inp);
     if (!window.__noRender) R.update(game, dt);
